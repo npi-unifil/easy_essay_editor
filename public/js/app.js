@@ -2090,6 +2090,6945 @@ var n,e=(n=__webpack_require__(/*! nprogress */ "./node_modules/nprogress/nprogr
 
 /***/ }),
 
+/***/ "./node_modules/@lexical/clipboard/LexicalClipboard.dev.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/@lexical/clipboard/LexicalClipboard.dev.js ***!
+  \*****************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var selection = __webpack_require__(/*! @lexical/selection */ "./node_modules/@lexical/selection/LexicalSelection.js");
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const IGNORE_TAGS = new Set(['STYLE']);
+function $getHtmlContent(editor) {
+  const selection = lexical.$getSelection();
+
+  if (selection == null) {
+    throw new Error('Expected valid LexicalSelection');
+  } // If we haven't selected anything
+
+
+  if (lexical.$isRangeSelection(selection) && selection.isCollapsed() || selection.getNodes().length === 0) {
+    return null;
+  }
+
+  return $convertSelectedContentToHtml(editor, selection);
+}
+function $appendSelectedNodesToHTML(editor, selection$1, currentNode, parentElement) {
+  let shouldInclude = currentNode.isSelected();
+  const shouldExclude = lexical.$isElementNode(currentNode) && currentNode.excludeFromCopy('html');
+  let clone = selection.$cloneWithProperties(currentNode);
+  clone = lexical.$isTextNode(clone) ? $splitClonedTextNode(selection$1, clone) : clone;
+  const children = lexical.$isElementNode(clone) ? clone.getChildren() : [];
+  const {
+    element,
+    after
+  } = clone.exportDOM(editor);
+
+  if (!element) {
+    return false;
+  }
+
+  const fragment = new DocumentFragment();
+
+  for (let i = 0; i < children.length; i++) {
+    const childNode = children[i];
+    const shouldIncludeChild = $appendSelectedNodesToHTML(editor, selection$1, childNode, fragment);
+
+    if (!shouldInclude && lexical.$isElementNode(currentNode) && shouldIncludeChild && currentNode.extractWithChild(childNode, selection$1, 'html')) {
+      shouldInclude = true;
+    }
+  }
+
+  if (shouldInclude && !shouldExclude) {
+    element.append(fragment);
+    parentElement.append(element);
+
+    if (after) {
+      const newElement = after.call(clone, element);
+      if (newElement) element.replaceWith(newElement);
+    }
+  } else {
+    parentElement.append(fragment);
+  }
+
+  return shouldInclude;
+}
+function $convertSelectedContentToHtml(editor, selection) {
+  const container = document.createElement('div');
+  const root = lexical.$getRoot();
+  const topLevelChildren = root.getChildren();
+
+  for (let i = 0; i < topLevelChildren.length; i++) {
+    const topLevelNode = topLevelChildren[i];
+    $appendSelectedNodesToHTML(editor, selection, topLevelNode, container);
+  }
+
+  return container.innerHTML;
+}
+function $appendSelectedNodesToClone(editor, selection$1, currentNode, nodeMap, range, shouldIncludeInRange = true) {
+  let shouldInclude = currentNode.isSelected();
+  const shouldExclude = lexical.$isElementNode(currentNode) && currentNode.excludeFromCopy('clone');
+  let clone = selection.$cloneWithProperties(currentNode);
+  clone = lexical.$isTextNode(clone) ? $splitClonedTextNode(selection$1, clone) : clone;
+  const children = lexical.$isElementNode(clone) ? clone.getChildren() : [];
+  const nodeKeys = [];
+  let shouldIncludeChildrenInRange = shouldIncludeInRange;
+
+  if (shouldInclude && !shouldExclude) {
+    nodeMap.set(clone.getKey(), clone);
+
+    if (shouldIncludeInRange) {
+      shouldIncludeChildrenInRange = false;
+    }
+  }
+
+  for (let i = 0; i < children.length; i++) {
+    const childNode = children[i];
+    const childNodeKeys = $appendSelectedNodesToClone(editor, selection$1, childNode, nodeMap, range, shouldIncludeChildrenInRange);
+
+    for (let j = 0; j < childNodeKeys.length; j++) {
+      const childNodeKey = childNodeKeys[j];
+      nodeKeys.push(childNodeKey);
+    }
+
+    if (!shouldInclude && lexical.$isElementNode(currentNode) && nodeKeys.includes(childNode.getKey()) && currentNode.extractWithChild(childNode, selection$1, 'clone')) {
+      shouldInclude = true;
+    }
+  } // The tree is later built using $generateNodes which works
+  // by going through the nodes specified in the "range" & their children
+  // while filtering out nodes not found in the "nodeMap".
+  // This gets complicated when we want to "exclude" a node but
+  // keep it's children i.e. a MarkNode and it's Text children.
+  // The solution is to check if there's a cloned parent already in our map and
+  // splice the current node's children into the nearest parent.
+  // If there is no parent in the map already, the children will be added to the
+  // top level range be default.
+
+
+  if (lexical.$isElementNode(clone) && shouldExclude && shouldInclude) {
+    let nearestClonedParent;
+    let idxWithinClonedParent;
+    let prev = clone;
+    let curr = clone.getParent();
+    const root = lexical.$getRoot();
+
+    while (curr != null && !curr.is(root)) {
+      if (nodeMap.has(curr.getKey()) || curr.extractWithChild(currentNode, selection$1, 'clone')) {
+        nearestClonedParent = selection.$cloneWithProperties(curr);
+        idxWithinClonedParent = prev.getIndexWithinParent();
+        nodeMap.set(nearestClonedParent.getKey(), nearestClonedParent);
+        break;
+      }
+
+      prev = curr;
+      curr = curr.getParent();
+    } // Add children to nearest cloned parent at the correct position.
+
+
+    if (lexical.$isElementNode(nearestClonedParent) && idxWithinClonedParent != null) {
+      nearestClonedParent.__children.splice(idxWithinClonedParent, 1, ...clone.__children);
+    }
+  }
+
+  if (shouldInclude && !shouldExclude) {
+    if (!nodeMap.has(clone.getKey())) {
+      nodeMap.set(clone.getKey(), clone);
+    }
+
+    if (shouldIncludeInRange) {
+      return [clone.getKey()];
+    }
+  }
+
+  return shouldIncludeChildrenInRange ? nodeKeys : [];
+}
+function $cloneSelectedContent(editor, selection) {
+  const root = lexical.$getRoot();
+  const nodeMap = new Map();
+  const range = [];
+  const topLevelChildren = root.getChildren();
+
+  for (let i = 0; i < topLevelChildren.length; i++) {
+    const topLevelNode = topLevelChildren[i];
+    const childNodeKeys = $appendSelectedNodesToClone(editor, selection, topLevelNode, nodeMap, range, true);
+
+    for (let j = 0; j < childNodeKeys.length; j++) {
+      const childNodeKey = childNodeKeys[j];
+      range.push(childNodeKey);
+    }
+  }
+
+  return {
+    nodeMap: Array.from(nodeMap),
+    range
+  };
+}
+function $getLexicalContent(editor) {
+  const selection = lexical.$getSelection();
+
+  if (selection !== null) {
+    const namespace = editor._config.namespace;
+    const state = $cloneSelectedContent(editor, selection);
+    return JSON.stringify({
+      namespace,
+      state
+    });
+  }
+
+  return null;
+}
+function $insertDataTransferForPlainText(dataTransfer, selection) {
+  const text = dataTransfer.getData('text/plain');
+
+  if (text != null) {
+    selection.insertRawText(text);
+  }
+}
+function $insertDataTransferForRichText(dataTransfer, selection, editor) {
+  const lexicalNodesString = dataTransfer.getData('application/x-lexical-editor');
+  const isSelectionInsideOfGrid = lexical.$isGridSelection(selection) || utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isGridCellNode(n)) !== null && utils.$findMatchingParent(selection.focus.getNode(), n => lexical.$isGridCellNode(n)) !== null;
+
+  if (lexicalNodesString) {
+    const namespace = editor._config.namespace;
+
+    try {
+      const lexicalClipboardData = JSON.parse(lexicalNodesString);
+
+      if (lexicalClipboardData.namespace === namespace) {
+        const nodeRange = lexicalClipboardData.state;
+        const nodes = $generateNodes(nodeRange);
+
+        if (isSelectionInsideOfGrid && nodes.length === 1 && lexical.$isGridNode(nodes[0])) {
+          $mergeGridNodesStrategy(nodes, selection, false, editor);
+          return;
+        }
+
+        $basicInsertStrategy(nodes, selection, true);
+        return;
+      }
+    } catch (e) {// Malformed, missing nodes..
+    }
+  }
+
+  const textHtmlMimeType = 'text/html';
+  const htmlString = dataTransfer.getData(textHtmlMimeType);
+
+  if (htmlString) {
+    const parser = new DOMParser();
+    const dom = parser.parseFromString(htmlString, textHtmlMimeType);
+    const nodes = $generateNodesFromDOM(dom, editor);
+
+    if (isSelectionInsideOfGrid && nodes.length === 1 && lexical.$isGridNode(nodes[0])) {
+      $mergeGridNodesStrategy(nodes, selection, false, editor);
+      return;
+    }
+
+    $basicInsertStrategy(nodes, selection, false);
+    return;
+  }
+
+  $insertDataTransferForPlainText(dataTransfer, selection);
+}
+
+function $basicInsertStrategy(nodes, selection, isFromLexical) {
+  let nodesToInsert;
+
+  if (!isFromLexical) {
+    // Wrap text and inline nodes in paragraph nodes so we have all blocks at the top-level
+    const topLevelBlocks = [];
+    let currentBlock = null;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+
+      if (!lexical.$isElementNode(node) || node.isInline()) {
+        if (currentBlock === null) {
+          currentBlock = lexical.$createParagraphNode();
+          topLevelBlocks.push(currentBlock);
+        }
+
+        if (currentBlock !== null) {
+          currentBlock.append(node);
+        }
+      } else {
+        topLevelBlocks.push(node);
+        currentBlock = null;
+      }
+    }
+
+    nodesToInsert = topLevelBlocks;
+  } else {
+    nodesToInsert = nodes;
+  }
+
+  if (lexical.$isRangeSelection(selection)) {
+    selection.insertNodes(nodesToInsert);
+  } else if (lexical.$isGridSelection(selection)) {
+    // If there's an active grid selection and a non grid is pasted, add to the anchor.
+    const anchorCell = selection.anchor.getNode();
+
+    if (!lexical.$isGridCellNode(anchorCell)) {
+      {
+        throw Error(`Expected Grid Cell in Grid Selection`);
+      }
+    }
+
+    anchorCell.append(...nodesToInsert);
+  }
+}
+
+function $mergeGridNodesStrategy(nodes, selection, isFromLexical, editor) {
+  if (nodes.length !== 1 || !lexical.$isGridNode(nodes[0])) {
+    {
+      throw Error(`$mergeGridNodesStrategy: Expected Grid insertion.`);
+    }
+  }
+
+  const newGrid = nodes[0];
+  const newGridRows = newGrid.getChildren();
+  const newColumnCount = newGrid.getFirstChildOrThrow().getChildrenSize();
+  const newRowCount = newGrid.getChildrenSize();
+  const gridCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isGridCellNode(n));
+  const gridRowNode = gridCellNode && utils.$findMatchingParent(gridCellNode, n => lexical.$isGridRowNode(n));
+  const gridNode = gridRowNode && utils.$findMatchingParent(gridRowNode, n => lexical.$isGridNode(n));
+
+  if (!lexical.$isGridCellNode(gridCellNode) || !lexical.$isGridRowNode(gridRowNode) || !lexical.$isGridNode(gridNode)) {
+    {
+      throw Error(`$mergeGridNodesStrategy: Expected selection to be inside of a Grid.`);
+    }
+  }
+
+  const startY = gridRowNode.getIndexWithinParent();
+  const stopY = Math.min(gridNode.getChildrenSize() - 1, startY + newRowCount - 1);
+  const startX = gridCellNode.getIndexWithinParent();
+  const stopX = Math.min(gridRowNode.getChildrenSize() - 1, startX + newColumnCount - 1);
+  const fromX = Math.min(startX, stopX);
+  const fromY = Math.min(startY, stopY);
+  const toX = Math.max(startX, stopX);
+  const toY = Math.max(startY, stopY);
+  const gridRowNodes = gridNode.getChildren();
+  let newRowIdx = 0;
+  let newAnchorCellKey;
+  let newFocusCellKey;
+
+  for (let r = fromY; r <= toY; r++) {
+    const currentGridRowNode = gridRowNodes[r];
+
+    if (!lexical.$isGridRowNode(currentGridRowNode)) {
+      {
+        throw Error(`getNodes: expected to find GridRowNode`);
+      }
+    }
+
+    const newGridRowNode = newGridRows[newRowIdx];
+
+    if (!lexical.$isGridRowNode(newGridRowNode)) {
+      {
+        throw Error(`getNodes: expected to find GridRowNode`);
+      }
+    }
+
+    const gridCellNodes = currentGridRowNode.getChildren();
+    const newGridCellNodes = newGridRowNode.getChildren();
+    let newColumnIdx = 0;
+
+    for (let c = fromX; c <= toX; c++) {
+      const currentGridCellNode = gridCellNodes[c];
+
+      if (!lexical.$isGridCellNode(currentGridCellNode)) {
+        {
+          throw Error(`getNodes: expected to find GridCellNode`);
+        }
+      }
+
+      const newGridCellNode = newGridCellNodes[newColumnIdx];
+
+      if (!lexical.$isGridCellNode(newGridCellNode)) {
+        {
+          throw Error(`getNodes: expected to find GridCellNode`);
+        }
+      }
+
+      if (r === fromY && c === fromX) {
+        newAnchorCellKey = currentGridCellNode.getKey();
+      } else if (r === toY && c === toX) {
+        newFocusCellKey = currentGridCellNode.getKey();
+      }
+
+      const originalChildren = currentGridCellNode.getChildren();
+      newGridCellNode.getChildren().forEach(child => {
+        if (lexical.$isTextNode(child)) {
+          const paragraphNode = lexical.$createParagraphNode();
+          paragraphNode.append(child);
+          currentGridCellNode.append(child);
+        } else {
+          currentGridCellNode.append(child);
+        }
+      });
+      originalChildren.forEach(n => n.remove());
+      newColumnIdx++;
+    }
+
+    newRowIdx++;
+  }
+
+  if (newAnchorCellKey && newFocusCellKey) {
+    const newGridSelection = lexical.$createGridSelection();
+    newGridSelection.set(gridNode.getKey(), newAnchorCellKey, newFocusCellKey);
+    lexical.$setSelection(newGridSelection);
+    editor.dispatchCommand(lexical.SELECTION_CHANGE_COMMAND);
+  }
+}
+
+function $generateNodes(nodeRange) {
+  const {
+    range,
+    nodeMap
+  } = nodeRange;
+  const parsedNodeMap = new Map(nodeMap);
+  const nodes = [];
+
+  for (let i = 0; i < range.length; i++) {
+    const key = range[i];
+    const parsedNode = parsedNodeMap.get(key);
+
+    if (parsedNode !== undefined) {
+      const node = lexical.$createNodeFromParse(parsedNode, parsedNodeMap);
+      nodes.push(node);
+    }
+  }
+
+  return nodes;
+}
+
+function getConversionFunction(domNode, editor) {
+  const {
+    nodeName
+  } = domNode;
+
+  const cachedConversions = editor._htmlConversions.get(nodeName.toLowerCase());
+
+  let currentConversion = null;
+
+  if (cachedConversions !== undefined) {
+    cachedConversions.forEach(cachedConversion => {
+      const domConversion = cachedConversion(domNode);
+
+      if (domConversion !== null) {
+        if (currentConversion === null || currentConversion.priority < domConversion.priority) {
+          currentConversion = domConversion;
+        }
+      }
+    });
+  }
+
+  return currentConversion !== null ? currentConversion.conversion : null;
+}
+
+function $createNodesFromDOM(node, editor, forChildMap = new Map(), parentLexicalNode) {
+  let lexicalNodes = [];
+
+  if (IGNORE_TAGS.has(node.nodeName)) {
+    return lexicalNodes;
+  }
+
+  let currentLexicalNode = null;
+  const transformFunction = getConversionFunction(node, editor);
+  const transformOutput = transformFunction ? transformFunction(node) : null;
+  let postTransform = null;
+
+  if (transformOutput !== null) {
+    postTransform = transformOutput.after;
+    currentLexicalNode = transformOutput.node;
+
+    if (currentLexicalNode !== null) {
+      for (const [, forChildFunction] of forChildMap) {
+        currentLexicalNode = forChildFunction(currentLexicalNode, parentLexicalNode);
+
+        if (!currentLexicalNode) {
+          break;
+        }
+      }
+
+      if (currentLexicalNode) {
+        lexicalNodes.push(currentLexicalNode);
+      }
+    }
+
+    if (transformOutput.forChild != null) {
+      forChildMap.set(node.nodeName, transformOutput.forChild);
+    }
+  } // If the DOM node doesn't have a transformer, we don't know what
+  // to do with it but we still need to process any childNodes.
+
+
+  const children = node.childNodes;
+  let childLexicalNodes = [];
+
+  for (let i = 0; i < children.length; i++) {
+    childLexicalNodes.push(...$createNodesFromDOM(children[i], editor, forChildMap, currentLexicalNode));
+  }
+
+  if (postTransform != null) {
+    childLexicalNodes = postTransform(childLexicalNodes);
+  }
+
+  if (currentLexicalNode == null) {
+    // If it hasn't been converted to a LexicalNode, we hoist its children
+    // up to the same level as it.
+    lexicalNodes = lexicalNodes.concat(childLexicalNodes);
+  } else {
+    if (lexical.$isElementNode(currentLexicalNode)) {
+      // If the current node is a ElementNode after conversion,
+      // we can append all the children to it.
+      currentLexicalNode.append(...childLexicalNodes);
+    }
+  }
+
+  return lexicalNodes;
+}
+
+function $generateNodesFromDOM(dom, editor) {
+  let lexicalNodes = [];
+  const elements = dom.body ? Array.from(dom.body.childNodes) : [];
+  const elementsLength = elements.length;
+
+  for (let i = 0; i < elementsLength; i++) {
+    const element = elements[i];
+
+    if (!IGNORE_TAGS.has(element.nodeName)) {
+      const lexicalNode = $createNodesFromDOM(element, editor);
+
+      if (lexicalNode !== null) {
+        lexicalNodes = lexicalNodes.concat(lexicalNode);
+      }
+    }
+  }
+
+  return lexicalNodes;
+}
+function $splitClonedTextNode(selection, clone) {
+  if (clone.isSelected() && !clone.isSegmented() && !clone.isToken() && (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection))) {
+    const anchorNode = selection.anchor.getNode();
+    const focusNode = selection.focus.getNode();
+    const isAnchor = clone.is(anchorNode);
+    const isFocus = clone.is(focusNode);
+
+    if (isAnchor || isFocus) {
+      const isBackward = selection.isBackward();
+      const [anchorOffset, focusOffset] = selection.getCharacterOffsets();
+      const isSame = anchorNode.is(focusNode);
+      const isFirst = clone.is(isBackward ? focusNode : anchorNode);
+      const isLast = clone.is(isBackward ? anchorNode : focusNode);
+      let startOffset = 0;
+      let endOffset = undefined;
+
+      if (isSame) {
+        startOffset = anchorOffset > focusOffset ? focusOffset : anchorOffset;
+        endOffset = anchorOffset > focusOffset ? anchorOffset : focusOffset;
+      } else if (isFirst) {
+        const offset = isBackward ? focusOffset : anchorOffset;
+        startOffset = offset;
+        endOffset = undefined;
+      } else if (isLast) {
+        const offset = isBackward ? anchorOffset : focusOffset;
+        startOffset = 0;
+        endOffset = offset;
+      }
+
+      clone.__text = clone.__text.slice(startOffset, endOffset);
+      return clone;
+    }
+  }
+
+  return clone;
+}
+
+exports.$getHtmlContent = $getHtmlContent;
+exports.$getLexicalContent = $getLexicalContent;
+exports.$insertDataTransferForPlainText = $insertDataTransferForPlainText;
+exports.$insertDataTransferForRichText = $insertDataTransferForRichText;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/clipboard/LexicalClipboard.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/@lexical/clipboard/LexicalClipboard.js ***!
+  \*************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalClipboard =  true ? __webpack_require__(/*! ./LexicalClipboard.dev.js */ "./node_modules/@lexical/clipboard/LexicalClipboard.dev.js") : 0
+module.exports = LexicalClipboard;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/dragon/LexicalDragon.dev.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/@lexical/dragon/LexicalDragon.dev.js ***!
+  \***********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+function registerDragonSupport(editor) {
+  const handler = event => {
+    const rootElement = editor.getRootElement();
+
+    if (document.activeElement !== rootElement) {
+      return;
+    }
+
+    const data = event.data;
+
+    if (typeof data === 'string') {
+      let parsedData;
+
+      try {
+        parsedData = JSON.parse(data);
+      } catch (e) {
+        return;
+      }
+
+      if (parsedData && parsedData.protocol === 'nuanria_messaging' && parsedData.type === 'request') {
+        const payload = parsedData.payload;
+
+        if (payload && payload.functionId === 'makeChanges') {
+          const args = payload.args;
+
+          if (args) {
+            const [elementStart, elementLength, text, selStart, selLength, formatCommand] = args; // TODO: we should probably handle formatCommand somehow?
+            editor.update(() => {
+              const selection = lexical.$getSelection();
+
+              if (lexical.$isRangeSelection(selection)) {
+                const anchor = selection.anchor;
+                let anchorNode = anchor.getNode();
+                let setSelStart = 0;
+                let setSelEnd = 0;
+
+                if (lexical.$isTextNode(anchorNode)) {
+                  // set initial selection
+                  if (elementStart >= 0 && elementLength >= 0) {
+                    setSelStart = elementStart;
+                    setSelEnd = elementStart + elementLength; // If the offset is more than the end, make it the end
+
+                    selection.setTextNodeRange(anchorNode, setSelStart, anchorNode, setSelEnd);
+                  }
+                }
+
+                if (setSelStart !== setSelEnd || text !== '') {
+                  selection.insertRawText(text);
+                  anchorNode = anchor.getNode();
+                }
+
+                if (lexical.$isTextNode(anchorNode)) {
+                  // set final selection
+                  setSelStart = selStart;
+                  setSelEnd = selStart + selLength;
+                  const anchorNodeTextLength = anchorNode.getTextContentSize(); // If the offset is more than the end, make it the end
+
+                  setSelStart = setSelStart > anchorNodeTextLength ? anchorNodeTextLength : setSelStart;
+                  setSelEnd = setSelEnd > anchorNodeTextLength ? anchorNodeTextLength : setSelEnd;
+                  selection.setTextNodeRange(anchorNode, setSelStart, anchorNode, setSelEnd);
+                } // block the chrome extension from handling this event
+
+
+                event.stopImmediatePropagation();
+              }
+            });
+          }
+        }
+      }
+    }
+  };
+
+  window.addEventListener('message', handler, true);
+  return () => {
+    window.removeEventListener('message', handler, true);
+  };
+}
+
+exports.registerDragonSupport = registerDragonSupport;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/dragon/LexicalDragon.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/@lexical/dragon/LexicalDragon.js ***!
+  \*******************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalDragon =  true ? __webpack_require__(/*! ./LexicalDragon.dev.js */ "./node_modules/@lexical/dragon/LexicalDragon.dev.js") : 0
+module.exports = LexicalDragon;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/hashtag/LexicalHashtag.dev.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/@lexical/hashtag/LexicalHashtag.dev.js ***!
+  \*************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+class HashtagNode extends lexical.TextNode {
+  static getType() {
+    return 'hashtag';
+  }
+
+  static clone(node) {
+    return new HashtagNode(node.__text, node.__key);
+  }
+
+  constructor(text, key) {
+    super(text, key);
+  }
+
+  createDOM(config) {
+    const element = super.createDOM(config);
+    utils.addClassNamesToElement(element, config.theme.hashtag);
+    return element;
+  }
+
+  canInsertTextBefore() {
+    return false;
+  }
+
+  isTextEntity() {
+    return true;
+  }
+
+}
+function $createHashtagNode(text = '') {
+  return new HashtagNode(text);
+}
+function $isHashtagNode(node) {
+  return node instanceof HashtagNode;
+}
+
+exports.$createHashtagNode = $createHashtagNode;
+exports.$isHashtagNode = $isHashtagNode;
+exports.HashtagNode = HashtagNode;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/hashtag/LexicalHashtag.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@lexical/hashtag/LexicalHashtag.js ***!
+  \*********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalHashtag =  true ? __webpack_require__(/*! ./LexicalHashtag.dev.js */ "./node_modules/@lexical/hashtag/LexicalHashtag.dev.js") : 0
+module.exports = LexicalHashtag;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/history/LexicalHistory.dev.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/@lexical/history/LexicalHistory.dev.js ***!
+  \*************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+const HISTORY_MERGE = 0;
+const HISTORY_PUSH = 1;
+const DISCARD_HISTORY_CANDIDATE = 2;
+const OTHER = 0;
+const COMPOSING_CHARACTER = 1;
+const INSERT_CHARACTER_AFTER_SELECTION = 2;
+const DELETE_CHARACTER_BEFORE_SELECTION = 3;
+const DELETE_CHARACTER_AFTER_SELECTION = 4;
+
+function getDirtyNodes(editorState, dirtyLeaves, dirtyElements) {
+  const nodeMap = editorState._nodeMap;
+  const nodes = [];
+
+  for (const dirtyLeafKey of dirtyLeaves) {
+    const dirtyLeaf = nodeMap.get(dirtyLeafKey);
+
+    if (dirtyLeaf !== undefined) {
+      nodes.push(dirtyLeaf);
+    }
+  }
+
+  for (const [dirtyElementKey, intentionallyMarkedAsDirty] of dirtyElements) {
+    if (!intentionallyMarkedAsDirty) {
+      continue;
+    }
+
+    const dirtyElement = nodeMap.get(dirtyElementKey);
+
+    if (dirtyElement !== undefined && !lexical.$isRootNode(dirtyElement)) {
+      nodes.push(dirtyElement);
+    }
+  }
+
+  return nodes;
+}
+
+function getChangeType(prevEditorState, nextEditorState, dirtyLeavesSet, dirtyElementsSet, isComposing) {
+  if (prevEditorState === null || dirtyLeavesSet.size === 0 && dirtyElementsSet.size === 0) {
+    return OTHER;
+  }
+
+  const nextSelection = nextEditorState._selection;
+  const prevSelection = prevEditorState._selection;
+
+  if (isComposing) {
+    return COMPOSING_CHARACTER;
+  }
+
+  if (!lexical.$isRangeSelection(nextSelection) || !lexical.$isRangeSelection(prevSelection) || !prevSelection.isCollapsed() || !nextSelection.isCollapsed()) {
+    return OTHER;
+  }
+
+  const dirtyNodes = getDirtyNodes(nextEditorState, dirtyLeavesSet, dirtyElementsSet);
+
+  if (dirtyNodes.length === 0) {
+    return OTHER;
+  } // Catching the case when inserting new text node into an element (e.g. first char in paragraph/list),
+  // or after existing node.
+
+
+  if (dirtyNodes.length > 1) {
+    const nextNodeMap = nextEditorState._nodeMap;
+    const nextAnchorNode = nextNodeMap.get(nextSelection.anchor.key);
+    const prevAnchorNode = nextNodeMap.get(prevSelection.anchor.key);
+
+    if (nextAnchorNode && prevAnchorNode && !prevEditorState._nodeMap.has(nextAnchorNode.__key) && lexical.$isTextNode(nextAnchorNode) && nextAnchorNode.__text.length === 1 && nextSelection.anchor.offset === 1) {
+      return INSERT_CHARACTER_AFTER_SELECTION;
+    }
+
+    return OTHER;
+  }
+
+  const nextDirtyNode = dirtyNodes[0];
+
+  const prevDirtyNode = prevEditorState._nodeMap.get(nextDirtyNode.__key);
+
+  if (!lexical.$isTextNode(prevDirtyNode) || !lexical.$isTextNode(nextDirtyNode) || prevDirtyNode.__mode !== nextDirtyNode.__mode) {
+    return OTHER;
+  }
+
+  const prevText = prevDirtyNode.__text;
+  const nextText = nextDirtyNode.__text;
+
+  if (prevText === nextText) {
+    return OTHER;
+  }
+
+  const nextAnchor = nextSelection.anchor;
+  const prevAnchor = prevSelection.anchor;
+
+  if (nextAnchor.key !== prevAnchor.key || nextAnchor.type !== 'text') {
+    return OTHER;
+  }
+
+  const nextAnchorOffset = nextAnchor.offset;
+  const prevAnchorOffset = prevAnchor.offset;
+  const textDiff = nextText.length - prevText.length;
+
+  if (textDiff === 1 && prevAnchorOffset === nextAnchorOffset - 1) {
+    return INSERT_CHARACTER_AFTER_SELECTION;
+  }
+
+  if (textDiff === -1 && prevAnchorOffset === nextAnchorOffset + 1) {
+    return DELETE_CHARACTER_BEFORE_SELECTION;
+  }
+
+  if (textDiff === -1 && prevAnchorOffset === nextAnchorOffset) {
+    return DELETE_CHARACTER_AFTER_SELECTION;
+  }
+
+  return OTHER;
+}
+
+function createMergeActionGetter(editor, delay) {
+  let prevChangeTime = Date.now();
+  let prevChangeType = OTHER;
+  return (prevEditorState, nextEditorState, currentHistoryEntry, dirtyLeaves, dirtyElements, tags) => {
+    const changeTime = Date.now(); // If applying changes from history stack there's no need
+    // to run history logic again, as history entries already calculated
+
+    if (tags.has('historic')) {
+      prevChangeType = OTHER;
+      prevChangeTime = changeTime;
+      return DISCARD_HISTORY_CANDIDATE;
+    }
+
+    const changeType = getChangeType(prevEditorState, nextEditorState, dirtyLeaves, dirtyElements, editor.isComposing());
+
+    const mergeAction = (() => {
+      const shouldPushHistory = tags.has('history-push');
+      const shouldMergeHistory = !shouldPushHistory && tags.has('history-merge');
+
+      if (shouldMergeHistory) {
+        return HISTORY_MERGE;
+      }
+
+      if (prevEditorState === null) {
+        return HISTORY_PUSH;
+      }
+
+      const selection = nextEditorState._selection;
+      const prevSelection = prevEditorState._selection;
+      const hasDirtyNodes = dirtyLeaves.size > 0 || dirtyElements.size > 0;
+
+      if (!hasDirtyNodes) {
+        if (prevSelection === null && selection !== null) {
+          return HISTORY_MERGE;
+        }
+
+        return DISCARD_HISTORY_CANDIDATE;
+      }
+
+      const isSameEditor = currentHistoryEntry === null || currentHistoryEntry.editor === editor;
+
+      if (shouldPushHistory === false && changeType !== OTHER && changeType === prevChangeType && changeTime < prevChangeTime + delay && isSameEditor) {
+        return HISTORY_MERGE;
+      }
+
+      return HISTORY_PUSH;
+    })();
+
+    prevChangeTime = changeTime;
+    prevChangeType = changeType;
+    return mergeAction;
+  };
+}
+
+function redo(editor, historyState) {
+  const redoStack = historyState.redoStack;
+  const undoStack = historyState.undoStack;
+
+  if (redoStack.length !== 0) {
+    const current = historyState.current;
+
+    if (current !== null) {
+      undoStack.push(current);
+      editor.dispatchCommand(lexical.CAN_UNDO_COMMAND, true);
+    }
+
+    const historyStateEntry = redoStack.pop();
+
+    if (redoStack.length === 0) {
+      editor.dispatchCommand(lexical.CAN_REDO_COMMAND, false);
+    }
+
+    historyState.current = historyStateEntry || null;
+
+    if (historyStateEntry) {
+      historyStateEntry.editor.setEditorState(historyStateEntry.editorState, {
+        tag: 'historic'
+      });
+    }
+  }
+}
+
+function undo(editor, historyState) {
+  const redoStack = historyState.redoStack;
+  const undoStack = historyState.undoStack;
+  const undoStackLength = undoStack.length;
+
+  if (undoStackLength !== 0) {
+    const current = historyState.current;
+    const historyStateEntry = undoStack.pop();
+
+    if (current !== null) {
+      redoStack.push(current);
+      editor.dispatchCommand(lexical.CAN_REDO_COMMAND, true);
+    }
+
+    if (undoStack.length === 0) {
+      editor.dispatchCommand(lexical.CAN_UNDO_COMMAND, false);
+    }
+
+    historyState.current = historyStateEntry || null;
+
+    if (historyStateEntry) {
+      historyStateEntry.editor.setEditorState(historyStateEntry.editorState.clone(historyStateEntry.undoSelection), {
+        tag: 'historic'
+      });
+    }
+  }
+}
+
+function clearHistory(historyState) {
+  historyState.undoStack = [];
+  historyState.redoStack = [];
+  historyState.current = null;
+}
+
+function registerHistory(editor, historyState, delay) {
+  const getMergeAction = createMergeActionGetter(editor, delay);
+
+  const applyChange = ({
+    editorState,
+    prevEditorState,
+    dirtyLeaves,
+    dirtyElements,
+    tags
+  }) => {
+    const current = historyState.current;
+    const redoStack = historyState.redoStack;
+    const undoStack = historyState.undoStack;
+    const currentEditorState = current === null ? null : current.editorState;
+
+    if (current !== null && editorState === currentEditorState) {
+      return;
+    }
+
+    const mergeAction = getMergeAction(prevEditorState, editorState, current, dirtyLeaves, dirtyElements, tags);
+
+    if (mergeAction === HISTORY_PUSH) {
+      if (redoStack.length !== 0) {
+        historyState.redoStack = [];
+      }
+
+      if (current !== null) {
+        undoStack.push({ ...current,
+          undoSelection: prevEditorState.read(lexical.$getSelection)
+        });
+        editor.dispatchCommand(lexical.CAN_UNDO_COMMAND, true);
+      }
+    } else if (mergeAction === DISCARD_HISTORY_CANDIDATE) {
+      return;
+    } // Else we merge
+
+
+    historyState.current = {
+      editor,
+      editorState
+    };
+  };
+
+  const unregisterCommandListener = utils.mergeRegister(editor.registerCommand(lexical.UNDO_COMMAND, () => {
+    undo(editor, historyState);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.REDO_COMMAND, () => {
+    redo(editor, historyState);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.CLEAR_EDITOR_COMMAND, () => {
+    clearHistory(historyState);
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.CLEAR_HISTORY_COMMAND, () => {
+    clearHistory(historyState);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerUpdateListener(applyChange));
+  const unregisterUpdateListener = editor.registerUpdateListener(applyChange);
+  return () => {
+    unregisterCommandListener();
+    unregisterUpdateListener();
+  };
+}
+function createEmptyHistoryState() {
+  return {
+    current: null,
+    redoStack: [],
+    undoStack: []
+  };
+}
+
+exports.createEmptyHistoryState = createEmptyHistoryState;
+exports.registerHistory = registerHistory;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/history/LexicalHistory.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@lexical/history/LexicalHistory.js ***!
+  \*********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalHistory =  true ? __webpack_require__(/*! ./LexicalHistory.dev.js */ "./node_modules/@lexical/history/LexicalHistory.dev.js") : 0
+module.exports = LexicalHistory;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/link/LexicalLink.dev.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/@lexical/link/LexicalLink.dev.js ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class LinkNode extends lexical.ElementNode {
+  static getType() {
+    return 'link';
+  }
+
+  static clone(node) {
+    return new LinkNode(node.__url, node.__key);
+  }
+
+  constructor(url, key) {
+    super(key);
+    this.__url = url;
+  }
+
+  createDOM(config) {
+    const element = document.createElement('a');
+    element.href = this.__url;
+    utils.addClassNamesToElement(element, config.theme.link);
+    return element;
+  }
+
+  updateDOM( // $FlowFixMe: not sure how to fix this
+  prevNode, dom, config) {
+    // $FlowFixMe: not sure how to fix this
+    const anchor = dom;
+    const url = this.__url;
+
+    if (url !== prevNode.__url) {
+      anchor.href = url;
+    }
+
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      a: node => ({
+        conversion: convertAnchorElement,
+        priority: 1
+      })
+    };
+  }
+
+  getURL() {
+    return this.getLatest().__url;
+  }
+
+  setURL(url) {
+    const writable = this.getWritable();
+    writable.__url = url;
+  }
+
+  insertNewAfter(selection) {
+    const element = this.getParentOrThrow().insertNewAfter(selection);
+
+    if (lexical.$isElementNode(element)) {
+      const linkNode = $createLinkNode(this.__url);
+      element.append(linkNode);
+      return linkNode;
+    }
+
+    return null;
+  }
+
+  canInsertTextBefore() {
+    return false;
+  }
+
+  canInsertTextAfter() {
+    return false;
+  }
+
+  canBeEmpty() {
+    return false;
+  }
+
+  isInline() {
+    return true;
+  }
+
+}
+
+function convertAnchorElement(domNode) {
+  let node = null;
+
+  if (domNode instanceof HTMLAnchorElement) {
+    node = $createLinkNode(domNode.href);
+  }
+
+  return {
+    node
+  };
+}
+
+function $createLinkNode(url) {
+  return new LinkNode(url);
+}
+function $isLinkNode(node) {
+  return node instanceof LinkNode;
+} // Custom node type to override `canInsertTextAfter` that will
+// allow typing within the link
+
+class AutoLinkNode extends LinkNode {
+  static getType() {
+    return 'autolink';
+  } // $FlowFixMe[incompatible-extend]
+
+
+  static clone(node) {
+    return new AutoLinkNode(node.__url, node.__key);
+  }
+
+  insertNewAfter(selection) {
+    const element = this.getParentOrThrow().insertNewAfter(selection);
+
+    if (lexical.$isElementNode(element)) {
+      const linkNode = $createAutoLinkNode(this.__url);
+      element.append(linkNode);
+      return linkNode;
+    }
+
+    return null;
+  }
+
+}
+function $createAutoLinkNode(url) {
+  return new AutoLinkNode(url);
+}
+function $isAutoLinkNode(node) {
+  return node instanceof AutoLinkNode;
+}
+const TOGGLE_LINK_COMMAND = lexical.createCommand();
+
+exports.$createAutoLinkNode = $createAutoLinkNode;
+exports.$createLinkNode = $createLinkNode;
+exports.$isAutoLinkNode = $isAutoLinkNode;
+exports.$isLinkNode = $isLinkNode;
+exports.AutoLinkNode = AutoLinkNode;
+exports.LinkNode = LinkNode;
+exports.TOGGLE_LINK_COMMAND = TOGGLE_LINK_COMMAND;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/link/LexicalLink.js":
+/*!***************************************************!*\
+  !*** ./node_modules/@lexical/link/LexicalLink.js ***!
+  \***************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalLink =  true ? __webpack_require__(/*! ./LexicalLink.dev.js */ "./node_modules/@lexical/link/LexicalLink.dev.js") : 0
+module.exports = LexicalLink;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/list/LexicalList.dev.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/@lexical/list/LexicalList.dev.js ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function $getListDepth(listNode) {
+  let depth = 1;
+  let parent = listNode.getParent();
+
+  while (parent != null) {
+    if ($isListItemNode(parent)) {
+      const parentList = parent.getParent();
+
+      if ($isListNode(parentList)) {
+        depth++;
+        parent = parentList.getParent();
+        continue;
+      }
+
+      {
+        throw Error(`A ListItemNode must have a ListNode for a parent.`);
+      }
+    }
+
+    return depth;
+  }
+
+  return depth;
+}
+function $getTopListNode(listItem) {
+  let list = listItem.getParent();
+
+  if (!$isListNode(list)) {
+    {
+      throw Error(`A ListItemNode must have a ListNode for a parent.`);
+    }
+  }
+
+  let parent = list;
+
+  while (parent !== null) {
+    parent = parent.getParent();
+
+    if ($isListNode(parent)) {
+      list = parent;
+    }
+  }
+
+  return list;
+}
+
+function $getAllListItems(node) {
+  let listItemNodes = []; //$FlowFixMe - the result of this will always be an array of ListItemNodes.
+
+  const listChildren = node.getChildren().filter($isListItemNode);
+
+  for (let i = 0; i < listChildren.length; i++) {
+    const listItemNode = listChildren[i];
+    const firstChild = listItemNode.getFirstChild();
+
+    if ($isListNode(firstChild)) {
+      listItemNodes = listItemNodes.concat($getAllListItems(firstChild));
+    } else {
+      listItemNodes.push(listItemNode);
+    }
+  }
+
+  return listItemNodes;
+}
+function isNestedListNode(node) {
+  return $isListItemNode(node) && $isListNode(node.getFirstChild());
+} // TODO: rewrite with $findMatchingParent or *nodeOfType
+
+function findNearestListItemNode(node) {
+  let currentNode = node;
+
+  while (currentNode !== null) {
+    if ($isListItemNode(currentNode)) {
+      return currentNode;
+    }
+
+    currentNode = currentNode.getParent();
+  }
+
+  return null;
+}
+function getUniqueListItemNodes(nodeList) {
+  const keys = new Set();
+
+  for (let i = 0; i < nodeList.length; i++) {
+    const node = nodeList[i];
+
+    if ($isListItemNode(node)) {
+      keys.add(node);
+    }
+  }
+
+  return Array.from(keys);
+}
+function $removeHighestEmptyListParent(sublist) {
+  // Nodes may be repeatedly indented, to create deeply nested lists that each
+  // contain just one bullet.
+  // Our goal is to remove these (empty) deeply nested lists. The easiest
+  // way to do that is crawl back up the tree until we find a node that has siblings
+  // (e.g. is actually part of the list contents) and delete that, or delete
+  // the root of the list (if no list nodes have siblings.)
+  let emptyListPtr = sublist;
+
+  while (emptyListPtr.getNextSibling() == null && emptyListPtr.getPreviousSibling() == null) {
+    const parent = emptyListPtr.getParent();
+
+    if (parent == null || !($isListItemNode(emptyListPtr) || $isListNode(emptyListPtr))) {
+      break;
+    }
+
+    emptyListPtr = parent;
+  }
+
+  emptyListPtr.remove();
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+function $isSelectingEmptyListItem(anchorNode, nodes) {
+  return $isListItemNode(anchorNode) && (nodes.length === 0 || nodes.length === 1 && anchorNode.is(nodes[0]) && anchorNode.getChildrenSize() === 0);
+}
+
+function $getListItemValue(listItem) {
+  const list = listItem.getParent();
+  let value = 1;
+
+  if (list != null) {
+    if (!$isListNode(list)) {
+      {
+        throw Error(`$getListItemValue: list node is not parent of list item node`);
+      }
+    } else {
+      value = list.getStart();
+    }
+  }
+
+  const siblings = listItem.getPreviousSiblings();
+
+  for (let i = 0; i < siblings.length; i++) {
+    const sibling = siblings[i];
+
+    if ($isListItemNode(sibling) && !$isListNode(sibling.getFirstChild())) {
+      value++;
+    }
+  }
+
+  return value;
+}
+
+function insertList(editor, listType) {
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection)) {
+      const nodes = selection.getNodes();
+      const anchor = selection.anchor;
+      const anchorNode = anchor.getNode();
+      const anchorNodeParent = anchorNode.getParent();
+
+      if ($isSelectingEmptyListItem(anchorNode, nodes)) {
+        const list = $createListNode(listType);
+
+        if (lexical.$isRootNode(anchorNodeParent)) {
+          anchorNode.replace(list);
+          const listItem = $createListItemNode();
+          list.append(listItem);
+        } else if ($isListItemNode(anchorNode)) {
+          const parent = anchorNode.getParentOrThrow();
+          list.append(...parent.getChildren());
+          parent.replace(list);
+        }
+
+        return;
+      } else {
+        const handled = new Set();
+
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+
+          if (lexical.$isElementNode(node) && node.isEmpty() && !handled.has(node.getKey())) {
+            createListOrMerge(node, listType);
+            continue;
+          }
+
+          if (lexical.$isLeafNode(node)) {
+            let parent = node.getParent();
+
+            while (parent != null) {
+              const parentKey = parent.getKey();
+
+              if ($isListNode(parent)) {
+                if (!handled.has(parentKey)) {
+                  const newListNode = $createListNode(listType);
+                  newListNode.append(...parent.getChildren());
+                  parent.replace(newListNode);
+                  updateChildrenListItemValue(newListNode);
+                  handled.add(parentKey);
+                }
+
+                break;
+              } else {
+                const nextParent = parent.getParent();
+
+                if (lexical.$isRootNode(nextParent) && !handled.has(parentKey)) {
+                  handled.add(parentKey);
+                  createListOrMerge(parent, listType);
+                  break;
+                }
+
+                parent = nextParent;
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function createListOrMerge(node, listType) {
+  if ($isListNode(node)) {
+    return node;
+  }
+
+  const previousSibling = node.getPreviousSibling();
+  const nextSibling = node.getNextSibling();
+  const listItem = $createListItemNode();
+
+  if ($isListNode(previousSibling) && listType === previousSibling.getListType()) {
+    listItem.append(node);
+    previousSibling.append(listItem); // if the same type of list is on both sides, merge them.
+
+    if ($isListNode(nextSibling) && listType === nextSibling.getListType()) {
+      previousSibling.append(...nextSibling.getChildren());
+      nextSibling.remove();
+    }
+
+    return previousSibling;
+  } else if ($isListNode(nextSibling) && listType === nextSibling.getListType()) {
+    listItem.append(node);
+    nextSibling.getFirstChildOrThrow().insertBefore(listItem);
+    return nextSibling;
+  } else {
+    const list = $createListNode(listType);
+    list.append(listItem);
+    node.replace(list);
+    listItem.append(node);
+    updateChildrenListItemValue(list);
+    return list;
+  }
+}
+
+function removeList(editor) {
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection)) {
+      const listNodes = new Set();
+      const nodes = selection.getNodes();
+      const anchorNode = selection.anchor.getNode();
+
+      if ($isSelectingEmptyListItem(anchorNode, nodes)) {
+        listNodes.add($getTopListNode(anchorNode));
+      } else {
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+
+          if (lexical.$isLeafNode(node)) {
+            const listItemNode = utils.$getNearestNodeOfType(node, ListItemNode);
+
+            if (listItemNode != null) {
+              listNodes.add($getTopListNode(listItemNode));
+            }
+          }
+        }
+      }
+
+      listNodes.forEach(listNode => {
+        let insertionPoint = listNode;
+        const listItems = $getAllListItems(listNode);
+        listItems.forEach(listItemNode => {
+          if (listItemNode != null) {
+            const paragraph = lexical.$createParagraphNode();
+            paragraph.append(...listItemNode.getChildren());
+            insertionPoint.insertAfter(paragraph);
+            insertionPoint = paragraph;
+            listItemNode.remove();
+          }
+        });
+        listNode.remove();
+      });
+    }
+  });
+}
+function updateChildrenListItemValue(list, children) {
+  // $FlowFixMe: children are always list item nodes
+  (children || list.getChildren()).forEach(child => {
+    const prevValue = child.getValue();
+    const nextValue = $getListItemValue(child);
+
+    if (prevValue !== nextValue) {
+      child.setValue(nextValue);
+    }
+  });
+}
+function $handleIndent(listItemNodes) {
+  // go through each node and decide where to move it.
+  const removed = new Set();
+  listItemNodes.forEach(listItemNode => {
+    if (isNestedListNode(listItemNode) || removed.has(listItemNode.getKey())) {
+      return;
+    }
+
+    const parent = listItemNode.getParent();
+    const nextSibling = listItemNode.getNextSibling();
+    const previousSibling = listItemNode.getPreviousSibling(); // if there are nested lists on either side, merge them all together.
+
+    if (isNestedListNode(nextSibling) && isNestedListNode(previousSibling)) {
+      const innerList = previousSibling.getFirstChild();
+
+      if ($isListNode(innerList)) {
+        innerList.append(listItemNode);
+        const nextInnerList = nextSibling.getFirstChild();
+
+        if ($isListNode(nextInnerList)) {
+          const children = nextInnerList.getChildren();
+          innerList.append(...children);
+          nextSibling.remove();
+          removed.add(nextSibling.getKey());
+        }
+
+        updateChildrenListItemValue(innerList);
+      }
+    } else if (isNestedListNode(nextSibling)) {
+      // if the ListItemNode is next to a nested ListNode, merge them
+      const innerList = nextSibling.getFirstChild();
+
+      if ($isListNode(innerList)) {
+        const firstChild = innerList.getFirstChild();
+
+        if (firstChild !== null) {
+          firstChild.insertBefore(listItemNode);
+        }
+
+        updateChildrenListItemValue(innerList);
+      }
+    } else if (isNestedListNode(previousSibling)) {
+      const innerList = previousSibling.getFirstChild();
+
+      if ($isListNode(innerList)) {
+        innerList.append(listItemNode);
+        updateChildrenListItemValue(innerList);
+      }
+    } else {
+      // otherwise, we need to create a new nested ListNode
+      if ($isListNode(parent)) {
+        const newListItem = $createListItemNode();
+        const newList = $createListNode(parent.getListType());
+        newListItem.append(newList);
+        newList.append(listItemNode);
+
+        if (previousSibling) {
+          previousSibling.insertAfter(newListItem);
+        } else if (nextSibling) {
+          nextSibling.insertBefore(newListItem);
+        } else {
+          parent.append(newListItem);
+        }
+      }
+    }
+
+    if ($isListNode(parent)) {
+      updateChildrenListItemValue(parent);
+    }
+  });
+}
+function $handleOutdent(listItemNodes) {
+  // go through each node and decide where to move it.
+  listItemNodes.forEach(listItemNode => {
+    if (isNestedListNode(listItemNode)) {
+      return;
+    }
+
+    const parentList = listItemNode.getParent();
+    const grandparentListItem = parentList ? parentList.getParent() : undefined;
+    const greatGrandparentList = grandparentListItem ? grandparentListItem.getParent() : undefined; // If it doesn't have these ancestors, it's not indented.
+
+    if ($isListNode(greatGrandparentList) && $isListItemNode(grandparentListItem) && $isListNode(parentList)) {
+      // if it's the first child in it's parent list, insert it into the
+      // great grandparent list before the grandparent
+      const firstChild = parentList ? parentList.getFirstChild() : undefined;
+      const lastChild = parentList ? parentList.getLastChild() : undefined;
+
+      if (listItemNode.is(firstChild)) {
+        grandparentListItem.insertBefore(listItemNode);
+
+        if (parentList.isEmpty()) {
+          grandparentListItem.remove();
+        } // if it's the last child in it's parent list, insert it into the
+        // great grandparent list after the grandparent.
+
+      } else if (listItemNode.is(lastChild)) {
+        grandparentListItem.insertAfter(listItemNode);
+
+        if (parentList.isEmpty()) {
+          grandparentListItem.remove();
+        }
+      } else {
+        // otherwise, we need to split the siblings into two new nested lists
+        const listType = parentList.getListType();
+        const previousSiblingsListItem = $createListItemNode();
+        const previousSiblingsList = $createListNode(listType);
+        previousSiblingsListItem.append(previousSiblingsList);
+        listItemNode.getPreviousSiblings().forEach(sibling => previousSiblingsList.append(sibling));
+        const nextSiblingsListItem = $createListItemNode();
+        const nextSiblingsList = $createListNode(listType);
+        nextSiblingsListItem.append(nextSiblingsList);
+        nextSiblingsList.append(...listItemNode.getNextSiblings()); // put the sibling nested lists on either side of the grandparent list item in the great grandparent.
+
+        grandparentListItem.insertBefore(previousSiblingsListItem);
+        grandparentListItem.insertAfter(nextSiblingsListItem); // replace the grandparent list item (now between the siblings) with the outdented list item.
+
+        grandparentListItem.replace(listItemNode);
+      }
+
+      updateChildrenListItemValue(parentList);
+      updateChildrenListItemValue(greatGrandparentList);
+    }
+  });
+}
+
+function maybeIndentOrOutdent(direction) {
+  const selection = lexical.$getSelection();
+
+  if (!lexical.$isRangeSelection(selection)) {
+    return;
+  }
+
+  const selectedNodes = selection.getNodes();
+  let listItemNodes = [];
+
+  if (selectedNodes.length === 0) {
+    selectedNodes.push(selection.anchor.getNode());
+  }
+
+  if (selectedNodes.length === 1) {
+    // Only 1 node selected. Selection may not contain the ListNodeItem so we traverse the tree to
+    // find whether this is part of a ListItemNode
+    const nearestListItemNode = findNearestListItemNode(selectedNodes[0]);
+
+    if (nearestListItemNode !== null) {
+      listItemNodes = [nearestListItemNode];
+    }
+  } else {
+    listItemNodes = getUniqueListItemNodes(selectedNodes);
+  }
+
+  if (listItemNodes.length > 0) {
+    if (direction === 'indent') {
+      $handleIndent(listItemNodes);
+    } else {
+      $handleOutdent(listItemNodes);
+    }
+  }
+}
+
+function indentList() {
+  maybeIndentOrOutdent('indent');
+}
+function outdentList() {
+  maybeIndentOrOutdent('outdent');
+}
+function $handleListInsertParagraph() {
+  const selection = lexical.$getSelection();
+
+  if (!lexical.$isRangeSelection(selection) || !selection.isCollapsed()) {
+    return false;
+  } // Only run this code on empty list items
+
+
+  const anchor = selection.anchor.getNode();
+
+  if (!$isListItemNode(anchor) || anchor.getTextContent() !== '') {
+    return false;
+  }
+
+  const topListNode = $getTopListNode(anchor);
+  const parent = anchor.getParent();
+
+  if (!$isListNode(parent)) {
+    throw Error(`A ListItemNode must have a ListNode for a parent.`);
+  }
+
+  const grandparent = parent.getParent();
+  let replacementNode;
+
+  if (lexical.$isRootNode(grandparent)) {
+    replacementNode = lexical.$createParagraphNode();
+    topListNode.insertAfter(replacementNode);
+  } else if ($isListItemNode(grandparent)) {
+    replacementNode = $createListItemNode();
+    grandparent.insertAfter(replacementNode);
+  } else {
+    return false;
+  }
+
+  replacementNode.select();
+  const nextSiblings = anchor.getNextSiblings();
+
+  if (nextSiblings.length > 0) {
+    const newList = $createListNode(parent.getListType());
+
+    if (lexical.$isParagraphNode(replacementNode)) {
+      replacementNode.insertAfter(newList);
+    } else {
+      const newListItem = $createListItemNode();
+      newListItem.append(newList);
+      replacementNode.insertAfter(newListItem);
+    }
+
+    nextSiblings.forEach(sibling => {
+      sibling.remove();
+      newList.append(sibling);
+    });
+  } // Don't leave hanging nested empty lists
+
+
+  $removeHighestEmptyListParent(anchor);
+  return true;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class ListItemNode extends lexical.ElementNode {
+  static getType() {
+    return 'listitem';
+  }
+
+  static clone(node) {
+    return new ListItemNode(node.__value, node.__checked, node.__key);
+  }
+
+  constructor(value, checked, key) {
+    super(key);
+    this.__value = value === undefined ? 1 : value;
+    this.__checked = checked;
+  }
+
+  createDOM(config) {
+    const element = document.createElement('li');
+    const parent = this.getParent();
+
+    if ($isListNode(parent)) {
+      updateChildrenListItemValue(parent);
+      updateListItemChecked(element, this, null, parent);
+    }
+
+    element.value = this.__value;
+    $setListItemThemeClassNames(element, config.theme, this);
+    return element;
+  }
+
+  updateDOM(prevNode, dom, config) {
+    const parent = this.getParent();
+
+    if ($isListNode(parent)) {
+      updateChildrenListItemValue(parent);
+      updateListItemChecked(dom, this, prevNode, parent);
+    } // $FlowFixMe - this is always HTMLListItemElement
+
+
+    dom.value = this.__value;
+    $setListItemThemeClassNames(dom, config.theme, this);
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      li: node => ({
+        conversion: convertListItemElement,
+        priority: 0
+      })
+    };
+  }
+
+  append(...nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+
+      if (lexical.$isElementNode(node) && this.canMergeWith(node)) {
+        const children = node.getChildren();
+        this.append(...children);
+        node.remove();
+      } else {
+        super.append(node);
+      }
+    }
+
+    return this;
+  }
+
+  replace(replaceWithNode) {
+    if ($isListItemNode(replaceWithNode)) {
+      return super.replace(replaceWithNode);
+    }
+
+    const list = this.getParentOrThrow();
+
+    if ($isListNode(list)) {
+      const childrenKeys = list.__children;
+      const childrenLength = childrenKeys.length;
+      const index = childrenKeys.indexOf(this.__key);
+
+      if (index === 0) {
+        list.insertBefore(replaceWithNode);
+      } else if (index === childrenLength - 1) {
+        list.insertAfter(replaceWithNode);
+      } else {
+        // Split the list
+        const newList = $createListNode(list.getListType());
+        const children = list.getChildren();
+
+        for (let i = index + 1; i < childrenLength; i++) {
+          const child = children[i];
+          newList.append(child);
+        }
+
+        list.insertAfter(replaceWithNode);
+        replaceWithNode.insertAfter(newList);
+      }
+
+      this.remove();
+
+      if (childrenLength === 1) {
+        list.remove();
+      }
+    }
+
+    return replaceWithNode;
+  }
+
+  insertAfter(node) {
+    const listNode = this.getParentOrThrow();
+
+    if (!$isListNode(listNode)) {
+      {
+        throw Error(`insertAfter: list node is not parent of list item node`);
+      }
+    }
+
+    const siblings = this.getNextSiblings();
+
+    if ($isListItemNode(node)) {
+      const after = super.insertAfter(node);
+      const afterListNode = node.getParentOrThrow();
+
+      if ($isListNode(afterListNode)) {
+        updateChildrenListItemValue(afterListNode);
+      }
+
+      return after;
+    } // Attempt to merge if the list is of the same type.
+
+
+    if ($isListNode(node) && node.getListType() === listNode.getListType()) {
+      let child = node;
+      const children = node.getChildren();
+
+      for (let i = children.length - 1; i >= 0; i--) {
+        child = children[i];
+        this.insertAfter(child);
+      }
+
+      return child;
+    } // Otherwise, split the list
+    // Split the lists and insert the node in between them
+
+
+    listNode.insertAfter(node);
+
+    if (siblings.length !== 0) {
+      const newListNode = $createListNode(listNode.getListType());
+      siblings.forEach(sibling => newListNode.append(sibling));
+      node.insertAfter(newListNode);
+    }
+
+    return node;
+  }
+
+  remove(preserveEmptyParent) {
+    const nextSibling = this.getNextSibling();
+    super.remove(preserveEmptyParent);
+
+    if (nextSibling !== null) {
+      const parent = nextSibling.getParent();
+
+      if ($isListNode(parent)) {
+        updateChildrenListItemValue(parent);
+      }
+    }
+  }
+
+  insertNewAfter() {
+    const newElement = $createListItemNode(this.__checked == null ? undefined : false);
+    this.insertAfter(newElement);
+    return newElement;
+  }
+
+  collapseAtStart(selection) {
+    const paragraph = lexical.$createParagraphNode();
+    const children = this.getChildren();
+    children.forEach(child => paragraph.append(child));
+    const listNode = this.getParentOrThrow();
+    const listNodeParent = listNode.getParentOrThrow();
+    const isIndented = $isListItemNode(listNodeParent);
+
+    if (listNode.getChildrenSize() === 1) {
+      if (isIndented) {
+        // if the list node is nested, we just want to remove it,
+        // effectively unindenting it.
+        listNode.remove();
+        listNodeParent.select();
+      } else {
+        listNode.replace(paragraph); // If we have selection on the list item, we'll need to move it
+        // to the paragraph
+
+        const anchor = selection.anchor;
+        const focus = selection.focus;
+        const key = paragraph.getKey();
+
+        if (anchor.type === 'element' && anchor.getNode().is(this)) {
+          anchor.set(key, anchor.offset, 'element');
+        }
+
+        if (focus.type === 'element' && focus.getNode().is(this)) {
+          focus.set(key, focus.offset, 'element');
+        }
+      }
+    } else {
+      listNode.insertBefore(paragraph);
+      this.remove();
+    }
+
+    return true;
+  }
+
+  getValue() {
+    const self = this.getLatest();
+    return self.__value;
+  }
+
+  setValue(value) {
+    const self = this.getWritable();
+    self.__value = value;
+  }
+
+  getChecked() {
+    const self = this.getLatest();
+    return self.__checked;
+  }
+
+  setChecked(checked) {
+    const self = this.getWritable();
+    self.__checked = checked;
+  }
+
+  toggleChecked() {
+    this.setChecked(!this.__checked);
+  }
+
+  getIndent() {
+    // ListItemNode should always have a ListNode for a parent.
+    let listNodeParent = this.getParentOrThrow().getParentOrThrow();
+    let indentLevel = 0;
+
+    while ($isListItemNode(listNodeParent)) {
+      listNodeParent = listNodeParent.getParentOrThrow().getParentOrThrow();
+      indentLevel++;
+    }
+
+    return indentLevel;
+  }
+
+  setIndent(indent) {
+    let currentIndent = this.getIndent();
+
+    while (currentIndent !== indent) {
+      if (currentIndent < indent) {
+        $handleIndent([this]);
+        currentIndent++;
+      } else {
+        $handleOutdent([this]);
+        currentIndent--;
+      }
+    }
+
+    return this;
+  }
+
+  canIndent() {
+    // Indent/outdent is handled specifically in the RichText logic.
+    return false;
+  }
+
+  insertBefore(nodeToInsert) {
+    if ($isListItemNode(nodeToInsert)) {
+      const parent = this.getParentOrThrow();
+
+      if ($isListNode(parent)) {
+        const siblings = this.getNextSiblings();
+        updateChildrenListItemValue(parent, siblings);
+      }
+    }
+
+    return super.insertBefore(nodeToInsert);
+  }
+
+  canInsertAfter(node) {
+    return $isListItemNode(node);
+  }
+
+  canReplaceWith(replacement) {
+    return $isListItemNode(replacement);
+  }
+
+  canMergeWith(node) {
+    return lexical.$isParagraphNode(node) || $isListItemNode(node);
+  }
+
+  extractWithChild(child, selection) {
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    const anchorNode = selection.anchor.getNode();
+    const focusNode = selection.focus.getNode();
+    return this.isParentOf(anchorNode) && this.isParentOf(focusNode) && this.getTextContent().length === selection.getTextContent().length;
+  }
+
+}
+
+function $setListItemThemeClassNames(dom, editorThemeClasses, node) {
+  const classesToAdd = [];
+  const classesToRemove = [];
+  const listTheme = editorThemeClasses.list;
+  const listItemClassName = listTheme ? listTheme.listitem : undefined;
+  let nestedListItemClassName;
+
+  if (listTheme && listTheme.nested) {
+    nestedListItemClassName = listTheme.nested.listitem;
+  }
+
+  if (listItemClassName !== undefined) {
+    const listItemClasses = listItemClassName.split(' ');
+    classesToAdd.push(...listItemClasses);
+  }
+
+  if (listTheme) {
+    const parentNode = node.getParent();
+    const isCheckList = $isListNode(parentNode) && parentNode.getListType() === 'check';
+    const checked = node.getChecked();
+
+    if (!isCheckList || checked) {
+      classesToRemove.push(listTheme.listitemUnchecked);
+    }
+
+    if (!isCheckList || !checked) {
+      classesToRemove.push(listTheme.listitemChecked);
+    }
+
+    if (isCheckList) {
+      classesToAdd.push(checked ? listTheme.listitemChecked : listTheme.listitemUnchecked);
+    }
+  }
+
+  if (nestedListItemClassName !== undefined) {
+    const nestedListItemClasses = nestedListItemClassName.split(' ');
+
+    if (node.getChildren().some(child => $isListNode(child))) {
+      classesToAdd.push(...nestedListItemClasses);
+    } else {
+      classesToRemove.push(...nestedListItemClasses);
+    }
+  }
+
+  if (classesToRemove.length > 0) {
+    utils.removeClassNamesFromElement(dom, ...classesToRemove);
+  }
+
+  if (classesToAdd.length > 0) {
+    utils.addClassNamesToElement(dom, ...classesToAdd);
+  }
+}
+
+function updateListItemChecked(dom, listItemNode, prevListItemNode, listNode) {
+  const isCheckList = listNode.getListType() === 'check';
+
+  if (isCheckList) {
+    // Only add attributes for leaf list items
+    if ($isListNode(listItemNode.getFirstChild())) {
+      dom.removeAttribute('role');
+      dom.removeAttribute('tabIndex');
+      dom.removeAttribute('aria-checked');
+    } else {
+      dom.setAttribute('role', 'checkbox');
+      dom.setAttribute('tabIndex', '-1');
+
+      if (!prevListItemNode || listItemNode.__checked !== prevListItemNode.__checked) {
+        dom.setAttribute('aria-checked', listItemNode.getChecked() ? 'true' : 'false');
+      }
+    }
+  } else {
+    // Clean up checked state
+    if (listItemNode.getChecked() != null) {
+      listItemNode.setChecked(undefined);
+    }
+  }
+}
+
+function convertListItemElement(domNode) {
+  return {
+    node: $createListItemNode()
+  };
+}
+
+function $createListItemNode(checked) {
+  return new ListItemNode(undefined, checked);
+}
+function $isListItemNode(node) {
+  return node instanceof ListItemNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class ListNode extends lexical.ElementNode {
+  static getType() {
+    return 'list';
+  }
+
+  static clone(node) {
+    const listType = node.__listType || TAG_TO_LIST_TYPE[node.__tag];
+    return new ListNode(listType, node.__start, node.__key);
+  }
+
+  constructor(listType, start, key) {
+    super(key); // $FlowFixMe added for backward compatibility to map tags to list type
+
+    const _listType = TAG_TO_LIST_TYPE[listType] || listType;
+
+    this.__listType = _listType;
+    this.__tag = _listType === 'number' ? 'ol' : 'ul';
+    this.__start = start;
+  }
+
+  getTag() {
+    return this.__tag;
+  }
+
+  getListType() {
+    return this.__listType;
+  }
+
+  getStart() {
+    return this.__start;
+  } // View
+
+
+  createDOM(config) {
+    const tag = this.__tag;
+    const dom = document.createElement(tag);
+
+    if (this.__start !== 1) {
+      dom.setAttribute('start', String(this.__start));
+    } // $FlowFixMe internal field
+
+
+    dom.__lexicalListType = this.__listType;
+    setListThemeClassNames(dom, config.theme, this);
+    return dom;
+  }
+
+  updateDOM(prevNode, dom, config) {
+    if (prevNode.__tag !== this.__tag) {
+      return true;
+    }
+
+    setListThemeClassNames(dom, config.theme, this);
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      ol: node => ({
+        conversion: convertListNode,
+        priority: 0
+      }),
+      ul: node => ({
+        conversion: convertListNode,
+        priority: 0
+      })
+    };
+  }
+
+  canBeEmpty() {
+    return false;
+  }
+
+  canIndent() {
+    return false;
+  }
+
+  append(...nodesToAppend) {
+    for (let i = 0; i < nodesToAppend.length; i++) {
+      const currentNode = nodesToAppend[i];
+
+      if ($isListItemNode(currentNode)) {
+        super.append(currentNode);
+      } else {
+        const listItemNode = $createListItemNode();
+
+        if ($isListNode(currentNode)) {
+          listItemNode.append(currentNode);
+        } else {
+          const textNode = lexical.$createTextNode(currentNode.getTextContent());
+          listItemNode.append(textNode);
+        }
+
+        super.append(listItemNode);
+      }
+    }
+
+    return this;
+  }
+
+  extractWithChild(child) {
+    return $isListItemNode(child);
+  }
+
+}
+
+function setListThemeClassNames(dom, editorThemeClasses, node) {
+  const classesToAdd = [];
+  const classesToRemove = [];
+  const listTheme = editorThemeClasses.list;
+
+  if (listTheme !== undefined) {
+    const listLevelsClassNames = listTheme[node.__tag + 'Depth'] || [];
+    const listDepth = $getListDepth(node) - 1;
+    const normalizedListDepth = listDepth % listLevelsClassNames.length;
+    const listLevelClassName = listLevelsClassNames[normalizedListDepth];
+    const listClassName = listTheme[node.__tag];
+    let nestedListClassName;
+    const nestedListTheme = listTheme.nested;
+
+    if (nestedListTheme !== undefined && nestedListTheme.list) {
+      nestedListClassName = nestedListTheme.list;
+    }
+
+    if (listClassName !== undefined) {
+      classesToAdd.push(listClassName);
+    }
+
+    if (listLevelClassName !== undefined) {
+      const listItemClasses = listLevelClassName.split(' ');
+      classesToAdd.push(...listItemClasses);
+
+      for (let i = 0; i < listLevelsClassNames.length; i++) {
+        if (i !== normalizedListDepth) {
+          classesToRemove.push(node.__tag + i);
+        }
+      }
+    }
+
+    if (nestedListClassName !== undefined) {
+      const nestedListItemClasses = nestedListClassName.split(' ');
+
+      if (listDepth > 1) {
+        classesToAdd.push(...nestedListItemClasses);
+      } else {
+        classesToRemove.push(...nestedListItemClasses);
+      }
+    }
+  }
+
+  if (classesToRemove.length > 0) {
+    utils.removeClassNamesFromElement(dom, ...classesToRemove);
+  }
+
+  if (classesToAdd.length > 0) {
+    utils.addClassNamesToElement(dom, ...classesToAdd);
+  }
+}
+
+function convertListNode(domNode) {
+  const nodeName = domNode.nodeName.toLowerCase();
+  let node = null;
+
+  if (nodeName === 'ol') {
+    node = $createListNode('number');
+  } else if (nodeName === 'ul') {
+    node = $createListNode('bullet');
+  }
+
+  return {
+    node
+  };
+}
+
+const TAG_TO_LIST_TYPE = {
+  ol: 'number',
+  ul: 'bullet'
+};
+function $createListNode(listType, start = 1) {
+  return new ListNode(listType, start);
+}
+function $isListNode(node) {
+  return node instanceof ListNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const INSERT_UNORDERED_LIST_COMMAND = lexical.createCommand();
+const INSERT_ORDERED_LIST_COMMAND = lexical.createCommand();
+const INSERT_CHECK_LIST_COMMAND = lexical.createCommand();
+const REMOVE_LIST_COMMAND = lexical.createCommand();
+
+exports.$createListItemNode = $createListItemNode;
+exports.$createListNode = $createListNode;
+exports.$getListDepth = $getListDepth;
+exports.$handleListInsertParagraph = $handleListInsertParagraph;
+exports.$isListItemNode = $isListItemNode;
+exports.$isListNode = $isListNode;
+exports.INSERT_CHECK_LIST_COMMAND = INSERT_CHECK_LIST_COMMAND;
+exports.INSERT_ORDERED_LIST_COMMAND = INSERT_ORDERED_LIST_COMMAND;
+exports.INSERT_UNORDERED_LIST_COMMAND = INSERT_UNORDERED_LIST_COMMAND;
+exports.ListItemNode = ListItemNode;
+exports.ListNode = ListNode;
+exports.REMOVE_LIST_COMMAND = REMOVE_LIST_COMMAND;
+exports.indentList = indentList;
+exports.insertList = insertList;
+exports.outdentList = outdentList;
+exports.removeList = removeList;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/list/LexicalList.js":
+/*!***************************************************!*\
+  !*** ./node_modules/@lexical/list/LexicalList.js ***!
+  \***************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalList =  true ? __webpack_require__(/*! ./LexicalList.dev.js */ "./node_modules/@lexical/list/LexicalList.dev.js") : 0
+module.exports = LexicalList;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/overflow/LexicalOverflow.dev.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/@lexical/overflow/LexicalOverflow.dev.js ***!
+  \***************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class OverflowNode extends lexical.ElementNode {
+  static getType() {
+    return 'overflow';
+  }
+
+  static clone(node) {
+    return new OverflowNode(node.__key);
+  }
+
+  constructor(key) {
+    super(key);
+    this.__type = 'overflow';
+  }
+
+  createDOM(config) {
+    const div = document.createElement('span');
+    const className = config.theme.characterLimit;
+
+    if (typeof className === 'string') {
+      div.className = className;
+    }
+
+    return div;
+  }
+
+  updateDOM(prevNode, dom) {
+    return false;
+  }
+
+  insertNewAfter(selection) {
+    const parent = this.getParentOrThrow();
+    return parent.insertNewAfter(selection);
+  }
+
+  excludeFromCopy() {
+    return true;
+  }
+
+}
+function $createOverflowNode() {
+  return new OverflowNode();
+}
+function $isOverflowNode(node) {
+  return node instanceof OverflowNode;
+}
+
+exports.$createOverflowNode = $createOverflowNode;
+exports.$isOverflowNode = $isOverflowNode;
+exports.OverflowNode = OverflowNode;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/overflow/LexicalOverflow.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/@lexical/overflow/LexicalOverflow.js ***!
+  \***********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalOverflow =  true ? __webpack_require__(/*! ./LexicalOverflow.dev.js */ "./node_modules/@lexical/overflow/LexicalOverflow.dev.js") : 0
+module.exports = LexicalOverflow;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/plain-text/LexicalPlainText.dev.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/@lexical/plain-text/LexicalPlainText.dev.js ***!
+  \******************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var clipboard = __webpack_require__(/*! @lexical/clipboard */ "./node_modules/@lexical/clipboard/LexicalClipboard.js");
+var selection = __webpack_require__(/*! @lexical/selection */ "./node_modules/@lexical/selection/LexicalSelection.js");
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+const CAN_USE_DOM = typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined';
+const documentMode = // @ts-ignore
+CAN_USE_DOM && 'documentMode' in document ? document.documentMode : null;
+CAN_USE_DOM && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+CAN_USE_DOM && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
+const CAN_USE_BEFORE_INPUT = CAN_USE_DOM && 'InputEvent' in window && !documentMode ? 'getTargetRanges' in new window.InputEvent('input') : false;
+const IS_SAFARI = CAN_USE_DOM && /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
+const IS_IOS = CAN_USE_DOM && /iPad|iPhone|iPod/.test(navigator.userAgent) && // @ts-ignore
+!window.MSStream; // Keep these in case we need to use them in the future.
+// export const IS_WINDOWS: boolean = CAN_USE_DOM && /Win/.test(navigator.platform);
+// export const IS_CHROME: boolean = CAN_USE_DOM && /^(?=.*Chrome).*/i.test(navigator.userAgent);
+// export const canUseTextInputEvent: boolean = CAN_USE_DOM && 'TextEvent' in window && !documentMode;
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+// Convoluted logic to make this work with Flow. Order matters.
+const options = {
+  tag: 'history-merge'
+};
+const setEditorOptions = options;
+const updateOptions = options;
+
+function onCopyForPlainText(event, editor) {
+  event.preventDefault();
+  editor.update(() => {
+    const clipboardData = event.clipboardData;
+    const selection = lexical.$getSelection();
+
+    if (selection !== null) {
+      if (clipboardData != null) {
+        const htmlString = clipboard.$getHtmlContent(editor);
+
+        if (htmlString !== null) {
+          clipboardData.setData('text/html', htmlString);
+        }
+
+        clipboardData.setData('text/plain', selection.getTextContent());
+      }
+    }
+  });
+}
+
+function onPasteForPlainText(event, editor) {
+  event.preventDefault();
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+    const clipboardData = event.clipboardData;
+
+    if (clipboardData != null && lexical.$isRangeSelection(selection)) {
+      clipboard.$insertDataTransferForPlainText(clipboardData, selection);
+    }
+  });
+}
+
+function onCutForPlainText(event, editor) {
+  onCopyForPlainText(event, editor);
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection)) {
+      selection.removeText();
+    }
+  });
+}
+
+function initializeEditor(editor, initialEditorState) {
+  if (initialEditorState === null) {
+    return;
+  } else if (initialEditorState === undefined) {
+    editor.update(() => {
+      const root = lexical.$getRoot();
+      const firstChild = root.getFirstChild();
+
+      if (firstChild === null) {
+        const paragraph = lexical.$createParagraphNode();
+        root.append(paragraph);
+        const activeElement = document.activeElement;
+
+        if (lexical.$getSelection() !== null || activeElement !== null && activeElement === editor.getRootElement()) {
+          paragraph.select();
+        }
+      }
+    }, updateOptions);
+  } else if (initialEditorState !== null) {
+    switch (typeof initialEditorState) {
+      case 'string':
+        {
+          const parsedEditorState = editor.parseEditorState(initialEditorState);
+          editor.setEditorState(parsedEditorState, setEditorOptions);
+          break;
+        }
+
+      case 'object':
+        {
+          editor.setEditorState(initialEditorState, setEditorOptions);
+          break;
+        }
+
+      case 'function':
+        {
+          editor.update(initialEditorState, updateOptions);
+          break;
+        }
+    }
+  }
+}
+
+function registerPlainText(editor, initialEditorState) {
+  const removeListener = utils.mergeRegister(editor.registerCommand(lexical.DELETE_CHARACTER_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteCharacter(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DELETE_WORD_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteWord(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DELETE_LINE_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteLine(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_TEXT_COMMAND, eventOrText => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    if (typeof eventOrText === 'string') {
+      selection.insertText(eventOrText);
+    } else {
+      const dataTransfer = eventOrText.dataTransfer;
+
+      if (dataTransfer != null) {
+        clipboard.$insertDataTransferForPlainText(dataTransfer, selection);
+      } else {
+        const data = eventOrText.data;
+
+        if (data) {
+          selection.insertText(data);
+        }
+      }
+    }
+
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.REMOVE_TEXT_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.removeText();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_LINE_BREAK_COMMAND, selectStart => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.insertLineBreak(selectStart);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_PARAGRAPH_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.insertLineBreak();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ARROW_LEFT_COMMAND, payload => {
+    const selection$1 = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection$1)) {
+      return false;
+    }
+
+    const event = payload;
+    const isHoldingShift = event.shiftKey;
+
+    if (selection.$shouldOverrideDefaultCharacterSelection(selection$1, true)) {
+      event.preventDefault();
+      selection.$moveCharacter(selection$1, isHoldingShift, true);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ARROW_RIGHT_COMMAND, payload => {
+    const selection$1 = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection$1)) {
+      return false;
+    }
+
+    const event = payload;
+    const isHoldingShift = event.shiftKey;
+
+    if (selection.$shouldOverrideDefaultCharacterSelection(selection$1, false)) {
+      event.preventDefault();
+      selection.$moveCharacter(selection$1, isHoldingShift, false);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_BACKSPACE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    event.preventDefault();
+    return editor.dispatchCommand(lexical.DELETE_CHARACTER_COMMAND, true);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_DELETE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    event.preventDefault();
+    return editor.dispatchCommand(lexical.DELETE_CHARACTER_COMMAND, false);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ENTER_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    if (event !== null) {
+      // If we have beforeinput, then we can avoid blocking
+      // the default behavior. This ensures that the iOS can
+      // intercept that we're actually inserting a paragraph,
+      // and autocomplete, autocapitialize etc work as intended.
+      // This can also cause a strange performance issue in
+      // Safari, where there is a noticeable pause due to
+      // preventing the key down of enter.
+      if ((IS_IOS || IS_SAFARI) && CAN_USE_BEFORE_INPUT) {
+        return false;
+      }
+
+      event.preventDefault();
+    }
+
+    return editor.dispatchCommand(lexical.INSERT_LINE_BREAK_COMMAND, false);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.COPY_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    onCopyForPlainText(event, editor);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.CUT_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    onCutForPlainText(event, editor);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.PASTE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    onPasteForPlainText(event, editor);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DROP_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    } // TODO: Make drag and drop work at some point.
+
+
+    event.preventDefault();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DRAGSTART_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    } // TODO: Make drag and drop work at some point.
+
+
+    event.preventDefault();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR));
+  initializeEditor(editor, initialEditorState);
+  return removeListener;
+}
+
+exports.registerPlainText = registerPlainText;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/plain-text/LexicalPlainText.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/@lexical/plain-text/LexicalPlainText.js ***!
+  \**************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalPlainText =  true ? __webpack_require__(/*! ./LexicalPlainText.dev.js */ "./node_modules/@lexical/plain-text/LexicalPlainText.dev.js") : 0
+module.exports = LexicalPlainText;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/rich-text/LexicalRichText.dev.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/@lexical/rich-text/LexicalRichText.dev.js ***!
+  \****************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var clipboard = __webpack_require__(/*! @lexical/clipboard */ "./node_modules/@lexical/clipboard/LexicalClipboard.js");
+var selection = __webpack_require__(/*! @lexical/selection */ "./node_modules/@lexical/selection/LexicalSelection.js");
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+const CAN_USE_DOM = typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined';
+const documentMode = // @ts-ignore
+CAN_USE_DOM && 'documentMode' in document ? document.documentMode : null;
+CAN_USE_DOM && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+CAN_USE_DOM && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
+const CAN_USE_BEFORE_INPUT = CAN_USE_DOM && 'InputEvent' in window && !documentMode ? 'getTargetRanges' in new window.InputEvent('input') : false;
+const IS_SAFARI = CAN_USE_DOM && /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
+const IS_IOS = CAN_USE_DOM && /iPad|iPhone|iPod/.test(navigator.userAgent) && // @ts-ignore
+!window.MSStream; // Keep these in case we need to use them in the future.
+// export const IS_WINDOWS: boolean = CAN_USE_DOM && /Win/.test(navigator.platform);
+// export const IS_CHROME: boolean = CAN_USE_DOM && /^(?=.*Chrome).*/i.test(navigator.userAgent);
+// export const canUseTextInputEvent: boolean = CAN_USE_DOM && 'TextEvent' in window && !documentMode;
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+// Convoluted logic to make this work with Flow. Order matters.
+const options = {
+  tag: 'history-merge'
+};
+const setEditorOptions = options;
+const updateOptions = options;
+class QuoteNode extends lexical.ElementNode {
+  static getType() {
+    return 'quote';
+  }
+
+  static clone(node) {
+    return new QuoteNode(node.__key);
+  }
+
+  constructor(key) {
+    super(key);
+  } // View
+
+
+  createDOM(config) {
+    const element = document.createElement('blockquote');
+    utils.addClassNamesToElement(element, config.theme.quote);
+    return element;
+  }
+
+  updateDOM(prevNode, dom) {
+    return false;
+  } // Mutation
+
+
+  insertNewAfter() {
+    const newBlock = lexical.$createParagraphNode();
+    const direction = this.getDirection();
+    newBlock.setDirection(direction);
+    this.insertAfter(newBlock);
+    return newBlock;
+  }
+
+  collapseAtStart() {
+    const paragraph = lexical.$createParagraphNode();
+    const children = this.getChildren();
+    children.forEach(child => paragraph.append(child));
+    this.replace(paragraph);
+    return true;
+  }
+
+}
+function $createQuoteNode() {
+  return new QuoteNode();
+}
+function $isQuoteNode(node) {
+  return node instanceof QuoteNode;
+}
+class HeadingNode extends lexical.ElementNode {
+  static getType() {
+    return 'heading';
+  }
+
+  static clone(node) {
+    return new HeadingNode(node.__tag, node.__key);
+  }
+
+  constructor(tag, key) {
+    super(key);
+    this.__tag = tag;
+  }
+
+  getTag() {
+    return this.__tag;
+  } // View
+
+
+  createDOM(config) {
+    const tag = this.__tag;
+    const element = document.createElement(tag);
+    const theme = config.theme;
+    const classNames = theme.heading;
+
+    if (classNames !== undefined) {
+      // $FlowFixMe: intentional cast
+      const className = classNames[tag];
+      utils.addClassNamesToElement(element, className);
+    }
+
+    return element;
+  }
+
+  updateDOM(prevNode, dom) {
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      h1: node => ({
+        conversion: convertHeadingElement,
+        priority: 0
+      }),
+      h2: node => ({
+        conversion: convertHeadingElement,
+        priority: 0
+      }),
+      h3: node => ({
+        conversion: convertHeadingElement,
+        priority: 0
+      }),
+      h4: node => ({
+        conversion: convertHeadingElement,
+        priority: 0
+      }),
+      h5: node => ({
+        conversion: convertHeadingElement,
+        priority: 0
+      })
+    };
+  } // Mutation
+
+
+  insertNewAfter() {
+    const newElement = lexical.$createParagraphNode();
+    const direction = this.getDirection();
+    newElement.setDirection(direction);
+    this.insertAfter(newElement);
+    return newElement;
+  }
+
+  collapseAtStart() {
+    const paragraph = lexical.$createParagraphNode();
+    const children = this.getChildren();
+    children.forEach(child => paragraph.append(child));
+    this.replace(paragraph);
+    return true;
+  }
+
+  extractWithChild() {
+    return true;
+  }
+
+}
+
+function convertHeadingElement(domNode) {
+  const nodeName = domNode.nodeName.toLowerCase();
+  let node = null;
+
+  if (nodeName === 'h1' || nodeName === 'h2' || nodeName === 'h3' || nodeName === 'h4' || nodeName === 'h5') {
+    node = $createHeadingNode(nodeName);
+  }
+
+  return {
+    node
+  };
+}
+
+function $createHeadingNode(headingTag) {
+  return new HeadingNode(headingTag);
+}
+function $isHeadingNode(node) {
+  return node instanceof HeadingNode;
+}
+
+function initializeEditor(editor, initialEditorState) {
+  if (initialEditorState === null) {
+    return;
+  } else if (initialEditorState === undefined) {
+    editor.update(() => {
+      const root = lexical.$getRoot();
+      const firstChild = root.getFirstChild();
+
+      if (firstChild === null) {
+        const paragraph = lexical.$createParagraphNode();
+        root.append(paragraph);
+        const activeElement = document.activeElement;
+
+        if (lexical.$getSelection() !== null || activeElement !== null && activeElement === editor.getRootElement()) {
+          paragraph.select();
+        }
+      }
+    }, updateOptions);
+  } else if (initialEditorState !== null) {
+    switch (typeof initialEditorState) {
+      case 'string':
+        {
+          const parsedEditorState = editor.parseEditorState(initialEditorState);
+          editor.setEditorState(parsedEditorState, setEditorOptions);
+          break;
+        }
+
+      case 'object':
+        {
+          editor.setEditorState(initialEditorState, setEditorOptions);
+          break;
+        }
+
+      case 'function':
+        {
+          editor.update(initialEditorState, updateOptions);
+          break;
+        }
+    }
+  }
+}
+
+function onPasteForRichText(event, editor) {
+  event.preventDefault();
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+    const clipboardData = event.clipboardData;
+
+    if (clipboardData != null && (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection))) {
+      clipboard.$insertDataTransferForRichText(clipboardData, selection, editor);
+    }
+  });
+}
+
+function onCopyForRichText(event, editor) {
+  event.preventDefault();
+  editor.update(() => {
+    const clipboardData = event.clipboardData;
+    const selection = lexical.$getSelection();
+
+    if (selection !== null) {
+      if (clipboardData != null) {
+        const htmlString = clipboard.$getHtmlContent(editor);
+        const lexicalString = clipboard.$getLexicalContent(editor);
+
+        if (htmlString !== null) {
+          clipboardData.setData('text/html', htmlString);
+        }
+
+        if (lexicalString !== null) {
+          clipboardData.setData('application/x-lexical-editor', lexicalString);
+        }
+
+        clipboardData.setData('text/plain', selection.getTextContent());
+      }
+    }
+  });
+}
+
+function onCutForRichText(event, editor) {
+  onCopyForRichText(event, editor);
+  editor.update(() => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection)) {
+      selection.removeText();
+    }
+  });
+}
+
+function handleIndentAndOutdent(insertTab, indentOrOutdent) {
+  const selection = lexical.$getSelection();
+
+  if (!lexical.$isRangeSelection(selection)) {
+    return;
+  }
+
+  const alreadyHandled = new Set();
+  const nodes = selection.getNodes();
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    const key = node.getKey();
+
+    if (alreadyHandled.has(key)) {
+      continue;
+    }
+
+    alreadyHandled.add(key);
+    const parentBlock = utils.$getNearestBlockElementAncestorOrThrow(node);
+
+    if (parentBlock.canInsertTab()) {
+      insertTab(node);
+    } else if (parentBlock.canIndent()) {
+      indentOrOutdent(parentBlock);
+    }
+  }
+}
+
+function registerRichText(editor, initialEditorState) {
+  const removeListener = utils.mergeRegister(editor.registerCommand(lexical.CLICK_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isNodeSelection(selection)) {
+      selection.clear();
+      return true;
+    }
+
+    return false;
+  }, 0), editor.registerCommand(lexical.DELETE_CHARACTER_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteCharacter(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DELETE_WORD_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteWord(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DELETE_LINE_COMMAND, isBackward => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.deleteLine(isBackward);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_TEXT_COMMAND, eventOrText => {
+    const selection = lexical.$getSelection();
+
+    if (typeof eventOrText === 'string') {
+      if (lexical.$isRangeSelection(selection)) {
+        selection.insertText(eventOrText);
+      } else if (lexical.$isGridSelection(selection)) ;
+    } else {
+      if (!lexical.$isRangeSelection(selection) && !lexical.$isGridSelection(selection)) {
+        return false;
+      }
+
+      const dataTransfer = eventOrText.dataTransfer;
+
+      if (dataTransfer != null) {
+        clipboard.$insertDataTransferForRichText(dataTransfer, selection, editor);
+      } else if (lexical.$isRangeSelection(selection)) {
+        const data = eventOrText.data;
+
+        if (data) {
+          selection.insertText(data);
+        }
+
+        return true;
+      }
+    }
+
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.REMOVE_TEXT_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.removeText();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.FORMAT_TEXT_COMMAND, format => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.formatText(format);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.FORMAT_ELEMENT_COMMAND, format => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection) && !lexical.$isNodeSelection(selection)) {
+      return false;
+    }
+
+    const nodes = selection.getNodes();
+
+    for (const node of nodes) {
+      const element = utils.$getNearestBlockElementAncestorOrThrow(node);
+      element.setFormat(format);
+    }
+
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_LINE_BREAK_COMMAND, selectStart => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.insertLineBreak(selectStart);
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INSERT_PARAGRAPH_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    selection.insertParagraph();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.INDENT_CONTENT_COMMAND, () => {
+    handleIndentAndOutdent(() => {
+      editor.dispatchCommand(lexical.INSERT_TEXT_COMMAND, '\t');
+    }, block => {
+      const indent = block.getIndent();
+
+      if (indent !== 10) {
+        block.setIndent(indent + 1);
+      }
+    });
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.OUTDENT_CONTENT_COMMAND, () => {
+    handleIndentAndOutdent(node => {
+      if (lexical.$isTextNode(node)) {
+        const textContent = node.getTextContent();
+        const character = textContent[textContent.length - 1];
+
+        if (character === '\t') {
+          editor.dispatchCommand(lexical.DELETE_CHARACTER_COMMAND, true);
+        }
+      }
+    }, block => {
+      const indent = block.getIndent();
+
+      if (indent !== 0) {
+        block.setIndent(indent - 1);
+      }
+    });
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ARROW_LEFT_COMMAND, event => {
+    const selection$1 = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection$1)) {
+      return false;
+    }
+
+    const isHoldingShift = event.shiftKey;
+
+    if (selection.$shouldOverrideDefaultCharacterSelection(selection$1, true)) {
+      event.preventDefault();
+      selection.$moveCharacter(selection$1, isHoldingShift, true);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ARROW_RIGHT_COMMAND, event => {
+    const selection$1 = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection$1)) {
+      return false;
+    }
+
+    const isHoldingShift = event.shiftKey;
+
+    if (selection.$shouldOverrideDefaultCharacterSelection(selection$1, false)) {
+      event.preventDefault();
+      selection.$moveCharacter(selection$1, isHoldingShift, false);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_BACKSPACE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    event.preventDefault();
+    const {
+      anchor
+    } = selection;
+
+    if (selection.isCollapsed() && anchor.offset === 0) {
+      const element = utils.$getNearestBlockElementAncestorOrThrow(anchor.getNode());
+
+      if (element.getIndent() > 0) {
+        return editor.dispatchCommand(lexical.OUTDENT_CONTENT_COMMAND, undefined);
+      }
+    }
+
+    return editor.dispatchCommand(lexical.DELETE_CHARACTER_COMMAND, true);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_DELETE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    event.preventDefault();
+    return editor.dispatchCommand(lexical.DELETE_CHARACTER_COMMAND, false);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ENTER_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    if (event !== null) {
+      // If we have beforeinput, then we can avoid blocking
+      // the default behavior. This ensures that the iOS can
+      // intercept that we're actually inserting a paragraph,
+      // and autocomplete, autocapitialize etc work as intended.
+      // This can also cause a strange performance issue in
+      // Safari, where there is a noticeable pause due to
+      // preventing the key down of enter.
+      if ((IS_IOS || IS_SAFARI) && CAN_USE_BEFORE_INPUT) {
+        return false;
+      }
+
+      event.preventDefault();
+
+      if (event.shiftKey) {
+        return editor.dispatchCommand(lexical.INSERT_LINE_BREAK_COMMAND, false);
+      }
+    }
+
+    return editor.dispatchCommand(lexical.INSERT_PARAGRAPH_COMMAND, undefined);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_TAB_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    event.preventDefault();
+    return editor.dispatchCommand(event.shiftKey ? lexical.OUTDENT_CONTENT_COMMAND : lexical.INDENT_CONTENT_COMMAND, undefined);
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.KEY_ESCAPE_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    }
+
+    editor.blur();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DROP_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    } // TODO: Make drag and drop work at some point.
+
+
+    event.preventDefault();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.DRAGSTART_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (!lexical.$isRangeSelection(selection)) {
+      return false;
+    } // TODO: Make drag and drop work at some point.
+
+
+    event.preventDefault();
+    return true;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.COPY_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection)) {
+      onCopyForRichText(event, editor);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.CUT_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection)) {
+      onCutForRichText(event, editor);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR), editor.registerCommand(lexical.PASTE_COMMAND, event => {
+    const selection = lexical.$getSelection();
+
+    if (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection)) {
+      onPasteForRichText(event, editor);
+      return true;
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_EDITOR));
+  initializeEditor(editor, initialEditorState);
+  return removeListener;
+}
+
+exports.$createHeadingNode = $createHeadingNode;
+exports.$createQuoteNode = $createQuoteNode;
+exports.$isHeadingNode = $isHeadingNode;
+exports.$isQuoteNode = $isQuoteNode;
+exports.HeadingNode = HeadingNode;
+exports.QuoteNode = QuoteNode;
+exports.registerRichText = registerRichText;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/rich-text/LexicalRichText.js":
+/*!************************************************************!*\
+  !*** ./node_modules/@lexical/rich-text/LexicalRichText.js ***!
+  \************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalRichText =  true ? __webpack_require__(/*! ./LexicalRichText.dev.js */ "./node_modules/@lexical/rich-text/LexicalRichText.dev.js") : 0
+module.exports = LexicalRichText;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/selection/LexicalSelection.dev.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/@lexical/selection/LexicalSelection.dev.js ***!
+  \*****************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const cssToStyles = new Map();
+function $cloneWithProperties(node) {
+  const latest = node.getLatest();
+  const constructor = latest.constructor;
+  const clone = constructor.clone(latest);
+  clone.__parent = latest.__parent;
+
+  if (lexical.$isElementNode(latest) && lexical.$isElementNode(clone)) {
+    clone.__children = Array.from(latest.__children);
+    clone.__format = latest.__format;
+    clone.__indent = latest.__indent;
+    clone.__dir = latest.__dir;
+  } else if (lexical.$isTextNode(latest) && lexical.$isTextNode(clone)) {
+    clone.__format = latest.__format;
+    clone.__style = latest.__style;
+    clone.__mode = latest.__mode;
+    clone.__detail = latest.__detail;
+  } // $FlowFixMe
+
+
+  return clone;
+}
+
+function $getIndexFromPossibleClone(node, parent, nodeMap) {
+  const parentClone = nodeMap.get(parent.getKey());
+
+  if (lexical.$isElementNode(parentClone)) {
+    return parentClone.__children.indexOf(node.getKey());
+  }
+
+  return node.getIndexWithinParent();
+}
+
+function $getParentAvoidingExcludedElements(node) {
+  let parent = node.getParent();
+
+  while (parent !== null && parent.excludeFromCopy('clone')) {
+    parent = parent.getParent();
+  }
+
+  return parent;
+}
+
+function $copyLeafNodeBranchToRoot(leaf, startingOffset, endingOffset, isLeftSide, range, nodeMap) {
+  let node = leaf;
+  let offset = startingOffset;
+
+  while (node !== null) {
+    const parent = $getParentAvoidingExcludedElements(node);
+
+    if (parent === null) {
+      break;
+    }
+
+    if (!lexical.$isElementNode(node) || !node.excludeFromCopy('clone')) {
+      const key = node.getKey();
+      let clone = nodeMap.get(key);
+      const needsClone = clone === undefined;
+
+      if (needsClone) {
+        clone = $cloneWithProperties(node);
+        nodeMap.set(key, clone);
+      }
+
+      if (lexical.$isTextNode(clone) && !clone.isSegmented() && !clone.isToken()) {
+        clone.__text = clone.__text.slice(isLeftSide ? offset : 0, isLeftSide ? endingOffset : offset);
+      } else if (lexical.$isElementNode(clone)) {
+        clone.__children = clone.__children.slice(isLeftSide ? offset : 0, isLeftSide ? undefined : (offset || 0) + 1);
+      }
+
+      if (lexical.$isRootNode(parent)) {
+        if (needsClone) {
+          // We only want to collect a range of top level nodes.
+          // So if the parent is the root, we know this is a top level.
+          range.push(key);
+        }
+
+        break;
+      }
+    }
+
+    offset = $getIndexFromPossibleClone(node, parent, nodeMap);
+    node = parent;
+  }
+}
+
+function errGetLatestOnClone() {
+  {
+    throw Error(`getLatest() on clone node`);
+  }
+}
+
+function $cloneContents(selection) {
+  const clone = $cloneContentsImpl(selection);
+
+  {
+    const nodeMap = clone.nodeMap;
+
+    for (let i = 0; i < nodeMap.length; i++) {
+      const node = nodeMap[i][1]; // $FlowFixMe[method-unbinding]
+
+      if (node.getLatest === errGetLatestOnClone) {
+        continue;
+      }
+
+      Object.setPrototypeOf(node, Object.create(Object.getPrototypeOf(node), {
+        getLatest: {
+          configurable: true,
+          enumerable: true,
+          value: errGetLatestOnClone,
+          writable: true
+        }
+      }));
+    }
+  }
+
+  return clone;
+}
+
+function $cloneContentsImpl(selection) {
+  if (lexical.$isRangeSelection(selection)) {
+    const anchor = selection.anchor;
+    const focus = selection.focus;
+    const [anchorOffset, focusOffset] = selection.getCharacterOffsets();
+    const nodes = selection.getNodes();
+
+    if (nodes.length === 0) {
+      return {
+        nodeMap: [],
+        range: []
+      };
+    } // Check if we can use the parent of the nodes, if the
+    // parent can't be empty, then it's important that we
+    // also copy that element node along with its children.
+
+
+    let nodesLength = nodes.length;
+    const firstNode = nodes[0];
+    const firstNodeParent = firstNode.getParent();
+
+    if (firstNodeParent !== null && (!firstNodeParent.canBeEmpty() || lexical.$isRootNode(firstNodeParent))) {
+      const parentChildren = firstNodeParent.__children;
+      const parentChildrenLength = parentChildren.length;
+
+      if (parentChildrenLength === nodesLength) {
+        let areTheSame = true;
+
+        for (let i = 0; i < parentChildren.length; i++) {
+          if (parentChildren[i] !== nodes[i].__key) {
+            areTheSame = false;
+            break;
+          }
+        }
+
+        if (areTheSame) {
+          nodesLength++;
+          nodes.push(firstNodeParent);
+        }
+      }
+    }
+
+    const lastNode = nodes[nodesLength - 1];
+    const isBefore = anchor.isBefore(focus);
+    const nodeMap = new Map();
+    const range = [];
+    const isOnlyText = lexical.$isTextNode(firstNode) && nodesLength === 1; // Do first node to root
+
+    $copyLeafNodeBranchToRoot(firstNode, isBefore ? anchorOffset : focusOffset, isOnlyText ? isBefore ? focusOffset : anchorOffset : undefined, true, range, nodeMap); // Copy all nodes between
+
+    for (let i = 0; i < nodesLength; i++) {
+      const node = nodes[i];
+      const key = node.getKey();
+
+      if (!nodeMap.has(key) && (!lexical.$isElementNode(node) || !node.excludeFromCopy('clone'))) {
+        const clone = $cloneWithProperties(node);
+
+        if (lexical.$isRootNode(node.getParent())) {
+          range.push(node.getKey());
+        }
+
+        if (key !== 'root') {
+          nodeMap.set(key, clone);
+        }
+      }
+    } // Do last node to root
+
+
+    $copyLeafNodeBranchToRoot(lastNode, isOnlyText ? undefined : isBefore ? focusOffset : anchorOffset, undefined, false, range, nodeMap);
+    return {
+      nodeMap: Array.from(nodeMap.entries()),
+      range
+    };
+  } else if (lexical.$isGridSelection(selection)) {
+    const nodeMap = selection.getNodes().map(node => {
+      const nodeKey = node.getKey();
+      const clone = $cloneWithProperties(node);
+      return [nodeKey, clone];
+    });
+    return {
+      nodeMap,
+      range: [selection.gridKey]
+    };
+  }
+
+  {
+    throw Error(`TODO`);
+  }
+}
+
+function getStyleObjectFromCSS(css) {
+  return cssToStyles.get(css) || null;
+}
+
+function getCSSFromStyleObject(styles) {
+  let css = '';
+
+  for (const style in styles) {
+    if (style) {
+      css += `${style}: ${styles[style]};`;
+    }
+  }
+
+  return css;
+}
+
+function $patchNodeStyle(node, patch) {
+  const prevStyles = getStyleObjectFromCSS(node.getStyle());
+  const newStyles = prevStyles ? { ...prevStyles,
+    ...patch
+  } : patch;
+  const newCSSText = getCSSFromStyleObject(newStyles);
+  node.setStyle(newCSSText);
+  cssToStyles.set(newCSSText, newStyles);
+}
+
+function $patchStyleText(selection, patch) {
+  const selectedNodes = selection.getNodes();
+  const selectedNodesLength = selectedNodes.length;
+  const lastIndex = selectedNodesLength - 1;
+  let firstNode = selectedNodes[0];
+  let lastNode = selectedNodes[lastIndex];
+
+  if (selection.isCollapsed()) {
+    return;
+  }
+
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const firstNodeText = firstNode.getTextContent();
+  const firstNodeTextLength = firstNodeText.length;
+  const focusOffset = focus.offset;
+  let anchorOffset = anchor.offset;
+  let startOffset;
+  let endOffset;
+  const isBefore = anchor.isBefore(focus);
+  startOffset = isBefore ? anchorOffset : focusOffset;
+  endOffset = isBefore ? focusOffset : anchorOffset; // This is the case where the user only selected the very end of the
+  // first node so we don't want to include it in the formatting change.
+
+  if (startOffset === firstNode.getTextContentSize()) {
+    const nextSibling = firstNode.getNextSibling();
+
+    if (lexical.$isTextNode(nextSibling)) {
+      // we basically make the second node the firstNode, changing offsets accordingly
+      anchorOffset = 0;
+      startOffset = 0;
+      firstNode = nextSibling;
+    }
+  } // This is the case where we only selected a single node
+
+
+  if (firstNode.is(lastNode)) {
+    if (lexical.$isTextNode(firstNode)) {
+      startOffset = anchorOffset > focusOffset ? focusOffset : anchorOffset;
+      endOffset = anchorOffset > focusOffset ? anchorOffset : focusOffset; // No actual text is selected, so do nothing.
+
+      if (startOffset === endOffset) {
+        return;
+      } // The entire node is selected, so just format it
+
+
+      if (startOffset === 0 && endOffset === firstNodeTextLength) {
+        $patchNodeStyle(firstNode, patch);
+        firstNode.select(startOffset, endOffset);
+      } else {
+        // The node is partially selected, so split it into two nodes
+        // and style the selected one.
+        const splitNodes = firstNode.splitText(startOffset, endOffset);
+        const replacement = startOffset === 0 ? splitNodes[0] : splitNodes[1];
+        $patchNodeStyle(replacement, patch);
+        replacement.select(0, endOffset - startOffset);
+      }
+    } // multiple nodes selected.
+
+  } else {
+    if (lexical.$isTextNode(firstNode)) {
+      if (startOffset !== 0) {
+        // the entire first node isn't selected, so split it
+        [, firstNode] = firstNode.splitText(startOffset);
+        startOffset = 0;
+      }
+
+      $patchNodeStyle(firstNode, patch);
+    }
+
+    if (lexical.$isTextNode(lastNode)) {
+      const lastNodeText = lastNode.getTextContent();
+      const lastNodeTextLength = lastNodeText.length; // if the entire last node isn't selected, split it
+
+      if (endOffset !== lastNodeTextLength) {
+        [lastNode] = lastNode.splitText(endOffset);
+      }
+
+      if (endOffset !== 0) {
+        $patchNodeStyle(lastNode, patch);
+      }
+    } // style all the text nodes in between
+
+
+    for (let i = 1; i < lastIndex; i++) {
+      const selectedNode = selectedNodes[i];
+      const selectedNodeKey = selectedNode.getKey();
+
+      if (lexical.$isTextNode(selectedNode) && selectedNodeKey !== firstNode.getKey() && selectedNodeKey !== lastNode.getKey() && !selectedNode.isToken()) {
+        $patchNodeStyle(selectedNode, patch);
+      }
+    }
+  }
+}
+function $getSelectionStyleValueForProperty(selection, styleProperty, defaultValue = '') {
+  let styleValue = null;
+  const nodes = selection.getNodes();
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const isBackward = selection.isBackward();
+  const endOffset = isBackward ? focus.offset : anchor.offset;
+  const endNode = isBackward ? focus.getNode() : anchor.getNode();
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]; // if no actual characters in the end node are selected, we don't
+    // include it in the selection for purposes of determining style
+    // value
+
+    if (i !== 0 && endOffset === 0 && node.is(endNode)) {
+      continue;
+    }
+
+    if (lexical.$isTextNode(node)) {
+      const nodeStyleValue = $getNodeStyleValueForProperty(node, styleProperty, defaultValue);
+
+      if (styleValue === null) {
+        styleValue = nodeStyleValue;
+      } else if (styleValue !== nodeStyleValue) {
+        // multiple text nodes are in the selection and they don't all
+        // have the same font size.
+        styleValue = '';
+        break;
+      }
+    }
+  }
+
+  return styleValue === null ? defaultValue : styleValue;
+}
+
+function $getNodeStyleValueForProperty(node, styleProperty, defaultValue) {
+  const css = node.getStyle();
+  const styleObject = getStyleObjectFromCSS(css);
+
+  if (styleObject !== null) {
+    return styleObject[styleProperty] || defaultValue;
+  }
+
+  return defaultValue;
+}
+
+function $moveCaretSelection(selection, isHoldingShift, isBackward, granularity) {
+  selection.modify(isHoldingShift ? 'extend' : 'move', isBackward, granularity);
+}
+function $isParentElementRTL(selection) {
+  const anchorNode = selection.anchor.getNode();
+  const parent = lexical.$isRootNode(anchorNode) ? anchorNode : anchorNode.getParentOrThrow();
+  return parent.getDirection() === 'rtl';
+}
+function $moveCharacter(selection, isHoldingShift, isBackward) {
+  const isRTL = $isParentElementRTL(selection);
+  $moveCaretSelection(selection, isHoldingShift, isBackward ? !isRTL : isRTL, 'character');
+}
+function $selectAll(selection) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const anchorNode = anchor.getNode();
+  const topParent = anchorNode.getTopLevelElementOrThrow();
+  const root = topParent.getParentOrThrow();
+  let firstNode = root.getFirstDescendant();
+  let lastNode = root.getLastDescendant();
+  let firstType = 'element';
+  let lastType = 'element';
+  let lastOffset = 0;
+
+  if (lexical.$isTextNode(firstNode)) {
+    firstType = 'text';
+  } else if (!lexical.$isElementNode(firstNode) && firstNode !== null) {
+    firstNode = firstNode.getParentOrThrow();
+  }
+
+  if (lexical.$isTextNode(lastNode)) {
+    lastType = 'text';
+    lastOffset = lastNode.getTextContentSize();
+  } else if (!lexical.$isElementNode(lastNode) && lastNode !== null) {
+    lastNode = lastNode.getParentOrThrow();
+    lastOffset = lastNode.getChildrenSize();
+  }
+
+  if (firstNode && lastNode) {
+    anchor.set(firstNode.getKey(), 0, firstType);
+    focus.set(lastNode.getKey(), lastOffset, lastType);
+  }
+}
+
+function $removeParentEmptyElements(startingNode) {
+  let node = startingNode;
+
+  while (node !== null && !lexical.$isRootNode(node)) {
+    const latest = node.getLatest();
+    const parentNode = node.getParent();
+
+    if (latest.__children.length === 0) {
+      node.remove(true);
+    }
+
+    node = parentNode;
+  }
+}
+
+function $wrapLeafNodesInElements(selection, createElement, wrappingElement) {
+  const nodes = selection.getNodes();
+  const nodesLength = nodes.length;
+  const anchor = selection.anchor;
+
+  if (nodesLength === 0 || nodesLength === 1 && anchor.type === 'element' && anchor.getNode().getChildrenSize() === 0) {
+    const target = anchor.type === 'text' ? anchor.getNode().getParentOrThrow() : anchor.getNode();
+    const children = target.getChildren();
+    let element = createElement();
+    children.forEach(child => element.append(child));
+
+    if (wrappingElement) {
+      element = wrappingElement.append(element);
+    }
+
+    target.replace(element);
+    return;
+  }
+
+  const firstNode = nodes[0];
+  const elementMapping = new Map();
+  const elements = []; // The below logic is to find the right target for us to
+  // either insertAfter/insertBefore/append the corresponding
+  // elements to. This is made more complicated due to nested
+  // structures.
+
+  let target = lexical.$isElementNode(firstNode) ? firstNode : firstNode.getParentOrThrow();
+
+  if (target.isInline()) {
+    target = target.getParentOrThrow();
+  }
+
+  while (target !== null) {
+    const prevSibling = target.getPreviousSibling();
+
+    if (prevSibling !== null) {
+      target = prevSibling;
+      break;
+    }
+
+    target = target.getParentOrThrow();
+
+    if (lexical.$isRootNode(target)) {
+      break;
+    }
+  }
+
+  const emptyElements = new Set(); // Find any top level empty elements
+
+  for (let i = 0; i < nodesLength; i++) {
+    const node = nodes[i];
+
+    if (lexical.$isElementNode(node) && node.getChildrenSize() === 0) {
+      emptyElements.add(node.getKey());
+    }
+  }
+
+  const movedLeafNodes = new Set(); // Move out all leaf nodes into our elements array.
+  // If we find a top level empty element, also move make
+  // an element for that.
+
+  for (let i = 0; i < nodesLength; i++) {
+    const node = nodes[i];
+    let parent = node.getParent();
+
+    if (parent !== null && parent.isInline()) {
+      parent = parent.getParent();
+    }
+
+    if (parent !== null && lexical.$isLeafNode(node) && !movedLeafNodes.has(node.getKey())) {
+      const parentKey = parent.getKey();
+
+      if (elementMapping.get(parentKey) === undefined) {
+        const targetElement = createElement();
+        elements.push(targetElement);
+        elementMapping.set(parentKey, targetElement); // Move node and its siblings to the new
+        // element.
+
+        parent.getChildren().forEach(child => {
+          targetElement.append(child);
+          movedLeafNodes.add(child.getKey());
+        });
+        $removeParentEmptyElements(parent);
+      }
+    } else if (emptyElements.has(node.getKey())) {
+      elements.push(createElement());
+      node.remove();
+    }
+  }
+
+  if (wrappingElement) {
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      wrappingElement.append(element);
+    }
+  } // If our target is the root, let's see if we can re-adjust
+  // so that the target is the first child instead.
+
+
+  if (lexical.$isRootNode(target)) {
+    const firstChild = target.getFirstChild();
+
+    if (lexical.$isElementNode(firstChild)) {
+      target = firstChild;
+    }
+
+    if (firstChild === null) {
+      if (wrappingElement) {
+        target.append(wrappingElement);
+      } else {
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i];
+          target.append(element);
+        }
+      }
+    } else {
+      if (wrappingElement) {
+        firstChild.insertBefore(wrappingElement);
+      } else {
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i];
+          firstChild.insertBefore(element);
+        }
+      }
+    }
+  } else {
+    if (wrappingElement) {
+      target.insertAfter(wrappingElement);
+    } else {
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        target.insertAfter(element);
+      }
+    }
+  }
+
+  const prevSelection = lexical.$getPreviousSelection();
+
+  if (lexical.$isRangeSelection(prevSelection) && isPointAttached(prevSelection.anchor) && isPointAttached(prevSelection.focus)) {
+    lexical.$setSelection(prevSelection.clone());
+  } else {
+    selection.dirty = true;
+  }
+}
+
+function isPointAttached(point) {
+  return point.getNode().isAttached();
+}
+
+function $isAtNodeEnd(point) {
+  if (point.type === 'text') {
+    return point.offset === point.getNode().getTextContentSize();
+  }
+
+  return point.offset === point.getNode().getChildrenSize();
+}
+function $shouldOverrideDefaultCharacterSelection(selection, isBackward) {
+  const possibleNode = lexical.$getDecoratorNode(selection.focus, isBackward);
+  return lexical.$isDecoratorNode(possibleNode) && !possibleNode.isIsolated();
+}
+
+function getDOMTextNode(element) {
+  let node = element;
+
+  while (node != null) {
+    if (node.nodeType === 3) {
+      // $FlowFixMe: this is a Text
+      return node;
+    }
+
+    node = node.firstChild;
+  }
+
+  return null;
+}
+
+function getDOMIndexWithinParent(node) {
+  const parent = node.parentNode;
+
+  if (parent == null) {
+    throw new Error('Should never happen');
+  }
+
+  return [parent, Array.from(parent.childNodes).indexOf(node)];
+}
+
+function createDOMRange(editor, anchorNode, _anchorOffset, focusNode, _focusOffset) {
+  const anchorKey = anchorNode.getKey();
+  const focusKey = focusNode.getKey();
+  const range = document.createRange();
+  let anchorDOM = editor.getElementByKey(anchorKey);
+  let focusDOM = editor.getElementByKey(focusKey);
+  let anchorOffset = _anchorOffset;
+  let focusOffset = _focusOffset;
+
+  if (lexical.$isTextNode(anchorNode)) {
+    anchorDOM = getDOMTextNode(anchorDOM);
+  }
+
+  if (lexical.$isTextNode(focusNode)) {
+    focusDOM = getDOMTextNode(focusDOM);
+  }
+
+  if (anchorNode === undefined || focusNode === undefined || anchorDOM === null || focusDOM === null) {
+    return null;
+  }
+
+  if (anchorDOM.nodeName === 'BR') {
+    [anchorDOM, anchorOffset] = getDOMIndexWithinParent(anchorDOM);
+  }
+
+  if (focusDOM.nodeName === 'BR') {
+    [focusDOM, focusOffset] = getDOMIndexWithinParent(focusDOM);
+  }
+
+  const firstChild = anchorDOM.firstChild;
+
+  if (anchorDOM === focusDOM && firstChild != null && firstChild.nodeName === 'BR' && anchorOffset === 0 && focusOffset === 0) {
+    focusOffset = 1;
+  }
+
+  try {
+    range.setStart(anchorDOM, anchorOffset);
+    range.setEnd(focusDOM, focusOffset);
+  } catch (e) {
+    return null;
+  }
+
+  if (range.collapsed && (anchorOffset !== focusOffset || anchorKey !== focusKey)) {
+    // Range is backwards, we need to reverse it
+    range.setStart(focusDOM, focusOffset);
+    range.setEnd(anchorDOM, anchorOffset);
+  }
+
+  return range;
+}
+function createRectsFromDOMRange(editor, range) {
+  const rootElement = editor.getRootElement();
+
+  if (rootElement === null) {
+    return [];
+  }
+
+  const rootRect = rootElement.getBoundingClientRect();
+  const computedStyle = getComputedStyle(rootElement);
+  const rootPadding = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+  const selectionRects = Array.from(range.getClientRects());
+  let selectionRectsLength = selectionRects.length;
+  let prevRect;
+
+  for (let i = 0; i < selectionRectsLength; i++) {
+    const selectionRect = selectionRects[i]; // Exclude a rect that is the exact same as the last rect. getClientRects() can return
+    // the same rect twice for some elements. A more sophisticated thing to do here is to
+    // merge all the rects together into a set of rects that don't overlap, so we don't
+    // generate backgrounds that are too dark.
+
+    const isDuplicateRect = prevRect && prevRect.top === selectionRect.top && prevRect.left === selectionRect.left && prevRect.width === selectionRect.width && prevRect.height === selectionRect.height; // Exclude selections that span the entire element
+
+    const selectionSpansElement = selectionRect.width + rootPadding === rootRect.width;
+
+    if (isDuplicateRect || selectionSpansElement) {
+      selectionRects.splice(i--, 1);
+      selectionRectsLength--;
+      continue;
+    }
+
+    prevRect = selectionRect;
+  }
+
+  return selectionRects;
+}
+
+exports.$cloneContents = $cloneContents;
+exports.$cloneWithProperties = $cloneWithProperties;
+exports.$getSelectionStyleValueForProperty = $getSelectionStyleValueForProperty;
+exports.$isAtNodeEnd = $isAtNodeEnd;
+exports.$isParentElementRTL = $isParentElementRTL;
+exports.$moveCaretSelection = $moveCaretSelection;
+exports.$moveCharacter = $moveCharacter;
+exports.$patchStyleText = $patchStyleText;
+exports.$selectAll = $selectAll;
+exports.$shouldOverrideDefaultCharacterSelection = $shouldOverrideDefaultCharacterSelection;
+exports.$wrapLeafNodesInElements = $wrapLeafNodesInElements;
+exports.createDOMRange = createDOMRange;
+exports.createRectsFromDOMRange = createRectsFromDOMRange;
+exports.getStyleObjectFromCSS = getStyleObjectFromCSS;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/selection/LexicalSelection.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/@lexical/selection/LexicalSelection.js ***!
+  \*************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalSelection =  true ? __webpack_require__(/*! ./LexicalSelection.dev.js */ "./node_modules/@lexical/selection/LexicalSelection.dev.js") : 0
+module.exports = LexicalSelection;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/table/LexicalTable.dev.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@lexical/table/LexicalTable.dev.js ***!
+  \*********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+var utils = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+
+/* eslint-disable sort-keys-fix/sort-keys-fix */
+const TableCellHeaderStates = {
+  NO_STATUS: 0,
+  ROW: 1,
+  COLUMN: 2,
+  BOTH: 3
+};
+class TableCellNode extends lexical.GridCellNode {
+  static getType() {
+    return 'tablecell';
+  }
+
+  static clone(node) {
+    return new TableCellNode(node.__headerState, node.__colSpan, node.__width, node.__key);
+  }
+
+  static importDOM() {
+    return {
+      td: node => ({
+        conversion: convertTableCellNodeElement,
+        priority: 0
+      }),
+      th: node => ({
+        conversion: convertTableCellNodeElement,
+        priority: 0
+      })
+    };
+  }
+
+  constructor(headerState = TableCellHeaderStates.NO_STATUS, colSpan = 1, width, key) {
+    super(colSpan, key);
+    this.__headerState = headerState;
+    this.__width = width;
+  }
+
+  createDOM(config) {
+    const element = document.createElement(this.getTag());
+
+    if (this.__width) {
+      element.style.width = `${this.__width}px`;
+    }
+
+    utils.addClassNamesToElement(element, config.theme.tableCell, this.hasHeader() && config.theme.tableCellHeader);
+    return element;
+  }
+
+  exportDOM(editor) {
+    const {
+      element
+    } = super.exportDOM(editor);
+
+    if (element) {
+      const maxWidth = 700;
+      const colCount = this.getParentOrThrow().getChildrenSize();
+      element.style.border = '1px solid black';
+      element.style.width = `${this.getWidth() || Math.max(90, maxWidth / colCount)}px`;
+      element.style.verticalAlign = 'top';
+      element.style.textAlign = 'start';
+
+      if (this.hasHeader()) {
+        element.style.backgroundColor = '#f2f3f5';
+      }
+    }
+
+    return {
+      element
+    };
+  }
+
+  getTag() {
+    return this.hasHeader() ? 'th' : 'td';
+  }
+
+  setHeaderStyles(headerState) {
+    const self = this.getWritable();
+    self.__headerState = headerState;
+    return this.__headerState;
+  }
+
+  getHeaderStyles() {
+    return this.getLatest().__headerState;
+  }
+
+  setWidth(width) {
+    const self = this.getWritable();
+    self.__width = width;
+    return this.__width;
+  }
+
+  getWidth() {
+    return this.getLatest().__width;
+  }
+
+  toggleHeaderStyle(headerStateToToggle) {
+    const self = this.getWritable();
+
+    if ((self.__headerState & headerStateToToggle) === headerStateToToggle) {
+      self.__headerState -= headerStateToToggle;
+    } else {
+      self.__headerState += headerStateToToggle;
+    }
+
+    self.__headerState = self.__headerState;
+    return self;
+  }
+
+  hasHeaderState(headerState) {
+    return (this.getHeaderStyles() & headerState) === headerState;
+  }
+
+  hasHeader() {
+    return this.getLatest().__headerState !== TableCellHeaderStates.NO_STATUS;
+  }
+
+  updateDOM(prevNode) {
+    return prevNode.__headerState !== this.__headerState || prevNode.__width !== this.__width;
+  }
+
+  collapseAtStart() {
+    return true;
+  }
+
+  canBeEmpty() {
+    return false;
+  }
+
+  canIndent() {
+    return false;
+  }
+
+}
+function convertTableCellNodeElement(domNode) {
+  const nodeName = domNode.nodeName.toLowerCase();
+  const tableCellNode = $createTableCellNode(nodeName === 'th' ? TableCellHeaderStates.ROW : TableCellHeaderStates.NO_STATUS);
+  return {
+    node: tableCellNode,
+    forChild: (lexicalNode, parentLexicalNode) => {
+      if ($isTableCellNode(parentLexicalNode) && !lexical.$isElementNode(lexicalNode)) {
+        const paragraphNode = lexical.$createParagraphNode();
+
+        if (lexical.$isLineBreakNode(lexicalNode) && lexicalNode.getTextContent() === '\n') {
+          return null;
+        }
+
+        paragraphNode.append(lexicalNode);
+        return paragraphNode;
+      }
+
+      return lexicalNode;
+    }
+  };
+}
+function $createTableCellNode(headerState, colSpan = 1, width) {
+  return new TableCellNode(headerState, colSpan, width);
+}
+function $isTableCellNode(node) {
+  return node instanceof TableCellNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class TableRowNode extends lexical.GridRowNode {
+  static getType() {
+    return 'tablerow';
+  }
+
+  static clone(node) {
+    return new TableRowNode(node.__height, node.__key);
+  }
+
+  static importDOM() {
+    return {
+      tr: node => ({
+        conversion: convertTableRowElement,
+        priority: 0
+      })
+    };
+  }
+
+  constructor(height, key) {
+    super(key);
+    this.__height = height;
+  }
+
+  createDOM(config) {
+    const element = document.createElement('tr');
+
+    if (this.__height) {
+      element.style.height = `${this.__height}px`;
+    }
+
+    utils.addClassNamesToElement(element, config.theme.tableRow);
+    return element;
+  }
+
+  setHeight(height) {
+    const self = this.getWritable();
+    self.__height = height;
+    return this.__height;
+  }
+
+  getHeight() {
+    return this.getLatest().__height;
+  }
+
+  updateDOM(prevNode) {
+    return prevNode.__height !== this.__height;
+  }
+
+  canBeEmpty() {
+    return false;
+  }
+
+  canIndent() {
+    return false;
+  }
+
+}
+function convertTableRowElement(domNode) {
+  return {
+    node: $createTableRowNode()
+  };
+}
+function $createTableRowNode(height) {
+  return new TableRowNode(height);
+}
+function $isTableRowNode(node) {
+  return node instanceof TableRowNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const CAN_USE_DOM = typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined';
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const getSelection = () => window.getSelection();
+
+var getDOMSelection = getSelection;
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+if (CAN_USE_DOM) {
+  const disableNativeSelectionUi = document.createElement('style');
+  disableNativeSelectionUi.innerHTML = `
+    table.disable-selection {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none; 
+      -khtml-user-select: none; 
+      -moz-user-select: none; 
+      -ms-user-select: none; 
+      user-select: none;
+    }
+  
+    .disable-selection span::selection{
+      background-color: transparent;
+    }
+    .disable-selection br::selection{
+      background-color: transparent;
+    }
+  `;
+
+  if (document.body) {
+    document.body.append(disableNativeSelectionUi);
+  }
+}
+
+class TableSelection {
+  constructor(editor, tableNodeKey) {
+    this.isHighlightingCells = false;
+    this.startX = -1;
+    this.startY = -1;
+    this.currentX = -1;
+    this.currentY = -1;
+    this.listenersToRemove = new Set();
+    this.tableNodeKey = tableNodeKey;
+    this.editor = editor;
+    this.grid = {
+      cells: [],
+      columns: 0,
+      rows: 0
+    };
+    this.gridSelection = null;
+    this.anchorCellNodeKey = null;
+    this.focusCellNodeKey = null;
+    this.anchorCell = null;
+    this.focusCell = null;
+    this.hasHijackedSelectionStyles = false;
+    this.trackTableGrid();
+  }
+
+  getGrid() {
+    return this.grid;
+  }
+
+  removeListeners() {
+    Array.from(this.listenersToRemove).forEach(removeListener => removeListener());
+  }
+
+  trackTableGrid() {
+    const observer = new MutationObserver(records => {
+      this.editor.update(() => {
+        let gridNeedsRedraw = false;
+
+        for (let i = 0; i < records.length; i++) {
+          const record = records[i];
+          const target = record.target;
+          const nodeName = target.nodeName;
+
+          if (nodeName === 'TABLE' || nodeName === 'TR') {
+            gridNeedsRedraw = true;
+            break;
+          }
+        }
+
+        if (!gridNeedsRedraw) {
+          return;
+        }
+
+        const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+        if (!tableElement) {
+          throw new Error('Expected to find TableElement in DOM');
+        }
+
+        this.grid = getTableGrid(tableElement);
+      });
+    });
+    this.editor.update(() => {
+      const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+      if (!tableElement) {
+        throw new Error('Expected to find TableElement in DOM');
+      }
+
+      this.grid = getTableGrid(tableElement);
+      observer.observe(tableElement, {
+        childList: true,
+        subtree: true
+      });
+    });
+  }
+
+  clearHighlight() {
+    this.editor.update(() => {
+      const tableNode = lexical.$getNodeByKey(this.tableNodeKey);
+
+      if (!$isTableNode(tableNode)) {
+        throw new Error('Expected TableNode.');
+      }
+
+      const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+      if (!tableElement) {
+        throw new Error('Expected to find TableElement in DOM');
+      }
+
+      const grid = getTableGrid(tableElement);
+      this.isHighlightingCells = false;
+      this.startX = -1;
+      this.startY = -1;
+      this.currentX = -1;
+      this.currentY = -1;
+      this.gridSelection = null;
+      this.anchorCellNodeKey = null;
+      this.focusCellNodeKey = null;
+      this.anchorCell = null;
+      this.focusCell = null;
+      this.hasHijackedSelectionStyles = false;
+      $updateDOMForSelection(grid, null);
+      lexical.$setSelection(null);
+      this.editor.dispatchCommand(lexical.SELECTION_CHANGE_COMMAND);
+      this.enableHighlightStyle();
+    });
+  }
+
+  enableHighlightStyle() {
+    this.editor.update(() => {
+      const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+      if (!tableElement) {
+        throw new Error('Expected to find TableElement in DOM');
+      }
+
+      tableElement.classList.remove('disable-selection');
+      this.hasHijackedSelectionStyles = false;
+    });
+  }
+
+  disableHighlightStyle() {
+    this.editor.update(() => {
+      const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+      if (!tableElement) {
+        throw new Error('Expected to find TableElement in DOM');
+      }
+
+      tableElement.classList.add('disable-selection');
+      this.hasHijackedSelectionStyles = true;
+    });
+  }
+
+  updateTableGridSelection(selection) {
+    if (selection != null) {
+      this.gridSelection = selection;
+      this.isHighlightingCells = true;
+      this.disableHighlightStyle();
+      const anchorElement = this.editor.getElementByKey(selection.anchor.key);
+      const focusElement = this.editor.getElementByKey(selection.focus.key);
+
+      if (anchorElement && focusElement) {
+        const domSelection = getDOMSelection();
+        domSelection.setBaseAndExtent(anchorElement, 0, focusElement, 0);
+      }
+
+      $updateDOMForSelection(this.grid, this.gridSelection);
+    } else {
+      this.clearHighlight();
+    }
+  }
+
+  adjustFocusCellForSelection(cell, ignoreStart = false) {
+    this.editor.update(() => {
+      const tableNode = lexical.$getNodeByKey(this.tableNodeKey);
+
+      if (!$isTableNode(tableNode)) {
+        throw new Error('Expected TableNode.');
+      }
+
+      const tableElement = this.editor.getElementByKey(this.tableNodeKey);
+
+      if (!tableElement) {
+        throw new Error('Expected to find TableElement in DOM');
+      }
+
+      const cellX = cell.x;
+      const cellY = cell.y;
+      this.focusCell = cell;
+      const domSelection = getDOMSelection();
+
+      if (this.anchorCell !== null) {
+        // Collapse the selection
+        domSelection.setBaseAndExtent(this.anchorCell.elem, 0, cell.elem, 0);
+      }
+
+      if (!this.isHighlightingCells && (this.startX !== cellX || this.startY !== cellY || ignoreStart)) {
+        this.isHighlightingCells = true;
+        this.disableHighlightStyle();
+      } else if (cellX === this.currentX && cellY === this.currentY) {
+        return;
+      }
+
+      this.currentX = cellX;
+      this.currentY = cellY;
+
+      if (this.isHighlightingCells) {
+        const focusTableCellNode = lexical.$getNearestNodeFromDOMNode(cell.elem);
+
+        if (this.gridSelection != null && this.anchorCellNodeKey != null && $isTableCellNode(focusTableCellNode)) {
+          const focusNodeKey = focusTableCellNode.getKey();
+          this.gridSelection = lexical.$createGridSelection();
+          this.focusCellNodeKey = focusNodeKey;
+          this.gridSelection.set(this.tableNodeKey, // $FlowFixMe This is not null, as you can see in the statement above.
+          this.anchorCellNodeKey, this.focusCellNodeKey);
+          lexical.$setSelection(this.gridSelection);
+          this.editor.dispatchCommand(lexical.SELECTION_CHANGE_COMMAND);
+          $updateDOMForSelection(this.grid, this.gridSelection);
+        }
+      }
+    });
+  }
+
+  setAnchorCellForSelection(cell) {
+    this.editor.update(() => {
+      this.anchorCell = cell;
+      this.startX = cell.x;
+      this.startY = cell.y;
+      const domSelection = getDOMSelection();
+      domSelection.setBaseAndExtent(cell.elem, 0, cell.elem, 0);
+      const anchorTableCellNode = lexical.$getNearestNodeFromDOMNode(cell.elem);
+
+      if ($isTableCellNode(anchorTableCellNode)) {
+        const anchorNodeKey = anchorTableCellNode.getKey();
+        this.gridSelection = lexical.$createGridSelection();
+        this.anchorCellNodeKey = anchorNodeKey;
+      }
+    });
+  }
+
+  formatCells(type) {
+    this.editor.update(() => {
+      const selection = lexical.$getSelection();
+
+      if (!lexical.$isGridSelection(selection)) {
+        {
+          throw Error(`Expected grid selection`);
+        }
+      } // This is to make Flow play ball.
+
+
+      const formatSelection = lexical.$createRangeSelection();
+      const anchor = formatSelection.anchor;
+      const focus = formatSelection.focus;
+      selection.getNodes().forEach(cellNode => {
+        if ($isTableCellNode(cellNode) && cellNode.getTextContentSize() !== 0) {
+          anchor.set(cellNode.getKey(), 0, 'element');
+          focus.set(cellNode.getKey(), cellNode.getChildrenSize(), 'element');
+          formatSelection.formatText(type);
+        }
+      });
+      lexical.$setSelection(selection);
+      this.editor.dispatchCommand(lexical.SELECTION_CHANGE_COMMAND);
+    });
+  }
+
+  clearText() {
+    this.editor.update(() => {
+      const tableNode = lexical.$getNodeByKey(this.tableNodeKey);
+
+      if (!$isTableNode(tableNode)) {
+        throw new Error('Expected TableNode.');
+      }
+
+      const selection = lexical.$getSelection();
+
+      if (!lexical.$isGridSelection(selection)) {
+        {
+          throw Error(`Expected grid selection`);
+        }
+      }
+
+      const selectedNodes = selection.getNodes().filter($isTableCellNode);
+
+      if (selectedNodes.length === this.grid.columns * this.grid.rows) {
+        tableNode.selectPrevious(); // Delete entire table
+
+        tableNode.remove();
+        this.clearHighlight();
+        return;
+      }
+
+      selectedNodes.forEach(cellNode => {
+        if (lexical.$isElementNode(cellNode)) {
+          const paragraphNode = lexical.$createParagraphNode();
+          const textNode = lexical.$createTextNode();
+          paragraphNode.append(textNode);
+          cellNode.append(paragraphNode);
+          cellNode.getChildren().forEach(child => {
+            if (child !== paragraphNode) {
+              child.remove();
+            }
+          });
+        }
+      });
+      $updateDOMForSelection(this.grid, null);
+      lexical.$setSelection(null);
+      this.editor.dispatchCommand(lexical.SELECTION_CHANGE_COMMAND);
+    });
+  }
+
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const LEXICAL_ELEMENT_KEY = '__lexicalTableSelection';
+function applyTableHandlers(tableNode, tableElement, editor) {
+  const rootElement = editor.getRootElement();
+
+  if (rootElement === null) {
+    throw new Error('No root element.');
+  }
+
+  const tableSelection = new TableSelection(editor, tableNode.getKey());
+  attachTableSelectionToTableElement(tableElement, tableSelection);
+  let isMouseDown = false;
+  let isRangeSelectionHijacked = false;
+  tableElement.addEventListener('dblclick', event => {
+    // $FlowFixMe: event.target is always a Node on the DOM
+    const cell = getCellFromTarget(event.target);
+
+    if (cell !== null) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      tableSelection.setAnchorCellForSelection(cell);
+      tableSelection.adjustFocusCellForSelection(cell, true);
+      isMouseDown = false;
+    }
+  }); // This is the anchor of the selection.
+
+  tableElement.addEventListener('mousedown', event => {
+    setTimeout(() => {
+      if (event.button !== 0) {
+        return;
+      } // $FlowFixMe: event.target is always a Node on the DOM
+
+
+      const cell = getCellFromTarget(event.target);
+
+      if (cell !== null) {
+        tableSelection.setAnchorCellForSelection(cell);
+        document.addEventListener('mouseup', () => {
+          isMouseDown = false;
+        }, {
+          capture: true,
+          once: true
+        });
+      }
+    }, 0);
+  }); // This is adjusting the focus of the selection.
+
+  tableElement.addEventListener('mousemove', event => {
+    if (isRangeSelectionHijacked) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+
+    if (isMouseDown) {
+      // $FlowFixMe: event.target is always a Node on the DOM
+      const cell = getCellFromTarget(event.target);
+
+      if (cell !== null) {
+        const cellX = cell.x;
+        const cellY = cell.y;
+
+        if (isMouseDown && (tableSelection.startX !== cellX || tableSelection.startY !== cellY || tableSelection.isHighlightingCells)) {
+          event.preventDefault();
+          isMouseDown = true;
+          tableSelection.adjustFocusCellForSelection(cell);
+        }
+      }
+    }
+  });
+  tableElement.addEventListener('mouseup', event => {
+    if (isMouseDown) {
+      isMouseDown = false;
+    }
+  }); // Select entire table at this point, when grid selection is ready.
+
+  tableElement.addEventListener('mouseleave', event => {
+    if (isMouseDown) {
+      return;
+    }
+  }); // Clear selection when clicking outside of dom.
+
+  const mouseDownCallback = event => {
+    isMouseDown = true;
+
+    if (event.button !== 0) {
+      return;
+    }
+
+    editor.update(() => {
+      const selection = lexical.$getSelection();
+
+      if (lexical.$isGridSelection(selection) && selection.gridKey === tableSelection.tableNodeKey && rootElement.contains(event.target)) {
+        return tableSelection.clearHighlight();
+      }
+    });
+  };
+
+  window.addEventListener('mousedown', mouseDownCallback);
+  tableSelection.listenersToRemove.add(() => window.removeEventListener('mousedown', mouseDownCallback));
+
+  const mouseUpCallback = event => {
+    isMouseDown = false;
+  };
+
+  window.addEventListener('mouseup', mouseUpCallback);
+  tableSelection.listenersToRemove.add(() => window.removeEventListener('mouseup', mouseUpCallback));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_ARROW_DOWN_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    const event = payload;
+    const direction = 'down';
+
+    if (lexical.$isRangeSelection(selection)) {
+      if (selection.isCollapsed()) {
+        const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+        if (!$isTableCellNode(tableCellNode)) {
+          return false;
+        }
+
+        const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+        const elementParentNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isElementNode(n));
+
+        if (elementParentNode == null) {
+          throw new Error('Expected BlockNode Parent');
+        }
+
+        const lastChild = tableCellNode.getLastChild();
+        const isSelectionInLastBlock = lastChild && elementParentNode.isParentOf(lastChild) || elementParentNode === lastChild;
+
+        if (isSelectionInLastBlock || event.shiftKey) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation(); // Start Selection
+
+          if (event.shiftKey) {
+            tableSelection.setAnchorCellForSelection(tableNode.getCellFromCordsOrThrow(currentCords.x, currentCords.y, tableSelection.grid));
+            return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+          }
+
+          return selectGridNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+        }
+      }
+    } else if (lexical.$isGridSelection(selection) && event.shiftKey) {
+      const tableCellNode = selection.focus.getNode();
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_ARROW_UP_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    const event = payload;
+    const direction = 'up';
+
+    if (lexical.$isRangeSelection(selection)) {
+      if (selection.isCollapsed()) {
+        const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+        if (!$isTableCellNode(tableCellNode)) {
+          return false;
+        }
+
+        const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+        const elementParentNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isElementNode(n));
+
+        if (elementParentNode == null) {
+          throw new Error('Expected BlockNode Parent');
+        }
+
+        const lastChild = tableCellNode.getLastChild();
+        const isSelectionInLastBlock = lastChild && elementParentNode.isParentOf(lastChild) || elementParentNode === lastChild;
+
+        if (isSelectionInLastBlock || event.shiftKey) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation(); // Start Selection
+
+          if (event.shiftKey) {
+            tableSelection.setAnchorCellForSelection(tableNode.getCellFromCordsOrThrow(currentCords.x, currentCords.y, tableSelection.grid));
+            return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+          }
+
+          return selectGridNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+        }
+      }
+    } else if (lexical.$isGridSelection(selection) && event.shiftKey) {
+      const tableCellNode = selection.focus.getNode();
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_ARROW_LEFT_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    const event = payload;
+    const direction = 'backward';
+
+    if (lexical.$isRangeSelection(selection)) {
+      if (selection.isCollapsed()) {
+        const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+        if (!$isTableCellNode(tableCellNode)) {
+          return false;
+        }
+
+        const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+        const elementParentNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isElementNode(n));
+
+        if (elementParentNode == null) {
+          throw new Error('Expected BlockNode Parent');
+        }
+
+        if (selection.anchor.offset === 0 || event.shiftKey) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation(); // Start Selection
+
+          if (event.shiftKey) {
+            tableSelection.setAnchorCellForSelection(tableNode.getCellFromCordsOrThrow(currentCords.x, currentCords.y, tableSelection.grid));
+            return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+          }
+
+          return selectGridNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+        }
+      }
+    } else if (lexical.$isGridSelection(selection) && event.shiftKey) {
+      const tableCellNode = selection.focus.getNode();
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_ARROW_RIGHT_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    const event = payload;
+    const direction = 'forward';
+
+    if (lexical.$isRangeSelection(selection)) {
+      if (selection.isCollapsed()) {
+        const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+        if (!$isTableCellNode(tableCellNode)) {
+          return false;
+        }
+
+        const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+        const elementParentNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isElementNode(n));
+
+        if (elementParentNode == null) {
+          throw new Error('Expected BlockNode Parent');
+        }
+
+        if (selection.anchor.offset === selection.anchor.getNode().getTextContentSize() || event.shiftKey) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          event.stopPropagation(); // Start Selection
+
+          if (event.shiftKey) {
+            tableSelection.setAnchorCellForSelection(tableNode.getCellFromCordsOrThrow(currentCords.x, currentCords.y, tableSelection.grid));
+            return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+          }
+
+          return selectGridNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+        }
+      }
+    } else if (lexical.$isGridSelection(selection) && event.shiftKey) {
+      const tableCellNode = selection.focus.getNode();
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+      return adjustFocusNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, direction);
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.DELETE_CHARACTER_COMMAND, () => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    if (lexical.$isGridSelection(selection)) {
+      tableSelection.clearText();
+      return true;
+    } else if (lexical.$isRangeSelection(selection)) {
+      const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const paragraphNode = utils.$findMatchingParent(selection.anchor.getNode(), n => lexical.$isParagraphNode(n));
+
+      if (!lexical.$isParagraphNode(paragraphNode)) {
+        return false;
+      }
+
+      if (selection.isCollapsed() && selection.anchor.offset === 0 && paragraphNode.getPreviousSiblings().length === 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_BACKSPACE_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    if (lexical.$isGridSelection(selection)) {
+      const event = payload;
+      event.preventDefault();
+      event.stopPropagation();
+      tableSelection.clearText();
+      return true;
+    } else if (lexical.$isRangeSelection(selection)) {
+      const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.FORMAT_TEXT_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    if (lexical.$isGridSelection(selection)) {
+      tableSelection.formatCells(payload);
+      return true;
+    } else if (lexical.$isRangeSelection(selection)) {
+      const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.INSERT_TEXT_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    if (lexical.$isGridSelection(selection)) {
+      tableSelection.clearHighlight();
+      return false;
+    } else if (lexical.$isRangeSelection(selection)) {
+      const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.KEY_TAB_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+
+    if (!$isSelectionInTable(selection, tableNode)) {
+      return false;
+    }
+
+    if (lexical.$isRangeSelection(selection)) {
+      const tableCellNode = utils.$findMatchingParent(selection.anchor.getNode(), n => $isTableCellNode(n));
+
+      if (!$isTableCellNode(tableCellNode)) {
+        return false;
+      }
+
+      const event = payload;
+
+      if (selection.isCollapsed()) {
+        const currentCords = tableNode.getCordsFromCellNode(tableCellNode, tableSelection.grid);
+        event.preventDefault();
+        selectGridNodeInDirection(tableSelection, tableNode, currentCords.x, currentCords.y, !event.shiftKey ? 'forward' : 'backward');
+        return true;
+      }
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.FOCUS_COMMAND, payload => {
+    return tableNode.isSelected();
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  tableSelection.listenersToRemove.add(editor.registerCommand(lexical.SELECTION_CHANGE_COMMAND, payload => {
+    const selection = lexical.$getSelection();
+    const prevSelection = lexical.$getPreviousSelection();
+
+    if (selection !== prevSelection && (lexical.$isGridSelection(selection) || lexical.$isGridSelection(prevSelection)) && tableSelection.gridSelection !== selection) {
+      tableSelection.updateTableGridSelection(lexical.$isGridSelection(selection) && tableNode.isSelected() ? selection : null);
+      return false;
+    }
+
+    if (selection && lexical.$isRangeSelection(selection) && !selection.isCollapsed()) {
+      const anchorNode = selection.anchor.getNode();
+      const focusNode = selection.focus.getNode();
+      const isAnchorInside = tableNode.isParentOf(anchorNode);
+      const isFocusInside = tableNode.isParentOf(focusNode);
+      const containsPartialTable = isAnchorInside && !isFocusInside || isFocusInside && !isAnchorInside;
+
+      if (containsPartialTable) {
+        const isBackward = selection.isBackward();
+        const modifiedSelection = lexical.$createRangeSelection();
+        const tableIndex = tableNode.getIndexWithinParent();
+        const parentKey = tableNode.getParentOrThrow().getKey();
+        modifiedSelection.anchor.set(selection.anchor.key, selection.anchor.offset, selection.anchor.type); // Set selection to before or after table on the root node.
+
+        modifiedSelection.focus.set(parentKey, isBackward ? tableIndex - 1 : tableIndex + 1, 'element');
+        isRangeSelectionHijacked = true;
+        lexical.$setSelection(modifiedSelection);
+        $addHighlightStyleToTable(tableSelection);
+        return true;
+      }
+    }
+
+    if (tableSelection.hasHijackedSelectionStyles && !tableNode.isSelected()) {
+      $removeHighlightStyleToTable(tableSelection);
+      isRangeSelectionHijacked = false;
+    } else if (!tableSelection.hasHijackedSelectionStyles && tableNode.isSelected()) {
+      $addHighlightStyleToTable(tableSelection);
+    }
+
+    return false;
+  }, lexical.COMMAND_PRIORITY_CRITICAL));
+  return tableSelection;
+}
+function attachTableSelectionToTableElement(tableElement, tableSelection) {
+  // $FlowFixMe
+  tableElement[LEXICAL_ELEMENT_KEY] = tableSelection;
+}
+function getTableSelectionFromTableElement(tableElement) {
+  // $FlowFixMe
+  return tableElement[LEXICAL_ELEMENT_KEY];
+}
+function getCellFromTarget(node) {
+  let currentNode = node;
+
+  while (currentNode != null) {
+    const nodeName = currentNode.nodeName;
+
+    if (nodeName === 'TD' || nodeName === 'TH') {
+      // $FlowFixMe: internal field
+      const cell = currentNode._cell;
+
+      if (cell === undefined) {
+        return null;
+      }
+
+      return cell;
+    }
+
+    currentNode = currentNode.parentNode;
+  }
+
+  return null;
+}
+function getTableGrid(tableElement) {
+  const cells = [];
+  const grid = {
+    cells,
+    columns: 0,
+    rows: 0
+  };
+  let currentNode = tableElement.firstChild;
+  let x = 0;
+  let y = 0;
+  cells.length = 0;
+
+  while (currentNode != null) {
+    const nodeMame = currentNode.nodeName;
+
+    if (nodeMame === 'TD' || nodeMame === 'TH') {
+      // $FlowFixMe: TD is always an HTMLElement
+      const elem = currentNode;
+      const cell = {
+        elem,
+        highlighted: false,
+        x,
+        y
+      }; // $FlowFixMe: internal field
+
+      currentNode._cell = cell;
+
+      if (cells[y] === undefined) {
+        cells[y] = [];
+      }
+
+      cells[y][x] = cell;
+    } else {
+      const child = currentNode.firstChild;
+
+      if (child != null) {
+        currentNode = child;
+        continue;
+      }
+    }
+
+    const sibling = currentNode.nextSibling;
+
+    if (sibling != null) {
+      x++;
+      currentNode = sibling;
+      continue;
+    }
+
+    const parent = currentNode.parentNode;
+
+    if (parent != null) {
+      const parentSibling = parent.nextSibling;
+
+      if (parentSibling == null) {
+        break;
+      }
+
+      y++;
+      x = 0;
+      currentNode = parentSibling;
+    }
+  }
+
+  grid.columns = x + 1;
+  grid.rows = y + 1;
+  return grid;
+}
+function $updateDOMForSelection(grid, selection) {
+  const highlightedCells = [];
+  const selectedCellNodes = new Set(selection ? selection.getNodes() : []);
+  $forEachGridCell(grid, (cell, lexicalNode) => {
+    const elem = cell.elem;
+
+    if (selectedCellNodes.has(lexicalNode)) {
+      cell.highlighted = true;
+      elem.style.setProperty('background-color', 'rgb(172, 206, 247)');
+      elem.style.setProperty('caret-color', 'transparent');
+      highlightedCells.push(cell);
+    } else {
+      cell.highlighted = false;
+      elem.style.removeProperty('background-color');
+      elem.style.removeProperty('caret-color');
+
+      if (!elem.getAttribute('style')) {
+        elem.removeAttribute('style');
+      }
+    }
+  });
+  return highlightedCells;
+}
+function $forEachGridCell(grid, cb) {
+  const {
+    cells
+  } = grid;
+
+  for (let y = 0; y < cells.length; y++) {
+    const row = cells[y];
+
+    for (let x = 0; x < row.length; x++) {
+      const cell = row[x];
+      const lexicalNode = lexical.$getNearestNodeFromDOMNode(cell.elem);
+
+      if (lexicalNode !== null) {
+        cb(cell, lexicalNode, {
+          x,
+          y
+        });
+      }
+    }
+  }
+}
+function $addHighlightStyleToTable(tableSelection) {
+  tableSelection.disableHighlightStyle();
+  $forEachGridCell(tableSelection.grid, cell => {
+    const elem = cell.elem;
+    cell.highlighted = true;
+    elem.style.setProperty('background-color', 'rgb(172, 206, 247)');
+    elem.style.setProperty('caret-color', 'transparent');
+  });
+}
+function $removeHighlightStyleToTable(tableSelection) {
+  tableSelection.enableHighlightStyle();
+  $forEachGridCell(tableSelection.grid, cell => {
+    const elem = cell.elem;
+    cell.highlighted = false;
+    elem.style.removeProperty('background-color');
+    elem.style.removeProperty('caret-color');
+
+    if (!elem.getAttribute('style')) {
+      elem.removeAttribute('style');
+    }
+  });
+}
+
+const selectGridNodeInDirection = (tableSelection, tableNode, x, y, direction) => {
+  switch (direction) {
+    case 'backward':
+    case 'forward':
+      {
+        const isForward = direction === 'forward';
+
+        if (x !== (isForward ? tableSelection.grid.columns - 1 : 0)) {
+          selectTableCellNode(tableNode.getCellNodeFromCordsOrThrow(x + (isForward ? 1 : -1), y, tableSelection.grid));
+        } else {
+          if (y !== (isForward ? tableSelection.grid.rows - 1 : 0)) {
+            selectTableCellNode(tableNode.getCellNodeFromCordsOrThrow(isForward ? 0 : tableSelection.grid.columns - 1, y + (isForward ? 1 : -1), tableSelection.grid));
+          } else if (!isForward) {
+            tableNode.selectPrevious();
+          } else {
+            tableNode.selectNext();
+          }
+        }
+
+        return true;
+      }
+
+    case 'up':
+      {
+        if (y !== 0) {
+          selectTableCellNode(tableNode.getCellNodeFromCordsOrThrow(x, y - 1, tableSelection.grid));
+        } else {
+          tableNode.selectPrevious();
+        }
+
+        return true;
+      }
+
+    case 'down':
+      {
+        if (y !== tableSelection.grid.rows - 1) {
+          selectTableCellNode(tableNode.getCellNodeFromCordsOrThrow(x, y + 1, tableSelection.grid));
+        } else {
+          tableNode.selectNext();
+        }
+
+        return true;
+      }
+  }
+
+  return false;
+};
+
+const adjustFocusNodeInDirection = (tableSelection, tableNode, x, y, direction) => {
+  switch (direction) {
+    case 'backward':
+    case 'forward':
+      {
+        const isForward = direction === 'forward';
+
+        if (x !== (isForward ? tableSelection.grid.columns - 1 : 0)) {
+          tableSelection.adjustFocusCellForSelection(tableNode.getCellFromCordsOrThrow(x + (isForward ? 1 : -1), y, tableSelection.grid));
+        }
+
+        return true;
+      }
+
+    case 'up':
+      {
+        if (y !== 0) {
+          tableSelection.adjustFocusCellForSelection(tableNode.getCellFromCordsOrThrow(x, y - 1, tableSelection.grid));
+          return true;
+        } else {
+          return false;
+        }
+      }
+
+    case 'down':
+      {
+        if (y !== tableSelection.grid.rows - 1) {
+          tableSelection.adjustFocusCellForSelection(tableNode.getCellFromCordsOrThrow(x, y + 1, tableSelection.grid));
+          return true;
+        } else {
+          return false;
+        }
+      }
+  }
+
+  return false;
+};
+
+function $isSelectionInTable(selection, tableNode) {
+  if (lexical.$isRangeSelection(selection) || lexical.$isGridSelection(selection)) {
+    const isAnchorInside = tableNode.isParentOf(selection.anchor.getNode());
+    const isFocusInside = tableNode.isParentOf(selection.focus.getNode());
+    return isAnchorInside && isFocusInside;
+  }
+
+  return false;
+}
+
+function selectTableCellNode(tableCell) {
+  const possibleParagraph = tableCell.getChildren().find(n => lexical.$isParagraphNode(n));
+
+  if (lexical.$isParagraphNode(possibleParagraph)) {
+    possibleParagraph.selectEnd();
+  } else {
+    tableCell.selectEnd();
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class TableNode extends lexical.GridNode {
+  static getType() {
+    return 'table';
+  }
+
+  static clone(node) {
+    return new TableNode(node.__key);
+  }
+
+  static importDOM() {
+    return {
+      table: node => ({
+        conversion: convertTableElement,
+        priority: 0
+      })
+    };
+  }
+
+  constructor(key) {
+    super(key);
+  }
+
+  createDOM(config, editor) {
+    const tableElement = document.createElement('table');
+    utils.addClassNamesToElement(tableElement, config.theme.table);
+    return tableElement;
+  }
+
+  updateDOM() {
+    return false;
+  }
+
+  exportDOM(editor) {
+    return { ...super.exportDOM(editor),
+      after: tableElement => {
+        if (tableElement) {
+          const newElement = tableElement.cloneNode();
+          const colGroup = document.createElement('colgroup');
+          const tBody = document.createElement('tbody');
+          tBody.append(...tableElement.children);
+          const firstRow = this.getFirstChildOrThrow();
+
+          if (!$isTableRowNode(firstRow)) {
+            throw new Error('Expected to find row node.');
+          }
+
+          const colCount = firstRow.getChildrenSize();
+
+          for (let i = 0; i < colCount; i++) {
+            const col = document.createElement('col');
+            colGroup.append(col);
+          } //$FlowFixMe This function does exist and is supported by major browsers.
+
+
+          newElement.replaceChildren(colGroup, tBody);
+          return newElement;
+        }
+      }
+    };
+  }
+
+  canExtractContents() {
+    return false;
+  }
+
+  canBeEmpty() {
+    return false;
+  }
+
+  getCordsFromCellNode(tableCellNode, grid) {
+    if (!grid) {
+      throw Error(`Grid not found.`);
+    }
+
+    const {
+      rows,
+      cells
+    } = grid;
+
+    for (let y = 0; y < rows; y++) {
+      const row = cells[y];
+
+      if (row == null) {
+        throw new Error(`Row not found at y:${y}`);
+      }
+
+      const x = row.findIndex(({
+        elem
+      }) => {
+        const cellNode = lexical.$getNearestNodeFromDOMNode(elem);
+        return cellNode === tableCellNode;
+      });
+
+      if (x !== -1) {
+        return {
+          x,
+          y
+        };
+      }
+    }
+
+    throw new Error('Cell not found in table.');
+  }
+
+  getCellFromCords(x, y, grid) {
+    if (!grid) {
+      throw Error(`Grid not found.`);
+    }
+
+    const {
+      cells
+    } = grid;
+    const row = cells[y];
+
+    if (row == null) {
+      return null;
+    }
+
+    const cell = row[x];
+
+    if (cell == null) {
+      return null;
+    }
+
+    return cell;
+  }
+
+  getCellFromCordsOrThrow(x, y, grid) {
+    const cell = this.getCellFromCords(x, y, grid);
+
+    if (!cell) {
+      throw new Error('Cell not found at cords.');
+    }
+
+    return cell;
+  }
+
+  getCellNodeFromCords(x, y, grid) {
+    const cell = this.getCellFromCords(x, y, grid);
+
+    if (cell == null) {
+      return null;
+    }
+
+    const node = lexical.$getNearestNodeFromDOMNode(cell.elem);
+
+    if ($isTableCellNode(node)) {
+      return node;
+    }
+
+    return null;
+  }
+
+  getCellNodeFromCordsOrThrow(x, y, grid) {
+    const node = this.getCellNodeFromCords(x, y, grid);
+
+    if (!node) {
+      throw new Error('Node at cords not TableCellNode.');
+    }
+
+    return node;
+  }
+
+  canSelectBefore() {
+    return true;
+  }
+
+  canIndent() {
+    return false;
+  }
+
+}
+function $getElementGridForTableNode(editor, tableNode) {
+  const tableElement = editor.getElementByKey(tableNode.getKey());
+
+  if (tableElement == null) {
+    throw new Error('Table Element Not Found');
+  }
+
+  return getTableGrid(tableElement);
+}
+function convertTableElement(domNode) {
+  return {
+    node: $createTableNode()
+  };
+}
+function $createTableNode() {
+  return new TableNode();
+}
+function $isTableNode(node) {
+  return node instanceof TableNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function $createTableNodeWithDimensions(rowCount, columnCount, includeHeaders = true) {
+  const tableNode = $createTableNode();
+
+  for (let iRow = 0; iRow < rowCount; iRow++) {
+    const tableRowNode = $createTableRowNode();
+
+    for (let iColumn = 0; iColumn < columnCount; iColumn++) {
+      let headerState = TableCellHeaderStates.NO_STATUS;
+
+      if (includeHeaders) {
+        if (iRow === 0) headerState |= TableCellHeaderStates.ROW;
+        if (iColumn === 0) headerState |= TableCellHeaderStates.COLUMN;
+      }
+
+      const tableCellNode = $createTableCellNode(headerState);
+      const paragraphNode = lexical.$createParagraphNode();
+      paragraphNode.append(lexical.$createTextNode());
+      tableCellNode.append(paragraphNode);
+      tableRowNode.append(tableCellNode);
+    }
+
+    tableNode.append(tableRowNode);
+  }
+
+  return tableNode;
+}
+function $getTableCellNodeFromLexicalNode(startingNode) {
+  const node = utils.$findMatchingParent(startingNode, n => $isTableCellNode(n));
+
+  if ($isTableCellNode(node)) {
+    return node;
+  }
+
+  return null;
+}
+function $getTableRowNodeFromTableCellNodeOrThrow(startingNode) {
+  const node = utils.$findMatchingParent(startingNode, n => $isTableRowNode(n));
+
+  if ($isTableRowNode(node)) {
+    return node;
+  }
+
+  throw new Error('Expected table cell to be inside of table row.');
+}
+function $getTableNodeFromLexicalNodeOrThrow(startingNode) {
+  const node = utils.$findMatchingParent(startingNode, n => $isTableNode(n));
+
+  if ($isTableNode(node)) {
+    return node;
+  }
+
+  throw new Error('Expected table cell to be inside of table.');
+}
+function $getTableRowIndexFromTableCellNode(tableCellNode) {
+  const tableRowNode = $getTableRowNodeFromTableCellNodeOrThrow(tableCellNode);
+  const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableRowNode);
+  return tableNode.getChildren().findIndex(n => n.is(tableRowNode));
+}
+function $getTableColumnIndexFromTableCellNode(tableCellNode) {
+  const tableRowNode = $getTableRowNodeFromTableCellNodeOrThrow(tableCellNode);
+  return tableRowNode.getChildren().findIndex(n => n.is(tableCellNode));
+}
+function $getTableCellSiblingsFromTableCellNode(tableCellNode, grid) {
+  const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+  const {
+    x,
+    y
+  } = tableNode.getCordsFromCellNode(tableCellNode, grid);
+  return {
+    above: tableNode.getCellNodeFromCords(x, y - 1, grid),
+    below: tableNode.getCellNodeFromCords(x, y + 1, grid),
+    left: tableNode.getCellNodeFromCords(x - 1, y, grid),
+    right: tableNode.getCellNodeFromCords(x + 1, y, grid)
+  };
+}
+function $removeTableRowAtIndex(tableNode, indexToDelete) {
+  const tableRows = tableNode.getChildren();
+
+  if (indexToDelete >= tableRows.length || indexToDelete < 0) {
+    throw new Error('Expected table cell to be inside of table row.');
+  }
+
+  const targetRowNode = tableRows[indexToDelete];
+  targetRowNode.remove();
+  return tableNode;
+}
+function $insertTableRow(tableNode, targetIndex, shouldInsertAfter = true, rowCount, grid) {
+  const tableRows = tableNode.getChildren();
+
+  if (targetIndex >= tableRows.length || targetIndex < 0) {
+    throw new Error('Table row target index out of range');
+  }
+
+  const targetRowNode = tableRows[targetIndex];
+
+  if ($isTableRowNode(targetRowNode)) {
+    for (let r = 0; r < rowCount; r++) {
+      const tableRowCells = targetRowNode.getChildren();
+      const tableColumnCount = tableRowCells.length;
+      const newTableRowNode = $createTableRowNode();
+
+      for (let c = 0; c < tableColumnCount; c++) {
+        const tableCellFromTargetRow = tableRowCells[c];
+
+        if (!$isTableCellNode(tableCellFromTargetRow)) {
+          throw Error(`Expected table cell`);
+        }
+
+        const {
+          above,
+          below
+        } = $getTableCellSiblingsFromTableCellNode(tableCellFromTargetRow, grid);
+        let headerState = TableCellHeaderStates.NO_STATUS;
+        const width = above && above.getWidth() || below && below.getWidth() || null;
+
+        if (above && above.hasHeaderState(TableCellHeaderStates.COLUMN) || below && below.hasHeaderState(TableCellHeaderStates.COLUMN)) {
+          headerState |= TableCellHeaderStates.COLUMN;
+        }
+
+        const tableCellNode = $createTableCellNode(headerState, 1, width);
+        tableCellNode.append(lexical.$createParagraphNode());
+        newTableRowNode.append(tableCellNode);
+      }
+
+      if (shouldInsertAfter) {
+        targetRowNode.insertAfter(newTableRowNode);
+      } else {
+        targetRowNode.insertBefore(newTableRowNode);
+      }
+    }
+  } else {
+    throw new Error('Row before insertion index does not exist.');
+  }
+
+  return tableNode;
+}
+function $insertTableColumn(tableNode, targetIndex, shouldInsertAfter = true, columnCount) {
+  const tableRows = tableNode.getChildren();
+
+  for (let r = 0; r < tableRows.length; r++) {
+    const currentTableRowNode = tableRows[r];
+
+    if ($isTableRowNode(currentTableRowNode)) {
+      for (let c = 0; c < columnCount; c++) {
+        let headerState = TableCellHeaderStates.NO_STATUS;
+
+        if (r === 0) {
+          headerState |= TableCellHeaderStates.ROW;
+        }
+
+        const newTableCell = $createTableCellNode(headerState);
+        newTableCell.append(lexical.$createParagraphNode());
+        const tableRowChildren = currentTableRowNode.getChildren();
+
+        if (targetIndex >= tableRowChildren.length || targetIndex < 0) {
+          throw new Error('Table column target index out of range');
+        }
+
+        const targetCell = tableRowChildren[targetIndex];
+
+        if (shouldInsertAfter) {
+          targetCell.insertAfter(newTableCell);
+        } else {
+          targetCell.insertBefore(newTableCell);
+        }
+      }
+    }
+  }
+
+  return tableNode;
+}
+function $deleteTableColumn(tableNode, targetIndex) {
+  const tableRows = tableNode.getChildren();
+
+  for (let i = 0; i < tableRows.length; i++) {
+    const currentTableRowNode = tableRows[i];
+
+    if ($isTableRowNode(currentTableRowNode)) {
+      const tableRowChildren = currentTableRowNode.getChildren();
+
+      if (targetIndex >= tableRowChildren.length || targetIndex < 0) {
+        throw new Error('Table column target index out of range');
+      }
+
+      tableRowChildren[targetIndex].remove();
+    }
+  }
+
+  return tableNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const INSERT_TABLE_COMMAND = lexical.createCommand();
+
+exports.$createTableCellNode = $createTableCellNode;
+exports.$createTableNode = $createTableNode;
+exports.$createTableNodeWithDimensions = $createTableNodeWithDimensions;
+exports.$createTableRowNode = $createTableRowNode;
+exports.$deleteTableColumn = $deleteTableColumn;
+exports.$getElementGridForTableNode = $getElementGridForTableNode;
+exports.$getTableCellNodeFromLexicalNode = $getTableCellNodeFromLexicalNode;
+exports.$getTableColumnIndexFromTableCellNode = $getTableColumnIndexFromTableCellNode;
+exports.$getTableNodeFromLexicalNodeOrThrow = $getTableNodeFromLexicalNodeOrThrow;
+exports.$getTableRowIndexFromTableCellNode = $getTableRowIndexFromTableCellNode;
+exports.$getTableRowNodeFromTableCellNodeOrThrow = $getTableRowNodeFromTableCellNodeOrThrow;
+exports.$insertTableColumn = $insertTableColumn;
+exports.$insertTableRow = $insertTableRow;
+exports.$isTableCellNode = $isTableCellNode;
+exports.$isTableNode = $isTableNode;
+exports.$isTableRowNode = $isTableRowNode;
+exports.$removeTableRowAtIndex = $removeTableRowAtIndex;
+exports.INSERT_TABLE_COMMAND = INSERT_TABLE_COMMAND;
+exports.TableCellHeaderStates = TableCellHeaderStates;
+exports.TableCellNode = TableCellNode;
+exports.TableNode = TableNode;
+exports.TableRowNode = TableRowNode;
+exports.TableSelection = TableSelection;
+exports.applyTableHandlers = applyTableHandlers;
+exports.getCellFromTarget = getCellFromTarget;
+exports.getTableSelectionFromTableElement = getTableSelectionFromTableElement;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/table/LexicalTable.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/@lexical/table/LexicalTable.js ***!
+  \*****************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalTable =  true ? __webpack_require__(/*! ./LexicalTable.dev.js */ "./node_modules/@lexical/table/LexicalTable.dev.js") : 0
+module.exports = LexicalTable;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/text/LexicalText.dev.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/@lexical/text/LexicalText.dev.js ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function $findTextIntersectionFromCharacters(root, targetCharacters) {
+  let node = root.getFirstChild();
+  let currentCharacters = 0;
+
+  mainLoop: while (node !== null) {
+    if (lexical.$isElementNode(node)) {
+      const child = node.getFirstChild();
+
+      if (child !== null) {
+        node = child;
+        continue;
+      }
+    } else if (lexical.$isTextNode(node)) {
+      const characters = node.getTextContentSize();
+
+      if (currentCharacters + characters > targetCharacters) {
+        return {
+          node,
+          offset: targetCharacters - currentCharacters
+        };
+      }
+
+      currentCharacters += characters;
+    }
+
+    const sibling = node.getNextSibling();
+
+    if (sibling !== null) {
+      node = sibling;
+      continue;
+    }
+
+    let parent = node.getParent();
+
+    while (parent !== null) {
+      const parentSibling = parent.getNextSibling();
+
+      if (parentSibling !== null) {
+        node = parentSibling;
+        continue mainLoop;
+      }
+
+      parent = parent.getParent();
+    }
+
+    break;
+  }
+
+  return null;
+} // Return text content for child text nodes.  Each non-text node is separated by input string.
+// Caution, this function creates a string and should not be used within a tight loop.
+// Use $getNodeWithOffsetsFromJoinedTextNodesFromElementNode below to convert
+// indexes in the return string back into their corresponding node and offsets.
+
+function $joinTextNodesInElementNode(elementNode, separator, stopAt) {
+  let textContent = '';
+  const children = elementNode.getChildren();
+  const length = children.length;
+
+  for (let i = 0; i < length; ++i) {
+    const child = children[i];
+
+    if (lexical.$isTextNode(child)) {
+      const childTextContent = child.getTextContent();
+
+      if (child.is(stopAt.node)) {
+        if (stopAt.offset > childTextContent.length) {
+          {
+            throw Error(`Node ${child.__key} and selection point do not match.`);
+          }
+        }
+
+        textContent += child.getTextContent().substr(0, stopAt.offset);
+        break;
+      } else {
+        textContent += childTextContent;
+      }
+    } else {
+      textContent += separator;
+    }
+  }
+
+  return textContent;
+} // This function converts the offsetInJoinedText to
+// a node and offset result or null if not found.
+// This function is to be used in conjunction with joinTextNodesInElementNode above.
+// The joinedTextContent should be return value from joinTextNodesInElementNode.
+//
+// The offsetInJoinedText is relative to the entire string which
+// itself is relevant to the parent ElementNode.
+//
+// Example:
+// Given a Paragraph with 2 TextNodes. The first is Hello, the second is World.
+// The joinedTextContent would be "HelloWorld"
+// The offsetInJoinedText might be for the letter "e" = 1 or "r" = 7.
+// The return values would be {TextNode1, 1} or {TextNode2,2}, respectively.
+
+function $findNodeWithOffsetFromJoinedText(offsetInJoinedText, joinedTextLength, separatorLength, elementNode) {
+  const children = elementNode.getChildren();
+  const childrenLength = children.length;
+  let runningLength = 0;
+  let isPriorNodeTextNode = false;
+
+  for (let i = 0; i < childrenLength; ++i) {
+    // We must examine the offsetInJoinedText that is located
+    // at the length of the string.
+    // For example, given "hello", the length is 5, yet
+    // the caller still wants the node + offset at the
+    // right edge of the "o".
+    if (runningLength > joinedTextLength) {
+      break;
+    }
+
+    const child = children[i];
+    const isChildNodeTestNode = lexical.$isTextNode(child);
+    const childContentLength = isChildNodeTestNode ? child.getTextContent().length : separatorLength;
+    const newRunningLength = runningLength + childContentLength;
+    const isJoinedOffsetWithinNode = isPriorNodeTextNode === false && runningLength === offsetInJoinedText || runningLength === 0 && runningLength === offsetInJoinedText || runningLength < offsetInJoinedText && offsetInJoinedText <= newRunningLength;
+
+    if (isJoinedOffsetWithinNode && lexical.$isTextNode(child)) {
+      // Check isTextNode again for flow.
+      return {
+        node: child,
+        offset: offsetInJoinedText - runningLength
+      };
+    }
+
+    runningLength = newRunningLength;
+    isPriorNodeTextNode = isChildNodeTestNode;
+  }
+
+  return null;
+}
+function $isRootTextContentEmpty(isEditorComposing, trim = true) {
+  if (isEditorComposing) {
+    return false;
+  }
+
+  let text = $rootTextContentCurry();
+
+  if (trim) {
+    text = text.trim();
+  }
+
+  return text === '';
+}
+function $isRootTextContentEmptyCurry(isEditorComposing, trim) {
+  return () => $isRootTextContentEmpty(isEditorComposing, trim);
+}
+function $rootTextContentCurry() {
+  const root = lexical.$getRoot();
+  return root.getTextContent();
+}
+function $canShowPlaceholder(isComposing) {
+  if (!$isRootTextContentEmpty(isComposing, false)) {
+    return false;
+  }
+
+  const root = lexical.$getRoot();
+  const children = root.getChildren();
+  const childrenLength = children.length;
+
+  if (childrenLength > 1) {
+    return false;
+  }
+
+  for (let i = 0; i < childrenLength; i++) {
+    const topBlock = children[i];
+
+    if (lexical.$isElementNode(topBlock)) {
+      if (topBlock.__type !== 'paragraph') {
+        return false;
+      }
+
+      if (topBlock.__indent !== 0) {
+        return false;
+      }
+
+      const topBlockChildren = topBlock.getChildren();
+      const topBlockChildrenLength = topBlockChildren.length;
+
+      for (let s = 0; s < topBlockChildrenLength; s++) {
+        const child = topBlockChildren[i];
+
+        if (!lexical.$isTextNode(child)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+function $canShowPlaceholderCurry(isEditorComposing) {
+  return () => $canShowPlaceholder(isEditorComposing);
+}
+function registerLexicalTextEntity(editor, getMatch, targetNode, createNode) {
+  const isTargetNode = node => {
+    return node instanceof targetNode;
+  };
+
+  const replaceWithSimpleText = node => {
+    const textNode = lexical.$createTextNode(node.getTextContent());
+    textNode.setFormat(node.getFormat());
+    node.replace(textNode);
+  };
+
+  const getMode = node => {
+    return node.getLatest().__mode;
+  };
+
+  const textNodeTransform = node => {
+    if (!node.isSimpleText()) {
+      return;
+    }
+
+    const prevSibling = node.getPreviousSibling();
+    let text = node.getTextContent();
+    let currentNode = node;
+    let match;
+
+    if (lexical.$isTextNode(prevSibling)) {
+      const previousText = prevSibling.getTextContent();
+      const combinedText = previousText + text;
+      const prevMatch = getMatch(combinedText);
+
+      if (isTargetNode(prevSibling)) {
+        if (prevMatch === null || getMode(prevSibling) !== 0) {
+          replaceWithSimpleText(prevSibling);
+          return;
+        } else {
+          const diff = prevMatch.end - previousText.length;
+
+          if (diff > 0) {
+            const concatText = text.slice(0, diff);
+            const newTextContent = previousText + concatText;
+            prevSibling.select();
+            prevSibling.setTextContent(newTextContent);
+
+            if (diff === text.length) {
+              node.remove();
+            } else {
+              const remainingText = text.slice(diff);
+              node.setTextContent(remainingText);
+            }
+
+            return;
+          }
+        }
+      } else if (prevMatch === null || prevMatch.start < previousText.length) {
+        return;
+      }
+    }
+
+    while (true) {
+      match = getMatch(text);
+      let nextText = match === null ? '' : text.slice(match.end);
+      text = nextText;
+
+      if (nextText === '') {
+        const nextSibling = currentNode.getNextSibling();
+
+        if (lexical.$isTextNode(nextSibling)) {
+          nextText = currentNode.getTextContent() + nextSibling.getTextContent();
+          const nextMatch = getMatch(nextText);
+
+          if (nextMatch === null) {
+            if (isTargetNode(nextSibling)) {
+              replaceWithSimpleText(nextSibling);
+            } else {
+              nextSibling.markDirty();
+            }
+
+            return;
+          } else if (nextMatch.start !== 0) {
+            return;
+          }
+        }
+      } else {
+        const nextMatch = getMatch(nextText);
+
+        if (nextMatch !== null && nextMatch.start === 0) {
+          return;
+        }
+      }
+
+      if (match === null) {
+        return;
+      }
+
+      if (match.start === 0 && lexical.$isTextNode(prevSibling) && prevSibling.isTextEntity()) {
+        continue;
+      }
+
+      let nodeToReplace;
+
+      if (match.start === 0) {
+        [nodeToReplace, currentNode] = currentNode.splitText(match.end);
+      } else {
+        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end);
+      }
+
+      const replacementNode = createNode(nodeToReplace);
+      nodeToReplace.replace(replacementNode);
+
+      if (currentNode == null) {
+        return;
+      }
+    }
+  };
+
+  const reverseNodeTransform = node => {
+    const text = node.getTextContent();
+    const match = getMatch(text);
+
+    if (match === null || match.start !== 0) {
+      replaceWithSimpleText(node);
+      return;
+    }
+
+    if (text.length > match.end) {
+      // This will split out the rest of the text as simple text
+      node.splitText(match.end);
+      return;
+    }
+
+    const prevSibling = node.getPreviousSibling();
+
+    if (lexical.$isTextNode(prevSibling) && prevSibling.isTextEntity()) {
+      replaceWithSimpleText(prevSibling);
+      replaceWithSimpleText(node);
+    }
+
+    const nextSibling = node.getNextSibling();
+
+    if (lexical.$isTextNode(nextSibling) && nextSibling.isTextEntity()) {
+      replaceWithSimpleText(nextSibling); // This may have already been converted in the previous block
+
+      if (isTargetNode(node)) {
+        replaceWithSimpleText(node);
+      }
+    }
+  };
+
+  const removePlainTextTransform = editor.registerNodeTransform(lexical.TextNode, textNodeTransform);
+  const removeReverseNodeTransform = editor.registerNodeTransform(targetNode, reverseNodeTransform);
+  return [removePlainTextTransform, removeReverseNodeTransform];
+}
+
+exports.$canShowPlaceholder = $canShowPlaceholder;
+exports.$canShowPlaceholderCurry = $canShowPlaceholderCurry;
+exports.$findNodeWithOffsetFromJoinedText = $findNodeWithOffsetFromJoinedText;
+exports.$findTextIntersectionFromCharacters = $findTextIntersectionFromCharacters;
+exports.$isRootTextContentEmpty = $isRootTextContentEmpty;
+exports.$isRootTextContentEmptyCurry = $isRootTextContentEmptyCurry;
+exports.$joinTextNodesInElementNode = $joinTextNodesInElementNode;
+exports.$rootTextContentCurry = $rootTextContentCurry;
+exports.registerLexicalTextEntity = registerLexicalTextEntity;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/text/LexicalText.js":
+/*!***************************************************!*\
+  !*** ./node_modules/@lexical/text/LexicalText.js ***!
+  \***************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalText =  true ? __webpack_require__(/*! ./LexicalText.dev.js */ "./node_modules/@lexical/text/LexicalText.dev.js") : 0
+module.exports = LexicalText;
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/utils/LexicalUtils.dev.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@lexical/utils/LexicalUtils.dev.js ***!
+  \*********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+var lexical = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function addClassNamesToElement(element, ...classNames) {
+  classNames.forEach(className => {
+    if (typeof className === 'string') {
+      element.classList.add(...className.split(' '));
+    }
+  });
+}
+function removeClassNamesFromElement(element, ...classNames) {
+  classNames.forEach(className => {
+    if (typeof className === 'string') {
+      element.classList.remove(...className.split(' '));
+    }
+  });
+}
+function $dfs(startingNode, endingNode) {
+  const nodes = [];
+  const start = (startingNode || lexical.$getRoot()).getLatest();
+  const end = endingNode || (lexical.$isElementNode(start) ? start.getLastDescendant() : start);
+  let node = start;
+  let depth = $getDepth(node);
+
+  while (node !== null && !node.is(end)) {
+    nodes.push({
+      depth,
+      node
+    });
+
+    if (lexical.$isElementNode(node) && node.getChildrenSize() > 0) {
+      node = node.getFirstChild();
+      depth++;
+    } else {
+      // Find immediate sibling or nearest parent sibling
+      let sibling = null;
+
+      while (sibling === null && node !== null) {
+        sibling = node.getNextSibling();
+
+        if (sibling === null) {
+          node = node.getParent();
+          depth--;
+        } else {
+          node = sibling;
+        }
+      }
+    }
+  }
+
+  if (node !== null && node.is(end)) {
+    nodes.push({
+      depth,
+      node
+    });
+  }
+
+  return nodes;
+}
+
+function $getDepth(node) {
+  let node_ = node;
+  let depth = 0;
+
+  while ((node_ = node_.getParent()) !== null) {
+    depth++;
+  }
+
+  return depth;
+}
+
+function $getNearestNodeOfType(node, klass) {
+  let parent = node;
+
+  while (parent != null) {
+    if (parent instanceof klass) {
+      return parent;
+    }
+
+    parent = parent.getParent();
+  }
+
+  return parent;
+}
+function $getNearestBlockElementAncestorOrThrow(startNode) {
+  const blockNode = $findMatchingParent(startNode, node => lexical.$isElementNode(node) && !node.isInline());
+
+  if (!lexical.$isElementNode(blockNode)) {
+    {
+      throw Error(`Expected node ${startNode.__key} to have closest block element node.`);
+    }
+  }
+
+  return blockNode;
+}
+function $findMatchingParent(startingNode, findFn) {
+  let curr = startingNode;
+
+  while (curr !== lexical.$getRoot() && curr != null) {
+    if (findFn(curr)) {
+      return curr;
+    }
+
+    curr = curr.getParent();
+  }
+
+  return null;
+}
+function mergeRegister(...func) {
+  return () => {
+    func.forEach(f => f());
+  };
+}
+function registerNestedElementResolver(editor, targetNode, cloneNode, handleOverlap) {
+  const $isTargetNode = node => {
+    return node instanceof targetNode;
+  };
+
+  const $findMatch = node => {
+    // First validate we don't have any children that are of the target,
+    // as we need to handle them first.
+    const children = node.getChildren();
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+
+      if ($isTargetNode(child)) {
+        return null;
+      }
+    }
+
+    let parentNode = node;
+    let childNode = node;
+
+    while (parentNode !== null) {
+      childNode = parentNode;
+      parentNode = parentNode.getParent();
+
+      if ($isTargetNode(parentNode)) {
+        return {
+          child: childNode,
+          parent: parentNode
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const elementNodeTransform = node => {
+    const match = $findMatch(node);
+
+    if (match !== null) {
+      const {
+        child,
+        parent
+      } = match; // Simple path, we can move child out and siblings into a new parent.
+
+      if (child.is(node)) {
+        handleOverlap(parent, node);
+        const nextSiblings = child.getNextSiblings();
+        const nextSiblingsLength = nextSiblings.length;
+        parent.insertAfter(child);
+
+        if (nextSiblingsLength !== 0) {
+          const newParent = cloneNode(parent);
+          child.insertAfter(newParent);
+
+          for (let i = 0; i < nextSiblingsLength; i++) {
+            newParent.append(nextSiblings[i]);
+          }
+        }
+
+        if (!parent.canBeEmpty() && parent.getChildrenSize() === 0) {
+          parent.remove();
+        }
+      }
+    }
+  };
+
+  return editor.registerNodeTransform(targetNode, elementNodeTransform);
+}
+
+exports.$dfs = $dfs;
+exports.$findMatchingParent = $findMatchingParent;
+exports.$getNearestBlockElementAncestorOrThrow = $getNearestBlockElementAncestorOrThrow;
+exports.$getNearestNodeOfType = $getNearestNodeOfType;
+exports.addClassNamesToElement = addClassNamesToElement;
+exports.mergeRegister = mergeRegister;
+exports.registerNestedElementResolver = registerNestedElementResolver;
+exports.removeClassNamesFromElement = removeClassNamesFromElement;
+
+
+/***/ }),
+
+/***/ "./node_modules/@lexical/utils/LexicalUtils.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/@lexical/utils/LexicalUtils.js ***!
+  \*****************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const LexicalUtils =  true ? __webpack_require__(/*! ./LexicalUtils.dev.js */ "./node_modules/@lexical/utils/LexicalUtils.dev.js") : 0
+module.exports = LexicalUtils;
+
+/***/ }),
+
 /***/ "./node_modules/@vue/compiler-core/dist/compiler-core.esm-bundler.js":
 /*!***************************************************************************!*\
   !*** ./node_modules/@vue/compiler-core/dist/compiler-core.esm-bundler.js ***!
@@ -21734,6 +28673,72 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js":
+/*!***********************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js ***!
+  \***********************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var lexical__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+/* harmony import */ var lexical__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lexical__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.esm-bundler.js");
+/* harmony import */ var lexical_vue__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! lexical-vue */ "./node_modules/lexical-vue/dist/lexical-vue.es.js");
+
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
+  setup: function setup(__props, _ref) {
+    var expose = _ref.expose;
+    expose();
+    var config = {
+      theme: {// Theme styling goes here
+      },
+      onError: function onError(error) {
+        console.error(error);
+      }
+    }; // When the editor changes, you can get notified via the
+    // LexicalOnChangePlugin!
+
+    function onChange(editorState) {
+      editorState.read(function () {
+        // Read the contents of the EditorState here.
+        var root = (0,lexical__WEBPACK_IMPORTED_MODULE_0__.$getRoot)();
+        var selection = (0,lexical__WEBPACK_IMPORTED_MODULE_0__.$getSelection)();
+        console.log(root, selection);
+      });
+    } // Two-way binding
+
+
+    var content = (0,vue__WEBPACK_IMPORTED_MODULE_1__.ref)("");
+    var __returned__ = {
+      config: config,
+      onChange: onChange,
+      content: content,
+      $getRoot: lexical__WEBPACK_IMPORTED_MODULE_0__.$getRoot,
+      $getSelection: lexical__WEBPACK_IMPORTED_MODULE_0__.$getSelection,
+      ref: vue__WEBPACK_IMPORTED_MODULE_1__.ref,
+      LexicalAutoFocusPlugin: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalAutoFocusPlugin,
+      LexicalComposer: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalComposer,
+      LexicalContentEditable: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalContentEditable,
+      LexicalHistoryPlugin: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalHistoryPlugin,
+      LexicalOnChangePlugin: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalOnChangePlugin,
+      LexicalPlainTextPlugin: lexical_vue__WEBPACK_IMPORTED_MODULE_2__.LexicalPlainTextPlugin
+    };
+    Object.defineProperty(__returned__, '__isScriptSetup', {
+      enumerable: false,
+      value: true
+    });
+    return __returned__;
+  }
+});
+
+/***/ }),
+
 /***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Input.vue?vue&type=script&setup=true&lang=js":
 /*!**********************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Input.vue?vue&type=script&setup=true&lang=js ***!
@@ -22398,7 +29403,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
 /* harmony import */ var _Layouts_Authenticated_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @/Layouts/Authenticated.vue */ "./resources/js/Layouts/Authenticated.vue");
-/* harmony import */ var _inertiajs_inertia_vue3__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @inertiajs/inertia-vue3 */ "./node_modules/@inertiajs/inertia-vue3/dist/index.js");
+/* harmony import */ var _Components_Editor_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @/Components/Editor.vue */ "./resources/js/Components/Editor.vue");
+/* harmony import */ var _inertiajs_inertia_vue3__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @inertiajs/inertia-vue3 */ "./node_modules/@inertiajs/inertia-vue3/dist/index.js");
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.esm-bundler.js");
+
+
 
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
@@ -22407,7 +29416,9 @@ __webpack_require__.r(__webpack_exports__);
     expose();
     var __returned__ = {
       BreezeAuthenticatedLayout: _Layouts_Authenticated_vue__WEBPACK_IMPORTED_MODULE_0__["default"],
-      Head: _inertiajs_inertia_vue3__WEBPACK_IMPORTED_MODULE_1__.Head
+      TextEditor: _Components_Editor_vue__WEBPACK_IMPORTED_MODULE_1__["default"],
+      Head: _inertiajs_inertia_vue3__WEBPACK_IMPORTED_MODULE_2__.Head,
+      ref: vue__WEBPACK_IMPORTED_MODULE_3__.ref
     };
     Object.defineProperty(__returned__, '__isScriptSetup', {
       enumerable: false,
@@ -22624,6 +29635,57 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
     }),
     _: 3
     /* FORWARDED */
+
+  });
+}
+
+/***/ }),
+
+/***/ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10":
+/*!****************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10 ***!
+  \****************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "render": () => (/* binding */ render)
+/* harmony export */ });
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.esm-bundler.js");
+
+
+var _hoisted_1 = /*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", null, "Enter some text...", -1
+/* HOISTED */
+);
+
+function render(_ctx, _cache, $props, $setup, $data, $options) {
+  return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)($setup["LexicalComposer"], {
+    "initial-config": $setup.config
+  }, {
+    "default": (0,vue__WEBPACK_IMPORTED_MODULE_0__.withCtx)(function () {
+      return [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["LexicalPlainTextPlugin"], null, {
+        contentEditable: (0,vue__WEBPACK_IMPORTED_MODULE_0__.withCtx)(function () {
+          return [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["LexicalContentEditable"])];
+        }),
+        placeholder: (0,vue__WEBPACK_IMPORTED_MODULE_0__.withCtx)(function () {
+          return [_hoisted_1];
+        }),
+        _: 1
+        /* STABLE */
+
+      }), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["LexicalOnChangePlugin"], {
+        modelValue: $setup.content,
+        "onUpdate:modelValue": _cache[0] || (_cache[0] = function ($event) {
+          return $setup.content = $event;
+        }),
+        onChange: $setup.onChange
+      }, null, 8
+      /* PROPS */
+      , ["modelValue"]), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["LexicalHistoryPlugin"]), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["LexicalAutoFocusPlugin"])];
+    }),
+    _: 1
+    /* STABLE */
 
   });
 }
@@ -23694,15 +30756,22 @@ var _hoisted_1 = /*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementV
 /* HOISTED */
 );
 
-var _hoisted_2 = /*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", {
+var _hoisted_2 = {
   "class": "py-12"
-}, [/*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", {
+};
+var _hoisted_3 = {
   "class": "max-w-7xl mx-auto sm:px-6 lg:px-8"
-}, [/*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", {
+};
+var _hoisted_4 = {
   "class": "bg-white overflow-hidden shadow-sm sm:rounded-lg"
-}, [/*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", {
+};
+var _hoisted_5 = {
   "class": "p-6 bg-white border-b border-gray-200"
-}, " You did! ")])])], -1
+};
+
+var _hoisted_6 = /*#__PURE__*/(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", {
+  "class": "p-6 bg-white border-b border-gray-200"
+}, null, -1
 /* HOISTED */
 );
 
@@ -23714,7 +30783,7 @@ function render(_ctx, _cache, $props, $setup, $data, $options) {
       return [_hoisted_1];
     }),
     "default": (0,vue__WEBPACK_IMPORTED_MODULE_0__.withCtx)(function () {
-      return [_hoisted_2];
+      return [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_2, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_3, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_4, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("div", _hoisted_5, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)($setup["TextEditor"])]), _hoisted_6])])])];
     }),
     _: 1
     /* STABLE */
@@ -24721,6 +31790,10758 @@ var bind = __webpack_require__(/*! function-bind */ "./node_modules/function-bin
 
 module.exports = bind.call(Function.call, Object.prototype.hasOwnProperty);
 
+
+/***/ }),
+
+/***/ "./node_modules/lexical-vue/dist/lexical-vue.es.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/lexical-vue/dist/lexical-vue.es.js ***!
+  \*********************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "$createDecoratorBlockNode": () => (/* binding */ $createDecoratorBlockNode),
+/* harmony export */   "$isDecoratorBlockNode": () => (/* binding */ $isDecoratorBlockNode),
+/* harmony export */   "DecoratorBlockNode": () => (/* binding */ DecoratorBlockNode),
+/* harmony export */   "LexicalAutoFocusPlugin": () => (/* binding */ _sfc_main$b),
+/* harmony export */   "LexicalAutoLinkPlugin": () => (/* binding */ _sfc_main$8),
+/* harmony export */   "LexicalAutoScrollPlugin": () => (/* binding */ _sfc_main$3),
+/* harmony export */   "LexicalBlockWithAlignableContents": () => (/* binding */ _sfc_main$1),
+/* harmony export */   "LexicalCharacterLimitPlugin": () => (/* binding */ _sfc_main$4),
+/* harmony export */   "LexicalCheckListPlugin": () => (/* binding */ _sfc_main),
+/* harmony export */   "LexicalClearEditorPlugin": () => (/* binding */ _sfc_main$5),
+/* harmony export */   "LexicalComposer": () => (/* binding */ _sfc_main$f),
+/* harmony export */   "LexicalContentEditable": () => (/* binding */ _sfc_main$h),
+/* harmony export */   "LexicalDecoratedTeleports": () => (/* binding */ Decorators),
+/* harmony export */   "LexicalHashtagPlugin": () => (/* binding */ _sfc_main$2),
+/* harmony export */   "LexicalHistoryPlugin": () => (/* binding */ _sfc_main$d),
+/* harmony export */   "LexicalLinkPlugin": () => (/* binding */ _sfc_main$7),
+/* harmony export */   "LexicalListPlugin": () => (/* binding */ _sfc_main$9),
+/* harmony export */   "LexicalOnChangePlugin": () => (/* binding */ _sfc_main$e),
+/* harmony export */   "LexicalPlainTextPlugin": () => (/* binding */ _sfc_main$g),
+/* harmony export */   "LexicalRichTextPlugin": () => (/* binding */ _sfc_main$a),
+/* harmony export */   "LexicalTablePlugin": () => (/* binding */ _sfc_main$6),
+/* harmony export */   "LexicalTreeViewPlugin": () => (/* binding */ _sfc_main$c),
+/* harmony export */   "useCanShowPlaceholder": () => (/* binding */ useCanShowPlaceholder),
+/* harmony export */   "useEditor": () => (/* binding */ useEditor),
+/* harmony export */   "useLexicalIsTextContentEmpty": () => (/* binding */ useLexicalIsTextContentEmpty),
+/* harmony export */   "useLexicalTextEntity": () => (/* binding */ useLexicalTextEntity),
+/* harmony export */   "usePlainTextSetup": () => (/* binding */ usePlainTextSetup),
+/* harmony export */   "useReactiveEditor": () => (/* binding */ useReactiveEditor),
+/* harmony export */   "useRichTextSetup": () => (/* binding */ useRichTextSetup)
+/* harmony export */ });
+/* harmony import */ var vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.esm-bundler.js");
+/* harmony import */ var _lexical_text__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @lexical/text */ "./node_modules/@lexical/text/LexicalText.js");
+/* harmony import */ var _lexical_text__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_lexical_text__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _lexical_dragon__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @lexical/dragon */ "./node_modules/@lexical/dragon/LexicalDragon.js");
+/* harmony import */ var _lexical_dragon__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_lexical_dragon__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _lexical_plain_text__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @lexical/plain-text */ "./node_modules/@lexical/plain-text/LexicalPlainText.js");
+/* harmony import */ var _lexical_plain_text__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_lexical_plain_text__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var _lexical_utils__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @lexical/utils */ "./node_modules/@lexical/utils/LexicalUtils.js");
+/* harmony import */ var _lexical_utils__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_lexical_utils__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var _lexical_rich_text__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! @lexical/rich-text */ "./node_modules/@lexical/rich-text/LexicalRichText.js");
+/* harmony import */ var _lexical_rich_text__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_lexical_rich_text__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var lexical__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! lexical */ "./node_modules/lexical/Lexical.js");
+/* harmony import */ var lexical__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(lexical__WEBPACK_IMPORTED_MODULE_6__);
+/* harmony import */ var _lexical_history__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! @lexical/history */ "./node_modules/@lexical/history/LexicalHistory.js");
+/* harmony import */ var _lexical_history__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(_lexical_history__WEBPACK_IMPORTED_MODULE_7__);
+/* harmony import */ var _lexical_list__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! @lexical/list */ "./node_modules/@lexical/list/LexicalList.js");
+/* harmony import */ var _lexical_list__WEBPACK_IMPORTED_MODULE_8___default = /*#__PURE__*/__webpack_require__.n(_lexical_list__WEBPACK_IMPORTED_MODULE_8__);
+/* harmony import */ var _lexical_link__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! @lexical/link */ "./node_modules/@lexical/link/LexicalLink.js");
+/* harmony import */ var _lexical_link__WEBPACK_IMPORTED_MODULE_9___default = /*#__PURE__*/__webpack_require__.n(_lexical_link__WEBPACK_IMPORTED_MODULE_9__);
+/* harmony import */ var _lexical_table__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! @lexical/table */ "./node_modules/@lexical/table/LexicalTable.js");
+/* harmony import */ var _lexical_table__WEBPACK_IMPORTED_MODULE_10___default = /*#__PURE__*/__webpack_require__.n(_lexical_table__WEBPACK_IMPORTED_MODULE_10__);
+/* harmony import */ var _lexical_overflow__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! @lexical/overflow */ "./node_modules/@lexical/overflow/LexicalOverflow.js");
+/* harmony import */ var _lexical_overflow__WEBPACK_IMPORTED_MODULE_11___default = /*#__PURE__*/__webpack_require__.n(_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__);
+/* harmony import */ var _lexical_hashtag__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! @lexical/hashtag */ "./node_modules/@lexical/hashtag/LexicalHashtag.js");
+/* harmony import */ var _lexical_hashtag__WEBPACK_IMPORTED_MODULE_12___default = /*#__PURE__*/__webpack_require__.n(_lexical_hashtag__WEBPACK_IMPORTED_MODULE_12__);
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+const editorKey = Symbol("Lexical editor");
+function useEditor() {
+  const editor = (0,vue__WEBPACK_IMPORTED_MODULE_0__.inject)(editorKey);
+  if (!editor)
+    throw new Error("<LexicalComposer /> is required");
+  return editor;
+}
+function useReactiveEditor() {
+  const editor = (0,vue__WEBPACK_IMPORTED_MODULE_0__.inject)(editorKey);
+  if (!editor)
+    throw new Error("<LexicalComposer /> is required");
+  const editorRef = (0,vue__WEBPACK_IMPORTED_MODULE_0__.shallowRef)(editor);
+  const unregisterListener2 = editor.registerUpdateListener(() => {
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.triggerRef)(editorRef);
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2();
+  });
+  return editorRef;
+}
+function useCanShowPlaceholder(editor) {
+  const initialState = editor.getEditorState().read((0,_lexical_text__WEBPACK_IMPORTED_MODULE_1__.$canShowPlaceholderCurry)(editor.isComposing()));
+  const canShowPlaceholder = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(initialState);
+  const unregisterListener2 = editor.registerUpdateListener(({ editorState }) => {
+    const isComposing = editor.isComposing();
+    canShowPlaceholder.value = editorState.read((0,_lexical_text__WEBPACK_IMPORTED_MODULE_1__.$canShowPlaceholderCurry)(isComposing));
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2();
+  });
+  return (0,vue__WEBPACK_IMPORTED_MODULE_0__.readonly)(canShowPlaceholder);
+}
+function usePlainTextSetup(editor, initialEditorState) {
+  const unsub = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)((0,_lexical_plain_text__WEBPACK_IMPORTED_MODULE_3__.registerPlainText)(editor, initialEditorState), (0,_lexical_dragon__WEBPACK_IMPORTED_MODULE_2__.registerDragonSupport)(editor));
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unsub();
+  });
+}
+function useRichTextSetup(editor, initialEditorState) {
+  const unsub = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)((0,_lexical_rich_text__WEBPACK_IMPORTED_MODULE_5__.registerRichText)(editor, initialEditorState), (0,_lexical_dragon__WEBPACK_IMPORTED_MODULE_2__.registerDragonSupport)(editor));
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unsub();
+  });
+}
+function useLexicalTextEntity(getMatch, targetNode, createNode) {
+  const editor = useEditor();
+  let unregisterListener2;
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+    unregisterListener2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(...(0,_lexical_text__WEBPACK_IMPORTED_MODULE_1__.registerLexicalTextEntity)(editor, getMatch, targetNode, createNode));
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2 == null ? void 0 : unregisterListener2();
+  });
+}
+function useLexicalIsTextContentEmpty(editor, trim) {
+  const isEmpty = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(editor.getEditorState().read((0,_lexical_text__WEBPACK_IMPORTED_MODULE_1__.$isRootTextContentEmptyCurry)(editor.isComposing(), trim)));
+  const unregisterListener2 = editor.registerUpdateListener(({ editorState }) => {
+    const isComposing = editor.isComposing();
+    isEmpty.value = editorState.read((0,_lexical_text__WEBPACK_IMPORTED_MODULE_1__.$isRootTextContentEmptyCurry)(isComposing, trim));
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2();
+  });
+  return (0,vue__WEBPACK_IMPORTED_MODULE_0__.readonly)(isEmpty);
+}
+const _hoisted_1$1 = ["id", "aria-activedescendant", "aria-autocomplete", "aria-controls", "aria-describedby", "aria-expanded", "aria-label", "aria-labelledby", "aria-multiline", "aria-owns", "aria-required", "autocapitalize", "autocomplete", "autocorrect", "contenteditable", "role", "spellcheck", "tabindex", "data-enable-grammarly"];
+const _sfc_main$h = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    ariaActivedescendant: null,
+    ariaAutocomplete: null,
+    ariaControls: null,
+    ariaDescribedby: null,
+    ariaExpanded: { type: Boolean },
+    ariaLabel: null,
+    ariaLabelledby: null,
+    ariaMultiline: { type: Boolean },
+    ariaOwns: null,
+    ariaRequired: { type: Boolean },
+    autoCapitalize: { type: Boolean },
+    autoComplete: { type: Boolean },
+    autoCorrect: { type: Boolean },
+    id: null,
+    readOnly: { type: Boolean },
+    role: { default: "textbox" },
+    spellcheck: { type: Boolean, default: true },
+    tabindex: null,
+    enableGrammarly: { type: Boolean, default: true }
+  },
+  setup(__props) {
+    const root = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(null);
+    const editor = useEditor();
+    const isReadOnly = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(true);
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      if (root.value)
+        editor.setRootElement(root.value);
+      unregisterListener2 = editor.registerReadOnlyListener((currentIsReadOnly) => {
+        isReadOnly.value = currentIsReadOnly;
+      });
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", {
+        id: __props.id,
+        ref_key: "root",
+        ref: root,
+        "aria-activedescendant": isReadOnly.value ? void 0 : __props.ariaActivedescendant,
+        "aria-autocomplete": isReadOnly.value ? void 0 : __props.ariaAutocomplete,
+        "aria-controls": isReadOnly.value ? void 0 : __props.ariaControls,
+        "aria-describedby": __props.ariaDescribedby,
+        "aria-expanded": isReadOnly.value ? void 0 : __props.role === "combobox" ? !!__props.ariaExpanded ? __props.ariaExpanded : void 0 : void 0,
+        "aria-label": __props.ariaLabel,
+        "aria-labelledby": __props.ariaLabelledby,
+        "aria-multiline": __props.ariaMultiline,
+        "aria-owns": isReadOnly.value ? void 0 : __props.ariaOwns,
+        "aria-required": __props.ariaRequired,
+        autocapitalize: `${__props.autoCapitalize}`,
+        autocomplete: __props.autoComplete,
+        autocorrect: `${__props.autoCorrect}`,
+        contenteditable: !isReadOnly.value,
+        role: isReadOnly.value ? void 0 : __props.role,
+        spellcheck: __props.spellcheck,
+        tabindex: __props.tabindex,
+        "data-enable-grammarly": __props.enableGrammarly
+      }, null, 8, _hoisted_1$1);
+    };
+  }
+});
+function useDecorators(editor) {
+  const decorators = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(editor.getDecorators());
+  let unregisterListener2;
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+    unregisterListener2 = editor.registerDecoratorListener((nextDecorators) => {
+      decorators.value = nextDecorators;
+    });
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2 == null ? void 0 : unregisterListener2();
+  });
+  return (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => {
+    const decoratedTeleports = [];
+    const decoratorKeys = Object.keys(decorators.value);
+    for (let i = 0; i < decoratorKeys.length; i++) {
+      const nodeKey = decoratorKeys[i];
+      const vueDecorator = decorators.value[nodeKey];
+      const element2 = editor.getElementByKey(nodeKey);
+      if (element2 !== null) {
+        decoratedTeleports.push((0,vue__WEBPACK_IMPORTED_MODULE_0__.h)(vue__WEBPACK_IMPORTED_MODULE_0__.Teleport, {
+          to: element2
+        }, [vueDecorator]));
+      }
+    }
+    return decoratedTeleports;
+  });
+}
+var Decorators = (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup() {
+    const editor = useEditor();
+    const decorators = useDecorators(editor);
+    return () => decorators.value;
+  }
+});
+const _sfc_main$g = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    initialEditorState: null
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    const showPlaceholder = useCanShowPlaceholder(editor);
+    usePlainTextSetup(editor, props.initialEditorState);
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, [
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "contentEditable"),
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(showPlaceholder) ? (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "placeholder", { key: 0 }) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("", true),
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)((0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(Decorators))
+      ], 64);
+    };
+  }
+});
+const _sfc_main$f = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    initialConfig: null
+  },
+  emits: ["error"],
+  setup(__props, { emit }) {
+    const props = __props;
+    const editor = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.createEditor)(__spreadProps(__spreadValues({}, props.initialConfig), {
+      onError(error) {
+        emit("error", error);
+      }
+    }));
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.provide)(editorKey, editor);
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      const isReadOnly = props.initialConfig.readOnly;
+      editor.setReadOnly(isReadOnly || false);
+    });
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "default");
+    };
+  }
+});
+const _sfc_main$e = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    ignoreInitialChange: { type: Boolean, default: true },
+    ignoreSelectionChange: { type: Boolean, default: false },
+    modelValue: null
+  },
+  emits: ["change", "update:modelValue"],
+  setup(__props, { emit }) {
+    const props = __props;
+    const editor = useEditor();
+    let unregisterListener2;
+    const getRoot = lexical__WEBPACK_IMPORTED_MODULE_6__.$getRoot;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      unregisterListener2 = editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, prevEditorState }) => {
+        if (props.ignoreSelectionChange && dirtyElements.size === 0 && dirtyLeaves.size === 0)
+          return;
+        if (props.ignoreInitialChange && prevEditorState.isEmpty())
+          return;
+        emit("change", editorState, editor);
+        editorState.read(() => {
+          emit("update:modelValue", getRoot().getTextContent());
+        });
+      });
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+function getRealValue(item) {
+  return (0,vue__WEBPACK_IMPORTED_MODULE_0__.isRef)(item) ? item.value : item;
+}
+function useHistory(editor, externalHistoryState, delay) {
+  const historyState = (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => getRealValue(externalHistoryState) || (0,_lexical_history__WEBPACK_IMPORTED_MODULE_7__.createEmptyHistoryState)());
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)((onInvalidate) => {
+    const unregisterListener2 = (0,_lexical_history__WEBPACK_IMPORTED_MODULE_7__.registerHistory)(editor, historyState.value, getRealValue(delay) || 1e3);
+    onInvalidate(() => {
+      unregisterListener2();
+    });
+  });
+}
+const _sfc_main$d = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    externalHistoryState: null
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    useHistory(editor, props.externalHistoryState);
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+var LexicalMark_prod = {};
+var k = (lexical__WEBPACK_IMPORTED_MODULE_6___default()), m = (_lexical_utils__WEBPACK_IMPORTED_MODULE_4___default());
+class n extends k.ElementNode {
+  static getType() {
+    return "mark";
+  }
+  static clone(a) {
+    return new n(Array.from(a.__ids), a.__key);
+  }
+  constructor(a, b) {
+    super(b);
+    this.__ids = a || [];
+  }
+  createDOM(a) {
+    const b = document.createElement("mark");
+    m.addClassNamesToElement(b, a.theme.mark);
+    1 < this.__ids.length && m.addClassNamesToElement(b, a.theme.markOverlap);
+    return b;
+  }
+  updateDOM(a, b, c) {
+    a = a.__ids.length;
+    const e = this.__ids.length;
+    c = c.theme.markOverlap;
+    a !== e && (a === 1 ? e === 2 && m.addClassNamesToElement(b, c) : e === 1 && m.removeClassNamesFromElement(b, c));
+    return false;
+  }
+  hasID(a) {
+    const b = this.getIDs();
+    for (let c = 0; c < b.length; c++)
+      if (a === b[c])
+        return true;
+    return false;
+  }
+  getIDs() {
+    return this.getLatest().__ids;
+  }
+  addID(a) {
+    var b = this.getWritable();
+    const c = b.__ids;
+    b.__ids = c;
+    for (b = 0; b < c.length; b++)
+      if (a === c[b])
+        return;
+    c.push(a);
+  }
+  deleteID(a) {
+    var b = this.getWritable();
+    const c = b.__ids;
+    b.__ids = c;
+    for (b = 0; b < c.length; b++)
+      if (a === c[b]) {
+        c.splice(b, 1);
+        break;
+      }
+  }
+  insertNewAfter(a) {
+    a = this.getParentOrThrow().insertNewAfter(a);
+    if (k.$isElementNode(a)) {
+      const b = q(this.__ids);
+      a.append(b);
+      return b;
+    }
+    return null;
+  }
+  canInsertTextBefore() {
+    return false;
+  }
+  canInsertTextAfter() {
+    return false;
+  }
+  canBeEmpty() {
+    return false;
+  }
+  isInline() {
+    return true;
+  }
+  extractWithChild(a, b, c) {
+    if (!k.$isRangeSelection(b) || c === "html")
+      return false;
+    const e = b.anchor, d = b.focus;
+    a = e.getNode();
+    c = d.getNode();
+    b = b.isBackward() ? e.offset - d.offset : d.offset - e.offset;
+    return this.isParentOf(a) && this.isParentOf(c) && this.getTextContent().length === b;
+  }
+  excludeFromCopy(a) {
+    return a !== "clone";
+  }
+}
+function q(a) {
+  return new n(a);
+}
+function r(a) {
+  return a instanceof n;
+}
+LexicalMark_prod.$createMarkNode = q;
+LexicalMark_prod.$getMarkIDs = function(a, b) {
+  for (; a !== null; ) {
+    if (r(a))
+      return a.getIDs();
+    if (k.$isTextNode(a) && b === a.getTextContentSize()) {
+      const c = a.getNextSibling();
+      if (r(c))
+        return c.getIDs();
+    }
+    a = a.getParent();
+  }
+  return null;
+};
+LexicalMark_prod.$isMarkNode = r;
+LexicalMark_prod.$unwrapMarkNode = function(a) {
+  const b = a.getChildren();
+  let c = null;
+  for (let e = 0; e < b.length; e++) {
+    const d = b[e];
+    c === null ? a.insertBefore(d) : c.insertAfter(d);
+    c = d;
+  }
+  a.remove();
+};
+LexicalMark_prod.$wrapSelectionInMarkNode = function(a, b, c) {
+  const e = a.getNodes();
+  var d = a.anchor.offset, g = a.focus.offset;
+  a = e.length;
+  const x = b ? g : d;
+  b = b ? d : g;
+  let p, h2;
+  for (d = 0; d < a; d++) {
+    const l = e[d];
+    if (k.$isElementNode(h2) && h2.isParentOf(l))
+      continue;
+    g = d === 0;
+    const u = d === a - 1;
+    var f = void 0;
+    if (k.$isTextNode(l)) {
+      const v = l.getTextContentSize(), w = g ? x : 0, t = u ? b : v;
+      if (w === 0 && t === 0)
+        continue;
+      f = l.splitText(w, t);
+      f = 1 < f.length && (f.length === 3 || g && !u || t === v) ? f[1] : f[0];
+    } else
+      k.$isElementNode(l) && l.isInline() && (f = l);
+    f !== void 0 ? f && f.is(p) || (g = f.getParent(), g != null && g.is(p) || (h2 = void 0), p = g, h2 === void 0 && (h2 = q([c]), f.insertBefore(h2)), h2.append(f)) : h2 = p = void 0;
+  }
+};
+LexicalMark_prod.MarkNode = n;
+const LexicalMark = LexicalMark_prod;
+var LexicalMark_1 = LexicalMark;
+const _hoisted_1 = ["max"];
+const _sfc_main$c = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    timeTravelButtonClassName: null,
+    timeTravelPanelButtonClassName: null,
+    timeTravelPanelClassName: null,
+    timeTravelPanelSliderClassName: null,
+    viewClassName: null
+  },
+  setup(__props) {
+    const NON_SINGLE_WIDTH_CHARS_REPLACEMENT = Object.freeze({
+      "	": "\\t",
+      "\n": "\\n"
+    });
+    const NON_SINGLE_WIDTH_CHARS_REGEX = new RegExp(Object.keys(NON_SINGLE_WIDTH_CHARS_REPLACEMENT).join("|"), "g");
+    const SYMBOLS = Object.freeze({
+      ancestorHasNextSibling: "|",
+      ancestorIsLastChild: " ",
+      hasNextSibling: "\u251C",
+      isLastChild: "\u2514",
+      selectedChar: "^",
+      selectedLine: ">"
+    });
+    function printRangeSelection(selection) {
+      let res = "";
+      const formatText = printFormatProperties(selection);
+      res += `: range ${formatText !== "" ? `{ ${formatText} }` : ""}`;
+      const anchor = selection.anchor;
+      const focus = selection.focus;
+      const anchorOffset = anchor.offset;
+      const focusOffset = focus.offset;
+      res += `
+  \u251C anchor { key: ${anchor.key}, offset: ${anchorOffset === null ? "null" : anchorOffset}, type: ${anchor.type} }`;
+      res += `
+  \u2514 focus { key: ${focus.key}, offset: ${focusOffset === null ? "null" : focusOffset}, type: ${focus.type} }`;
+      return res;
+    }
+    function printObjectSelection(selection) {
+      return `: node
+  \u2514 [${Array.from(selection._nodes).join(", ")}]`;
+    }
+    function printGridSelection(selection) {
+      return `: grid
+  \u2514 { grid: ${selection.gridKey}, anchorCell: ${selection.anchor.key}, focusCell: ${selection.focus.key} }`;
+    }
+    function generateContent(editorState) {
+      let res = " root\n";
+      const selectionString = editorState.read(() => {
+        const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+        visitTree((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getRoot)(), (node, indent) => {
+          const nodeKey = node.getKey();
+          const nodeKeyDisplay = `(${nodeKey})`;
+          const typeDisplay = node.getType() || "";
+          const isSelected = node.isSelected();
+          const idsDisplay = LexicalMark_1.$isMarkNode(node) ? ` id: [ ${node.getIDs().join(", ")} ] ` : "";
+          res += `${isSelected ? SYMBOLS.selectedLine : " "} ${indent.join(" ")} ${nodeKeyDisplay} ${typeDisplay} ${idsDisplay} ${printNode(node)}
+`;
+          res += printSelectedCharsLine({
+            indent,
+            isSelected,
+            node,
+            nodeKeyDisplay,
+            selection,
+            typeDisplay
+          });
+        });
+        return selection === null ? ": null" : (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection) ? printRangeSelection(selection) : (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isGridSelection)(selection) ? printGridSelection(selection) : printObjectSelection(selection);
+      });
+      return `${res}
+ selection${selectionString}`;
+    }
+    function visitTree(currentNode, visitor, indent = []) {
+      const childNodes = currentNode.getChildren();
+      const childNodesLength = childNodes.length;
+      childNodes.forEach((childNode, i) => {
+        visitor(childNode, indent.concat(i === childNodesLength - 1 ? SYMBOLS.isLastChild : SYMBOLS.hasNextSibling));
+        if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(childNode)) {
+          visitTree(childNode, visitor, indent.concat(i === childNodesLength - 1 ? SYMBOLS.ancestorIsLastChild : SYMBOLS.ancestorHasNextSibling));
+        }
+      });
+    }
+    function normalize(text) {
+      return Object.entries(NON_SINGLE_WIDTH_CHARS_REPLACEMENT).reduce((acc, [key, value]) => acc.replace(new RegExp(key, "g"), String(value)), text);
+    }
+    function printNode(node) {
+      if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(node)) {
+        const text = node.getTextContent(true);
+        const title = text.length === 0 ? "(empty)" : `"${normalize(text)}"`;
+        const properties = printAllProperties(node);
+        return [title, properties.length !== 0 ? `{ ${properties} }` : null].filter(Boolean).join(" ").trim();
+      }
+      return "";
+    }
+    const FORMAT_PREDICATES = [
+      (node) => node.hasFormat("bold") && "Bold",
+      (node) => node.hasFormat("code") && "Code",
+      (node) => node.hasFormat("italic") && "Italic",
+      (node) => node.hasFormat("strikethrough") && "Strikethrough",
+      (node) => node.hasFormat("underline") && "Underline"
+    ];
+    const DETAIL_PREDICATES = [
+      (node) => node.isDirectionless() && "Directionless",
+      (node) => node.isUnmergeable() && "Unmergeable"
+    ];
+    const MODE_PREDICATES = [
+      (node) => node.isToken() && "Token",
+      (node) => node.isSegmented() && "Segmented",
+      (node) => node.isInert() && "Inert"
+    ];
+    function printAllProperties(node) {
+      return [
+        printFormatProperties(node),
+        printDetailProperties(node),
+        printModeProperties(node)
+      ].filter(Boolean).join(", ");
+    }
+    function printDetailProperties(nodeOrSelection) {
+      let str = DETAIL_PREDICATES.map((predicate) => predicate(nodeOrSelection)).filter(Boolean).join(", ").toLocaleLowerCase();
+      if (str !== "")
+        str = `detail: ${str}`;
+      return str;
+    }
+    function printModeProperties(nodeOrSelection) {
+      let str = MODE_PREDICATES.map((predicate) => predicate(nodeOrSelection)).filter(Boolean).join(", ").toLocaleLowerCase();
+      if (str !== "")
+        str = `mode: ${str}`;
+      return str;
+    }
+    function printFormatProperties(nodeOrSelection) {
+      let str = FORMAT_PREDICATES.map((predicate) => predicate(nodeOrSelection)).filter(Boolean).join(", ").toLocaleLowerCase();
+      if (str !== "")
+        str = `format: ${str}`;
+      return str;
+    }
+    function printSelectedCharsLine({
+      indent,
+      isSelected,
+      node,
+      nodeKeyDisplay,
+      selection,
+      typeDisplay
+    }) {
+      if (!(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(node) || !(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection) || !isSelected || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(node))
+        return "";
+      const anchor = selection.anchor;
+      const focus = selection.focus;
+      if ((node == null ? void 0 : node.getTextContent()) === "" || anchor.getNode() === selection.focus.getNode() && anchor.offset === focus.offset)
+        return "";
+      const [start, end] = $getSelectionStartEnd(node, selection);
+      if (start === end)
+        return "";
+      const selectionLastIndent = indent[indent.length - 1] === SYMBOLS.hasNextSibling ? SYMBOLS.ancestorHasNextSibling : SYMBOLS.ancestorIsLastChild;
+      const indentionChars = [
+        ...indent.slice(0, indent.length - 1),
+        selectionLastIndent
+      ];
+      const unselectedChars = Array(start).fill(" ");
+      const selectedChars = Array(end - start).fill(SYMBOLS.selectedChar);
+      const paddingLength = typeDisplay.length + 3;
+      const nodePrintSpaces = Array(nodeKeyDisplay.length + paddingLength).fill(" ");
+      return `${[
+        SYMBOLS.selectedLine,
+        indentionChars.join(" "),
+        [...nodePrintSpaces, ...unselectedChars, ...selectedChars].join("")
+      ].join(" ")}
+`;
+    }
+    function $getSelectionStartEnd(node, selection) {
+      const anchor = selection.anchor;
+      const focus = selection.focus;
+      const textContent = node.getTextContent(true);
+      const textLength = textContent.length;
+      let start = -1;
+      let end = -1;
+      if (anchor.type === "text" && focus.type === "text") {
+        const anchorNode = anchor.getNode();
+        const focusNode = focus.getNode();
+        if (anchorNode === focusNode && node === anchorNode && anchor.offset !== focus.offset) {
+          [start, end] = anchor.offset < focus.offset ? [anchor.offset, focus.offset] : [focus.offset, anchor.offset];
+        } else if (node === anchorNode) {
+          [start, end] = anchorNode.isBefore(focusNode) ? [anchor.offset, textLength] : [0, anchor.offset];
+        } else if (node === focusNode) {
+          [start, end] = focusNode.isBefore(anchorNode) ? [focus.offset, textLength] : [0, focus.offset];
+        } else {
+          [start, end] = [0, textLength];
+        }
+      }
+      const numNonSingleWidthCharBeforeSelection = (textContent.slice(0, start).match(NON_SINGLE_WIDTH_CHARS_REGEX) || []).length;
+      const numNonSingleWidthCharInSelection = (textContent.slice(start, end).match(NON_SINGLE_WIDTH_CHARS_REGEX) || []).length;
+      return [
+        start + numNonSingleWidthCharBeforeSelection,
+        end + numNonSingleWidthCharBeforeSelection + numNonSingleWidthCharInSelection
+      ];
+    }
+    const editor = useEditor();
+    const timeStampedEditorStates = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)([]);
+    const content = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)("");
+    const timeTravelEnabled = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(false);
+    const playingIndexRef = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(0);
+    const treeElementRef = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(null);
+    const inputRef = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(null);
+    const isPlaying = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(false);
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)((onInvalidate) => {
+      content.value = generateContent(editor.getEditorState());
+      unregisterListener2 = editor.registerUpdateListener(({ editorState }) => {
+        const compositionKey = editor._compositionKey;
+        const treeText = generateContent(editor.getEditorState());
+        const compositionText = compositionKey !== null && `Composition key: ${compositionKey}`;
+        content.value = [treeText, compositionText].filter(Boolean).join("\n\n");
+        if (!timeTravelEnabled.value) {
+          timeStampedEditorStates.value = [
+            ...timeStampedEditorStates.value,
+            [Date.now(), editorState]
+          ];
+        }
+      });
+      onInvalidate(() => {
+        unregisterListener2();
+      });
+    });
+    const totalEditorStates = (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => timeStampedEditorStates.value.length);
+    let timeoutId;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)((onInvalidate) => {
+      if (isPlaying.value) {
+        const play = () => {
+          const currentIndex = playingIndexRef.value;
+          if (currentIndex === totalEditorStates.value - 1) {
+            isPlaying.value = false;
+            return;
+          }
+          const currentTime = timeStampedEditorStates.value[currentIndex][0];
+          const nextTime = timeStampedEditorStates.value[currentIndex + 1][0];
+          const timeDiff = nextTime - currentTime;
+          timeoutId = setTimeout(() => {
+            playingIndexRef.value++;
+            const index = playingIndexRef.value;
+            const input = inputRef.value;
+            if (input)
+              input.value = String(index);
+            editor.setEditorState(timeStampedEditorStates.value[index][1]);
+            play();
+          }, timeDiff);
+        };
+        play();
+      }
+      onInvalidate(() => {
+        clearTimeout(timeoutId);
+      });
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)(() => {
+      const element2 = treeElementRef.value;
+      if (element2) {
+        element2.__lexicalEditor = editor;
+      }
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+      clearTimeout(timeoutId);
+      element.__lexicalEditor = null;
+    });
+    const enableTimeTravel = () => {
+      const rootElement = editor.getRootElement();
+      if (rootElement !== null) {
+        rootElement.contentEditable = "false";
+        playingIndexRef.value = totalEditorStates.value - 1;
+        timeTravelEnabled.value = true;
+      }
+    };
+    const updateEditorState = (e) => {
+      const editorStateIndex = Number(e.target.value);
+      const timeStampedEditorState = timeStampedEditorStates.value[editorStateIndex];
+      if (timeStampedEditorState) {
+        playingIndexRef.value = editorStateIndex;
+        editor.setEditorState(timeStampedEditorState[1]);
+      }
+    };
+    const exit = () => {
+      const rootElement = editor.getRootElement();
+      if (rootElement) {
+        rootElement.contentEditable = "true";
+        const index = timeStampedEditorStates.value.length - 1;
+        const timeStampedEditorState = timeStampedEditorStates.value[index];
+        editor.setEditorState(timeStampedEditorState[1]);
+        const input = inputRef.value;
+        if (input)
+          input.value = String(index);
+        timeTravelEnabled.value = false;
+        isPlaying.value = false;
+      }
+    };
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", {
+        class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.viewClassName)
+      }, [
+        !timeTravelEnabled.value && (0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(totalEditorStates) > 2 ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("button", {
+          key: 0,
+          class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.timeTravelButtonClassName),
+          onClick: enableTimeTravel
+        }, " Time Travel ", 2)) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("", true),
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("pre", { ref: "treeElement" }, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(content.value), 513),
+        timeTravelEnabled.value ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", {
+          key: 1,
+          class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.timeTravelPanelClassName)
+        }, [
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+            class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.timeTravelPanelButtonClassName),
+            onClick: _cache[0] || (_cache[0] = ($event) => isPlaying.value = !isPlaying.value)
+          }, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(isPlaying.value ? "Pause" : "Play"), 3),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("input", {
+            ref_key: "inputRef",
+            ref: inputRef,
+            class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.timeTravelPanelSliderClassName),
+            type: "range",
+            min: "1",
+            max: (0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(totalEditorStates) - 1,
+            onInput: updateEditorState
+          }, null, 42, _hoisted_1),
+          (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementVNode)("button", {
+            class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(__props.timeTravelPanelButtonClassName),
+            onClick: exit
+          }, " Exit ", 2)
+        ], 2)) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("", true)
+      ], 2);
+    };
+  }
+});
+const _sfc_main$b = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    const editor = useEditor();
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      (0,vue__WEBPACK_IMPORTED_MODULE_0__.nextTick)(() => {
+        editor.focus();
+      });
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+const _sfc_main$a = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    initialEditorState: null
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    const showPlaceholder = useCanShowPlaceholder(editor);
+    useRichTextSetup(editor, props.initialEditorState);
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, [
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "contentEditable"),
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(showPlaceholder) ? (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "placeholder", { key: 0 }) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("", true),
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)((0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(Decorators))
+      ], 64);
+    };
+  }
+});
+function useList(editor) {
+  let unregisterListener2;
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+    unregisterListener2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.INDENT_CONTENT_COMMAND, () => {
+      (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.indentList)();
+      return false;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.OUTDENT_CONTENT_COMMAND, () => {
+      (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.outdentList)();
+      return false;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(_lexical_list__WEBPACK_IMPORTED_MODULE_8__.INSERT_ORDERED_LIST_COMMAND, () => {
+      (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.insertList)(editor, "number");
+      return true;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(_lexical_list__WEBPACK_IMPORTED_MODULE_8__.INSERT_UNORDERED_LIST_COMMAND, () => {
+      (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.insertList)(editor, "bullet");
+      return true;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(_lexical_list__WEBPACK_IMPORTED_MODULE_8__.REMOVE_LIST_COMMAND, () => {
+      (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.removeList)(editor);
+      return true;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.INSERT_PARAGRAPH_COMMAND, () => {
+      const hasHandledInsertParagraph = (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$handleListInsertParagraph)();
+      if (hasHandledInsertParagraph)
+        return true;
+      return false;
+    }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW));
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2 == null ? void 0 : unregisterListener2();
+  });
+}
+const _sfc_main$9 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    const editor = useEditor();
+    useList(editor);
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+function replaceWithChildren(node) {
+  const children = node.getChildren();
+  const childrenLength = children.length;
+  for (let j = childrenLength - 1; j >= 0; j--)
+    node.insertAfter(children[j]);
+  node.remove();
+  return children.map((child) => child.getLatest());
+}
+function handleLinkEdit(linkNode, matchers, onChange) {
+  const children = linkNode.getChildren();
+  const childrenLength = children.length;
+  for (let i = 0; i < childrenLength; i++) {
+    const child = children[i];
+    if (!(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(child) || !child.isSimpleText()) {
+      replaceWithChildren(linkNode);
+      onChange(null, linkNode.getURL());
+      return;
+    }
+  }
+  const text = linkNode.getTextContent();
+  const match = findFirstMatch(text, matchers);
+  if (match === null || match.text !== text) {
+    replaceWithChildren(linkNode);
+    onChange(null, linkNode.getURL());
+    return;
+  }
+  if (!isPreviousNodeValid(linkNode) || !isNextNodeValid(linkNode)) {
+    replaceWithChildren(linkNode);
+    onChange(null, linkNode.getURL());
+    return;
+  }
+  const url = linkNode.getURL();
+  if (match !== null && url !== match.url) {
+    linkNode.setURL(match.url);
+    onChange(match.url, url);
+  }
+}
+let unregisterListener;
+function useAutoLink(editor, matchers, onChange) {
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)((onInvalidate) => {
+    if (!editor.hasNodes([_lexical_link__WEBPACK_IMPORTED_MODULE_9__.AutoLinkNode])) {
+      throw new Error("LexicalAutoLinkPlugin: AutoLinkNode, TableCellNode or TableRowNode not registered on editor");
+    }
+    const onChangeWrapped = (...args) => {
+      if (onChange)
+        onChange(...args);
+    };
+    unregisterListener = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(editor.registerNodeTransform(lexical__WEBPACK_IMPORTED_MODULE_6__.TextNode, (textNode) => {
+      const parent = textNode.getParentOrThrow();
+      if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isAutoLinkNode)(parent)) {
+        handleLinkEdit(parent, matchers, onChangeWrapped);
+      } else if (!(0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(parent)) {
+        if (textNode.isSimpleText())
+          handleLinkCreation(textNode, matchers, onChangeWrapped);
+        handleBadNeighbors(textNode, onChangeWrapped);
+      }
+    }), editor.registerNodeTransform(_lexical_link__WEBPACK_IMPORTED_MODULE_9__.AutoLinkNode, (linkNode) => {
+      handleLinkEdit(linkNode, matchers, onChangeWrapped);
+    }));
+    onInvalidate(() => {
+      unregisterListener();
+    });
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener == null ? void 0 : unregisterListener();
+  });
+}
+function findFirstMatch(text, matchers) {
+  for (let i = 0; i < matchers.length; i++) {
+    const match = matchers[i](text);
+    if (match)
+      return match;
+  }
+  return null;
+}
+function isPreviousNodeValid(node) {
+  let previousNode = node.getPreviousSibling();
+  if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(previousNode))
+    previousNode = previousNode.getLastDescendant();
+  return previousNode === null || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isLineBreakNode)(previousNode) || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(previousNode) && previousNode.getTextContent().endsWith(" ");
+}
+function isNextNodeValid(node) {
+  let nextNode = node.getNextSibling();
+  if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(nextNode))
+    nextNode = nextNode.getFirstDescendant();
+  return nextNode === null || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isLineBreakNode)(nextNode) || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(nextNode) && nextNode.getTextContent().startsWith(" ");
+}
+function handleLinkCreation(node, matchers, onChange) {
+  const nodeText = node.getTextContent();
+  const nodeTextLength = nodeText.length;
+  let text = nodeText;
+  let textOffset = 0;
+  let lastNode = node;
+  let match;
+  while ((match = findFirstMatch(text, matchers)) && match !== null) {
+    const matchOffset = match.index;
+    const offset = textOffset + matchOffset;
+    const matchLength = match.length;
+    let contentBeforeMatchIsValid;
+    if (offset > 0)
+      contentBeforeMatchIsValid = nodeText[offset - 1] === " ";
+    else
+      contentBeforeMatchIsValid = isPreviousNodeValid(node);
+    let contentAfterMatchIsValid;
+    if (offset + matchLength < nodeTextLength)
+      contentAfterMatchIsValid = nodeText[offset + matchLength] === " ";
+    else
+      contentAfterMatchIsValid = isNextNodeValid(node);
+    if (contentBeforeMatchIsValid && contentAfterMatchIsValid) {
+      let middleNode;
+      if (matchOffset === 0) {
+        [middleNode, lastNode] = lastNode.splitText(matchLength);
+      } else {
+        [, middleNode, lastNode] = lastNode.splitText(matchOffset, matchOffset + matchLength);
+      }
+      const linkNode = (0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$createAutoLinkNode)(match.url);
+      linkNode.append((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$createTextNode)(match.text));
+      middleNode.replace(linkNode);
+      onChange(match.url, null);
+    }
+    const iterationOffset = matchOffset + matchLength;
+    text = text.substring(iterationOffset);
+    textOffset += iterationOffset;
+  }
+}
+function handleBadNeighbors(textNode, onChange) {
+  const previousSibling = textNode.getPreviousSibling();
+  const nextSibling = textNode.getNextSibling();
+  const text = textNode.getTextContent();
+  if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isAutoLinkNode)(previousSibling) && !text.startsWith(" ")) {
+    replaceWithChildren(previousSibling);
+    onChange(null, previousSibling.getURL());
+  }
+  if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isAutoLinkNode)(nextSibling) && !text.endsWith(" ")) {
+    replaceWithChildren(nextSibling);
+    onChange(null, nextSibling.getURL());
+  }
+}
+const _sfc_main$8 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    matchers: null
+  },
+  emits: ["change"],
+  setup(__props, { emit }) {
+    const props = __props;
+    const editor = useEditor();
+    useAutoLink(editor, props.matchers, (url, prevUrl) => {
+      emit("change", {
+        url,
+        prevUrl
+      });
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+const _sfc_main$7 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    function toggleLink(url) {
+      const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+      if (selection)
+        (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$setSelection)(selection);
+      const sel = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+      if (sel) {
+        const nodes = sel.extract();
+        if (!url) {
+          nodes.forEach((node) => {
+            const parent = node.getParent();
+            if (parent && (0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(parent)) {
+              const children = parent.getChildren();
+              for (let i = 0; i < children.length; i++)
+                parent.insertBefore(children[i]);
+              parent.remove();
+            }
+          });
+        } else {
+          if (nodes.length === 1) {
+            const firstNode = nodes[0];
+            if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(firstNode)) {
+              firstNode.setURL(url);
+              return;
+            } else {
+              const parent = firstNode.getParent();
+              if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(parent)) {
+                parent.setURL(url);
+                return;
+              }
+            }
+          }
+          let prevParent;
+          let linkNode;
+          nodes.forEach((node) => {
+            const parent = node.getParent();
+            if (parent === linkNode || !parent || (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(node) && !node.isInline())
+              return;
+            if (!parent.is(prevParent)) {
+              prevParent = parent;
+              linkNode = (0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$createLinkNode)(url);
+              if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(parent)) {
+                if (!node.getPreviousSibling())
+                  parent.insertBefore(linkNode);
+                else
+                  parent.insertAfter(linkNode);
+              } else {
+                node.insertBefore(linkNode);
+              }
+            }
+            if ((0,_lexical_link__WEBPACK_IMPORTED_MODULE_9__.$isLinkNode)(node)) {
+              if (linkNode) {
+                const children = node.getChildren();
+                for (let i = 0; i < children.length; i++)
+                  linkNode.append(children[i]);
+              }
+              node.remove();
+              return;
+            }
+            if (linkNode)
+              linkNode.append(node);
+          });
+        }
+      }
+    }
+    const editor = useEditor();
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      if (!editor.hasNodes([_lexical_link__WEBPACK_IMPORTED_MODULE_9__.LinkNode]))
+        throw new Error("LinkPlugin: LinkNode not registered on editor");
+      unregisterListener2 = editor.registerCommand(_lexical_link__WEBPACK_IMPORTED_MODULE_9__.TOGGLE_LINK_COMMAND, (payload) => {
+        const url = payload;
+        toggleLink(url);
+        return true;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_EDITOR);
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+const _sfc_main$6 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    const editor = useEditor();
+    let unregisterListener2;
+    let unregisterMutationListener;
+    if (!editor.hasNodes([_lexical_table__WEBPACK_IMPORTED_MODULE_10__.TableNode, _lexical_table__WEBPACK_IMPORTED_MODULE_10__.TableCellNode, _lexical_table__WEBPACK_IMPORTED_MODULE_10__.TableRowNode])) {
+      throw new Error("TablePlugin: TableNode, TableCellNode or TableRowNode not registered on editor");
+    }
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      unregisterListener2 = editor.registerCommand(_lexical_table__WEBPACK_IMPORTED_MODULE_10__.INSERT_TABLE_COMMAND, (payload) => {
+        const { columns, rows } = payload;
+        const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+        if (!(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection))
+          return true;
+        const focus = selection.focus;
+        const focusNode = focus.getNode();
+        if (focusNode !== null) {
+          const tableNode = (0,_lexical_table__WEBPACK_IMPORTED_MODULE_10__.$createTableNodeWithDimensions)(Number(rows), Number(columns));
+          if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRootNode)(focusNode)) {
+            const target = focusNode.getChildAtIndex(focus.offset);
+            if (target !== null)
+              target.insertBefore(tableNode);
+            else
+              focusNode.append(tableNode);
+            tableNode.insertBefore((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$createParagraphNode)());
+          } else {
+            const topLevelNode = focusNode.getTopLevelElementOrThrow();
+            topLevelNode.insertAfter(tableNode);
+          }
+          tableNode.insertAfter((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$createParagraphNode)());
+          const firstCell = tableNode.getFirstChildOrThrow().getFirstChildOrThrow();
+          firstCell.select();
+        }
+        return true;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_EDITOR);
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      const tableSelections = /* @__PURE__ */ new Map();
+      unregisterMutationListener = editor.registerMutationListener(_lexical_table__WEBPACK_IMPORTED_MODULE_10__.TableNode, (nodeMutations) => {
+        for (const [nodeKey, mutation] of nodeMutations) {
+          if (mutation === "created") {
+            editor.update(() => {
+              const tableElement = editor.getElementByKey(nodeKey);
+              const tableNode = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNodeByKey)(nodeKey);
+              if (tableElement && tableNode) {
+                const tableSelection = (0,_lexical_table__WEBPACK_IMPORTED_MODULE_10__.applyTableHandlers)(tableNode, tableElement, editor);
+                tableSelections.set(nodeKey, tableSelection);
+              }
+            });
+          } else if (mutation === "destroyed") {
+            const tableSelection = tableSelections.get(nodeKey);
+            if (tableSelection) {
+              tableSelection.removeListeners();
+              tableSelections.delete(nodeKey);
+            }
+          }
+        }
+      });
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+      unregisterMutationListener == null ? void 0 : unregisterMutationListener();
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+const _sfc_main$5 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  emits: ["clear"],
+  setup(__props, { emit }) {
+    const editor = useEditor();
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      var _a;
+      const instance = (0,vue__WEBPACK_IMPORTED_MODULE_0__.getCurrentInstance)();
+      const emitExists = Boolean((_a = instance == null ? void 0 : instance.attrs) == null ? void 0 : _a.onClear);
+      unregisterListener2 = editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.CLEAR_EDITOR_COMMAND, (_payload) => {
+        editor.update(() => {
+          if (emitExists) {
+            const root = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getRoot)();
+            const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+            const paragraph = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$createParagraphNode)();
+            root.clear();
+            root.append(paragraph);
+            if (selection !== null)
+              paragraph.select();
+          } else {
+            emit("clear");
+          }
+        });
+        return true;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_EDITOR);
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+function useCharacterLimit(editor, maxCharacters, optional = Object.freeze({})) {
+  const {
+    strlen = (input) => input.length,
+    remainingCharacters = (_characters) => {
+    }
+  } = optional;
+  let unregisterListener2;
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+    if (!editor.hasNodes([_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__.OverflowNode])) {
+      throw new Error("useCharacterLimit: OverflowNode not registered on editor");
+    }
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+    let text = editor.getEditorState().read(_lexical_text__WEBPACK_IMPORTED_MODULE_1__.$rootTextContentCurry);
+    let lastComputedTextLength = 0;
+    unregisterListener2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(editor.registerTextContentListener((currentText) => {
+      text = currentText;
+    }), editor.registerUpdateListener(({ dirtyLeaves }) => {
+      const isComposing = editor.isComposing();
+      const hasDirtyLeaves = dirtyLeaves.size > 0;
+      if (isComposing || !hasDirtyLeaves)
+        return;
+      const textLength = strlen(text);
+      const textLengthAboveThreshold = textLength > maxCharacters || lastComputedTextLength !== null && lastComputedTextLength > maxCharacters;
+      const diff = maxCharacters - textLength;
+      remainingCharacters(diff);
+      if (lastComputedTextLength === null || textLengthAboveThreshold) {
+        const offset = findOffset(text, maxCharacters, strlen);
+        editor.update(() => {
+          $wrapOverflowedNodes(offset);
+        }, {
+          tag: "history-merge"
+        });
+      }
+      lastComputedTextLength = textLength;
+    }));
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2 == null ? void 0 : unregisterListener2();
+  });
+}
+function findOffset(text, maxCharacters, strlen) {
+  const Segmenter = Intl.Segmenter;
+  let offsetUtf16 = 0;
+  let offset = 0;
+  if (typeof Segmenter === "function") {
+    const segmenter = new Segmenter();
+    const graphemes = segmenter.segment(text);
+    for (const { segment: grapheme } of graphemes) {
+      const nextOffset = offset + strlen(grapheme);
+      if (nextOffset > maxCharacters)
+        break;
+      offset = nextOffset;
+      offsetUtf16 += grapheme.length;
+    }
+  } else {
+    const codepoints = Array.from(text);
+    const codepointsLength = codepoints.length;
+    for (let i = 0; i < codepointsLength; i++) {
+      const codepoint = codepoints[i];
+      const nextOffset = offset + strlen(codepoint);
+      if (nextOffset > maxCharacters)
+        break;
+      offset = nextOffset;
+      offsetUtf16 += codepoint.length;
+    }
+  }
+  return offsetUtf16;
+}
+function $wrapOverflowedNodes(offset) {
+  const dfsNodes = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.$dfs)();
+  const dfsNodesLength = dfsNodes.length;
+  let accumulatedLength = 0;
+  for (let i = 0; i < dfsNodesLength; i += 1) {
+    const { node } = dfsNodes[i];
+    if ((0,_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__.$isOverflowNode)(node)) {
+      const previousLength = accumulatedLength;
+      const nextLength = accumulatedLength + node.getTextContentSize();
+      if (nextLength <= offset) {
+        const parent = node.getParent();
+        const previousSibling = node.getPreviousSibling();
+        const nextSibling = node.getNextSibling();
+        $unwrapNode(node);
+        const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+        if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection) && (!selection.anchor.getNode().isAttached() || !selection.focus.getNode().isAttached())) {
+          if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(previousSibling))
+            previousSibling.select();
+          else if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(nextSibling))
+            nextSibling.select();
+          else if (parent !== null)
+            parent.select();
+        }
+      } else if (previousLength < offset) {
+        const descendant = node.getFirstDescendant();
+        const descendantLength = descendant !== null ? descendant.getTextContentSize() : 0;
+        const previousPlusDescendantLength = previousLength + descendantLength;
+        const firstDescendantIsSimpleText = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(descendant) && descendant.isSimpleText();
+        const firstDescendantDoesNotOverflow = previousPlusDescendantLength <= offset;
+        if (firstDescendantIsSimpleText || firstDescendantDoesNotOverflow)
+          $unwrapNode(node);
+      }
+    } else if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isLeafNode)(node)) {
+      const previousAccumulatedLength = accumulatedLength;
+      accumulatedLength += node.getTextContentSize();
+      if (accumulatedLength > offset && !(0,_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__.$isOverflowNode)(node.getParent())) {
+        const previousSelection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+        let overflowNode;
+        if (previousAccumulatedLength < offset && (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isTextNode)(node) && node.isSimpleText()) {
+          const [, overflowedText] = node.splitText(offset - previousAccumulatedLength);
+          overflowNode = $wrapNode(overflowedText);
+        } else {
+          overflowNode = $wrapNode(node);
+        }
+        if (previousSelection !== null)
+          (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$setSelection)(previousSelection);
+        mergePrevious(overflowNode);
+      }
+    }
+  }
+}
+function $wrapNode(node) {
+  const overflowNode = (0,_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__.$createOverflowNode)();
+  node.insertBefore(overflowNode);
+  overflowNode.append(node);
+  return overflowNode;
+}
+function $unwrapNode(node) {
+  const children = node.getChildren();
+  const childrenLength = children.length;
+  for (let i = 0; i < childrenLength; i++)
+    node.insertBefore(children[i]);
+  node.remove();
+  return childrenLength > 0 ? children[childrenLength - 1] : null;
+}
+function mergePrevious(overflowNode) {
+  const previousNode = overflowNode.getPreviousSibling();
+  if (!(0,_lexical_overflow__WEBPACK_IMPORTED_MODULE_11__.$isOverflowNode)(previousNode))
+    return;
+  const firstChild = overflowNode.getFirstChild();
+  const previousNodeChildren = previousNode.getChildren();
+  const previousNodeChildrenLength = previousNodeChildren.length;
+  if (firstChild === null) {
+    overflowNode.append(...previousNodeChildren);
+  } else {
+    for (let i = 0; i < previousNodeChildrenLength; i++)
+      firstChild.insertBefore(previousNodeChildren[i]);
+  }
+  const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+  if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection)) {
+    const anchor = selection.anchor;
+    const anchorNode = anchor.getNode();
+    const focus = selection.focus;
+    const focusNode = anchor.getNode();
+    if (anchorNode.is(previousNode)) {
+      anchor.set(overflowNode.getKey(), anchor.offset, "element");
+    } else if (anchorNode.is(overflowNode)) {
+      anchor.set(overflowNode.getKey(), previousNodeChildrenLength + anchor.offset, "element");
+    }
+    if (focusNode.is(previousNode)) {
+      focus.set(overflowNode.getKey(), focus.offset, "element");
+    } else if (focusNode.is(overflowNode)) {
+      focus.set(overflowNode.getKey(), previousNodeChildrenLength + focus.offset, "element");
+    }
+  }
+  previousNode == null ? void 0 : previousNode.remove();
+}
+const _sfc_main$4 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    charset: { default: "UTF-16" }
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    const CHARACTER_LIMIT = 5;
+    let textEncoderInstance = null;
+    function textEncoder() {
+      if (window.TextEncoder === void 0)
+        return null;
+      if (textEncoderInstance === null)
+        textEncoderInstance = new window.TextEncoder();
+      return textEncoderInstance;
+    }
+    function utf8Length(text) {
+      const currentTextEncoder = textEncoder();
+      if (currentTextEncoder === null) {
+        const m2 = encodeURIComponent(text).match(/%[89ABab]/g);
+        return text.length + (m2 ? m2.length : 0);
+      }
+      return currentTextEncoder.encode(text).length;
+    }
+    const remainingCharacters = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(0);
+    const setRemainingCharacters = (payload) => {
+      remainingCharacters.value = payload;
+    };
+    const characterLimitProps = (0,vue__WEBPACK_IMPORTED_MODULE_0__.computed)(() => ({
+      remainingCharacters: setRemainingCharacters,
+      strlen: (text) => {
+        if (props.charset === "UTF-8")
+          return utf8Length(text);
+        else if (props.charset === "UTF-16")
+          return text.length;
+        else
+          throw new Error("Unrecognized charset");
+      }
+    }));
+    useCharacterLimit(editor, CHARACTER_LIMIT, characterLimitProps.value);
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("span", {
+        class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(`characters-limit ${remainingCharacters.value < 0 ? "characters-limit-exceeded" : ""}`)
+      }, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(remainingCharacters.value), 3);
+    };
+  }
+});
+const _sfc_main$3 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    scrollRef: null
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      unregisterListener2 = editor.registerUpdateListener(({ tags, editorState }) => {
+        const scrollElement = props.scrollRef;
+        if (!scrollElement || !tags.has("scroll-into-view"))
+          return;
+        const selection = editorState.read(() => (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)());
+        if (!(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection) || !selection.isCollapsed())
+          return;
+        const anchorElement = editor.getElementByKey(selection.anchor.key);
+        if (anchorElement === null)
+          return;
+        const scrollRect = scrollElement.getBoundingClientRect();
+        const rect = anchorElement.getBoundingClientRect();
+        if (rect.bottom > scrollRect.bottom)
+          anchorElement.scrollIntoView(false);
+        else if (rect.top < scrollRect.top)
+          anchorElement.scrollIntoView();
+      });
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return () => {
+    };
+  }
+});
+const _sfc_main$2 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    function getHashtagRegexStringChars() {
+      const latinAccents = "\xC0-\xD6\xD8-\xF6\xF8-\xFF\u0100-\u024F\u0253-\u0254\u0256-\u0257\u0259\u025B\u0263\u0268\u026F\u0272\u0289\u028B\u02BB\u0300-\u036F\u1E00-\u1EFF";
+      const nonLatinChars = "\u0400-\u04FF\u0500-\u0527\u2DE0-\u2DFF\uA640-\uA69F\u0591-\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F4\uFB12-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40-\uFB41\uFB43-\uFB44\uFB46-\uFB4F\u0610-\u061A\u0620-\u065F\u066E-\u06D3\u06D5-\u06DC\u06DE-\u06E8\u06EA-\u06EF\u06FA-\u06FC\u06FF\u0750-\u077F\u08A0\u08A2-\u08AC\u08E4-\u08FE\uFB50-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\u200C-\u200C\u0E01-\u0E3A\u0E40-\u0E4E\u1100-\u11FF\u3130-\u3185\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF\uFFA1-\uFFDC";
+      const charCode = String.fromCharCode;
+      const cjkChars = `\u30A1-\u30FA\u30FC-\u30FE\uFF66-\uFF9F\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A\u3041-\u3096\u3099-\u309E\u3400-\u4DBF\u4E00-\u9FFF${charCode(173824)}-${charCode(177983)}${charCode(177984)}-${charCode(178207)}${charCode(194560)}-${charCode(195103)}\u3003\u3005\u303B`;
+      const otherChars = latinAccents + nonLatinChars + cjkChars;
+      const unicodeLetters = "A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u0241\u0250-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EE\u037A\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03CE\u03D0-\u03F5\u03F7-\u0481\u048A-\u04CE\u04D0-\u04F9\u0500-\u050F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0621-\u063A\u0640-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06E5-\u06E6\u06EE-\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u076D\u0780-\u07A5\u07B1\u0904-\u0939\u093D\u0950\u0958-\u0961\u097D\u0985-\u098C\u098F-\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC-\u09DD\u09DF-\u09E1\u09F0-\u09F1\u0A05-\u0A0A\u0A0F-\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32-\u0A33\u0A35-\u0A36\u0A38-\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2-\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0-\u0AE1\u0B05-\u0B0C\u0B0F-\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32-\u0B33\u0B35-\u0B39\u0B3D\u0B5C-\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99-\u0B9A\u0B9C\u0B9E-\u0B9F\u0BA3-\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C33\u0C35-\u0C39\u0C60-\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0-\u0CE1\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D28\u0D2A-\u0D39\u0D60-\u0D61\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32-\u0E33\u0E40-\u0E46\u0E81-\u0E82\u0E84\u0E87-\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA-\u0EAB\u0EAD-\u0EB0\u0EB2-\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDD\u0F00\u0F40-\u0F47\u0F49-\u0F6A\u0F88-\u0F8B\u1000-\u1021\u1023-\u1027\u1029-\u102A\u1050-\u1055\u10A0-\u10C5\u10D0-\u10FA\u10FC\u1100-\u1159\u115F-\u11A2\u11A8-\u11F9\u1200-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F4\u1401-\u166C\u166F-\u1676\u1681-\u169A\u16A0-\u16EA\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u1900-\u191C\u1950-\u196D\u1970-\u1974\u1980-\u19A9\u19C1-\u19C7\u1A00-\u1A16\u1D00-\u1DBF\u1E00-\u1E9B\u1EA0-\u1EF9\u1F00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u2094\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2131\u2133-\u2139\u213C-\u213F\u2145-\u2149\u2C00-\u2C2E\u2C30-\u2C5E\u2C80-\u2CE4\u2D00-\u2D25\u2D30-\u2D65\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3005-\u3006\u3031-\u3035\u303B-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312C\u3131-\u318E\u31A0-\u31B7\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FBB\uA000-\uA48C\uA800-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uAC00-\uD7A3\uF900-\uFA2D\uFA30-\uFA6A\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40-\uFB41\uFB43-\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC";
+      const unicodeAccents = "\u0300-\u036F\u0483-\u0486\u0591-\u05B9\u05BB-\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7\u0610-\u0615\u064B-\u065E\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7-\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u0901-\u0903\u093C\u093E-\u094D\u0951-\u0954\u0962-\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7-\u09C8\u09CB-\u09CD\u09D7\u09E2-\u09E3\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47-\u0A48\u0A4B-\u0A4D\u0A70-\u0A71\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2-\u0AE3\u0B01-\u0B03\u0B3C\u0B3E-\u0B43\u0B47-\u0B48\u0B4B-\u0B4D\u0B56-\u0B57\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C01-\u0C03\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55-\u0C56\u0C82-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5-\u0CD6\u0D02-\u0D03\u0D3E-\u0D43\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D82-\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2-\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB-\u0EBC\u0EC8-\u0ECD\u0F18-\u0F19\u0F35\u0F37\u0F39\u0F3E-\u0F3F\u0F71-\u0F84\u0F86-\u0F87\u0F90-\u0F97\u0F99-\u0FBC\u0FC6\u102C-\u1032\u1036-\u1039\u1056-\u1059\u135F\u1712-\u1714\u1732-\u1734\u1752-\u1753\u1772-\u1773\u17B6-\u17D3\u17DD\u180B-\u180D\u18A9\u1920-\u192B\u1930-\u193B\u19B0-\u19C0\u19C8-\u19C9\u1A17-\u1A1B\u1DC0-\u1DC3\u20D0-\u20DC\u20E1\u20E5-\u20EB\u302A-\u302F\u3099-\u309A\uA802\uA806\uA80B\uA823-\uA827\uFB1E\uFE00-\uFE0F\uFE20-\uFE23";
+      const unicodeDigits = "0-9\u0660-\u0669\u06F0-\u06F9\u0966-\u096F\u09E6-\u09EF\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0BE6-\u0BEF\u0C66-\u0C6F\u0CE6-\u0CEF\u0D66-\u0D6F\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F29\u1040-\u1049\u17E0-\u17E9\u1810-\u1819\u1946-\u194F\u19D0-\u19D9\uFF10-\uFF19";
+      const alpha = unicodeLetters + unicodeAccents + otherChars;
+      const numeric = `${unicodeDigits}_`;
+      const alphanumeric = alpha + numeric;
+      const hashChars = "#\\uFF03";
+      return {
+        alpha,
+        alphanumeric,
+        hashChars
+      };
+    }
+    function getHashtagRegexString() {
+      const { alpha, alphanumeric, hashChars } = getHashtagRegexStringChars();
+      const hashtagAlpha = `[${alpha}]`;
+      const hashtagAlphanumeric = `[${alphanumeric}]`;
+      const hashtagBoundary = `^|$|[^&/${alphanumeric}]`;
+      const hashCharList = `[${hashChars}]`;
+      const hashtag = `(${hashtagBoundary})(${hashCharList})(${hashtagAlphanumeric}*${hashtagAlpha}${hashtagAlphanumeric}*)`;
+      return hashtag;
+    }
+    const REGEX = new RegExp(getHashtagRegexString(), "i");
+    const editor = useEditor();
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      if (!editor.hasNodes([_lexical_hashtag__WEBPACK_IMPORTED_MODULE_12__.HashtagNode]))
+        throw new Error("HashtagPlugin: HashtagNode not registered on editor");
+    });
+    const createHashtagNode = (textNode) => {
+      return (0,_lexical_hashtag__WEBPACK_IMPORTED_MODULE_12__.$createHashtagNode)(textNode.getTextContent());
+    };
+    const getHashtagMatch = (text) => {
+      const matchArr = REGEX.exec(text);
+      if (matchArr === null)
+        return null;
+      const hashtagLength = matchArr[3].length + 1;
+      const startOffset = matchArr.index + matchArr[1].length;
+      const endOffset = startOffset + hashtagLength;
+      return { end: endOffset, start: startOffset };
+    };
+    useLexicalTextEntity(getHashtagMatch, _lexical_hashtag__WEBPACK_IMPORTED_MODULE_12__.HashtagNode, createHashtagNode);
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+class DecoratorBlockNode extends lexical__WEBPACK_IMPORTED_MODULE_6__.DecoratorNode {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "__format");
+  }
+  createDOM() {
+    return document.createElement("div");
+  }
+  updateDOM() {
+    return false;
+  }
+  setFormat(format) {
+    const self = this.getWritable();
+    self.__format = format;
+  }
+}
+function $createDecoratorBlockNode() {
+  return new DecoratorBlockNode();
+}
+function $isDecoratorBlockNode(node) {
+  return node instanceof DecoratorBlockNode;
+}
+function isNodeSelected(editor, key) {
+  return editor.getEditorState().read(() => {
+    const node = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNodeByKey)(key);
+    if (node === null)
+      return false;
+    return node.isSelected();
+  });
+}
+function useLexicalNodeSelection(key) {
+  const editor = useEditor();
+  const isSelected = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(isNodeSelected(editor, getRealValue(key)));
+  let unregisterListener2;
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.watchEffect)((onInvalidate) => {
+    unregisterListener2 = editor.registerUpdateListener(() => {
+      isSelected.value = isNodeSelected(editor, getRealValue(key));
+    });
+    onInvalidate(() => {
+      unregisterListener2();
+    });
+  });
+  (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+    unregisterListener2 == null ? void 0 : unregisterListener2();
+  });
+  const setSelected = (selected) => {
+    editor.update(() => {
+      let selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+      const realKeyVal = getRealValue(key);
+      if (!(0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isNodeSelection)(selection)) {
+        selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$createNodeSelection)();
+        (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$setSelection)(selection);
+      }
+      if (selected)
+        selection.add(realKeyVal);
+      else
+        selection.delete(realKeyVal);
+    });
+  };
+  const clearSelection = () => {
+    editor.update(() => {
+      const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+      if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isNodeSelection)(selection))
+        selection.clear();
+    });
+  };
+  return {
+    isSelected: (0,vue__WEBPACK_IMPORTED_MODULE_0__.readonly)(isSelected),
+    setSelected,
+    clearSelection
+  };
+}
+const _sfc_main$1 = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  props: {
+    format: null,
+    nodeKey: null
+  },
+  setup(__props) {
+    const props = __props;
+    const editor = useEditor();
+    const { isSelected, setSelected, clearSelection } = useLexicalNodeSelection(props.nodeKey);
+    const containerRef = (0,vue__WEBPACK_IMPORTED_MODULE_0__.ref)(null);
+    const onDelete = (event) => {
+      if (isSelected.value && (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isNodeSelection)((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)())) {
+        event.preventDefault();
+        editor.update(() => {
+          const node = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNodeByKey)(props.nodeKey);
+          if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isDecoratorNode)(node) && node.isTopLevel())
+            node == null ? void 0 : node.remove();
+          setSelected(false);
+        });
+      }
+      return false;
+    };
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      unregisterListener2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.FORMAT_ELEMENT_COMMAND, (payload) => {
+        if (isSelected.value) {
+          const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+          if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isNodeSelection)(selection)) {
+            const node = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNodeByKey)(props.nodeKey);
+            if ($isDecoratorBlockNode(node)) {
+              node == null ? void 0 : node.setFormat(payload);
+            }
+          } else if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection)) {
+            const nodes = selection.getNodes();
+            for (const node of nodes) {
+              if ($isDecoratorBlockNode(node)) {
+                node.setFormat(payload);
+              } else {
+                const element2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.$getNearestBlockElementAncestorOrThrow)(node);
+                element2.setFormat(payload);
+              }
+            }
+          }
+          return true;
+        }
+        return false;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.CLICK_COMMAND, (event) => {
+        event.preventDefault();
+        if (event.target === containerRef.value) {
+          if (!event.shiftKey)
+            clearSelection();
+          setSelected(!isSelected.value);
+          return true;
+        }
+        return false;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_DELETE_COMMAND, onDelete, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_BACKSPACE_COMMAND, onDelete, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW));
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    return (_ctx, _cache) => {
+      return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createElementBlock)("div", {
+        ref_key: "containerRef",
+        ref: containerRef,
+        style: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeStyle)(`text-align: ${__props.format}`),
+        class: (0,vue__WEBPACK_IMPORTED_MODULE_0__.normalizeClass)(`embed-block${(0,vue__WEBPACK_IMPORTED_MODULE_0__.unref)(isSelected) ? " focused" : ""}`)
+      }, [
+        (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderSlot)(_ctx.$slots, "default")
+      ], 6);
+    };
+  }
+});
+const _sfc_main = /* @__PURE__ */ (0,vue__WEBPACK_IMPORTED_MODULE_0__.defineComponent)({
+  setup(__props) {
+    const editor = useEditor();
+    let unregisterListener2;
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onMounted)(() => {
+      unregisterListener2 = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.mergeRegister)(editor.registerCommand(_lexical_list__WEBPACK_IMPORTED_MODULE_8__.INSERT_CHECK_LIST_COMMAND, () => {
+        (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.insertList)(editor, "check");
+        return true;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_ARROW_DOWN_COMMAND, (event) => {
+        return handleArrownUpOrDown(event, editor, false);
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_ARROW_UP_COMMAND, (event) => {
+        return handleArrownUpOrDown(event, editor, true);
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_ESCAPE_COMMAND, (event) => {
+        const activeItem = getActiveCheckListItem();
+        if (activeItem != null) {
+          const rootElement = editor.getRootElement();
+          if (rootElement != null)
+            rootElement.focus();
+          return true;
+        }
+        return false;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_SPACE_COMMAND, (event) => {
+        const activeItem = getActiveCheckListItem();
+        if (activeItem != null) {
+          editor.update(() => {
+            const listItemNode = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNearestNodeFromDOMNode)(activeItem);
+            if ((0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(listItemNode)) {
+              event.preventDefault();
+              listItemNode.toggleChecked();
+            }
+          });
+          return true;
+        }
+        return false;
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), editor.registerCommand(lexical__WEBPACK_IMPORTED_MODULE_6__.KEY_ARROW_LEFT_COMMAND, (event) => {
+        return editor.getEditorState().read(() => {
+          const selection = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getSelection)();
+          if ((0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isRangeSelection)(selection) && selection.isCollapsed()) {
+            const { anchor } = selection;
+            const isElement = anchor.type === "element";
+            if (isElement || anchor.offset === 0) {
+              const anchorNode = anchor.getNode();
+              const elementNode = (0,_lexical_utils__WEBPACK_IMPORTED_MODULE_4__.$findMatchingParent)(anchorNode, (node) => (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$isElementNode)(node) && !node.isInline());
+              if ((0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(elementNode) && (isElement || elementNode.getFirstDescendant() === anchorNode)) {
+                const domNode = editor.getElementByKey(elementNode.__key);
+                if (domNode != null && document.activeElement !== domNode) {
+                  domNode.focus();
+                  event.preventDefault();
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        });
+      }, lexical__WEBPACK_IMPORTED_MODULE_6__.COMMAND_PRIORITY_LOW), listenPointerDown());
+    });
+    (0,vue__WEBPACK_IMPORTED_MODULE_0__.onUnmounted)(() => {
+      unregisterListener2 == null ? void 0 : unregisterListener2();
+    });
+    let listenersCount = 0;
+    function listenPointerDown() {
+      if (listenersCount++ === 0) {
+        document.addEventListener("click", handleClick);
+        document.addEventListener("pointerdown", handlePointerDown);
+      }
+      return () => {
+        if (--listenersCount === 0) {
+          document.removeEventListener("click", handleClick);
+          document.removeEventListener("pointerdown", handlePointerDown);
+        }
+      };
+    }
+    function handleCheckItemEvent(event, callback) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement))
+        return;
+      const firstChild = target.firstChild;
+      if (firstChild != null && (firstChild.tagName === "UL" || firstChild.tagName === "OL"))
+        return;
+      const parentNode = target.parentNode;
+      if (!parentNode || parentNode.__lexicalListType !== "check")
+        return;
+      const pageX = event.pageX;
+      const rect = target.getBoundingClientRect();
+      if (target.dir === "rtl" ? pageX < rect.right && pageX > rect.right - 20 : pageX > rect.left && pageX < rect.left + 20)
+        callback();
+    }
+    function handleClick(event) {
+      handleCheckItemEvent(event, () => {
+        const editor2 = findEditor(event.target);
+        if (editor2 !== null) {
+          editor2.update(() => {
+            const node = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNearestNodeFromDOMNode)(event.target);
+            if ((0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(node)) {
+              event.target.focus();
+              node.toggleChecked();
+            }
+          });
+        }
+      });
+    }
+    function handlePointerDown(event) {
+      handleCheckItemEvent(event, () => {
+        event.preventDefault();
+      });
+    }
+    function findEditor(target) {
+      let node = target;
+      while (node) {
+        if (node.__lexicalEditor)
+          return node.__lexicalEditor;
+        node = node.parentNode;
+      }
+      return null;
+    }
+    function getActiveCheckListItem() {
+      const { activeElement } = document;
+      return activeElement !== null && activeElement.tagName === "LI" && activeElement.parentNode !== null && activeElement.parentNode.__lexicalListType === "check" ? activeElement : null;
+    }
+    function findCheckListItemSibling(node, backward) {
+      let sibling = backward ? node.getPreviousSibling() : node.getNextSibling();
+      let parent = node;
+      while (sibling == null && (0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(parent)) {
+        parent = parent.getParentOrThrow().getParent();
+        if (parent !== null) {
+          sibling = backward ? parent.getPreviousSibling() : parent.getNextSibling();
+        }
+      }
+      while ((0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(sibling)) {
+        const firstChild = backward ? sibling.getLastChild() : sibling.getFirstChild();
+        if (!(0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListNode)(firstChild))
+          return sibling;
+        sibling = backward ? firstChild.getLastChild() : firstChild.getFirstChild();
+      }
+      return null;
+    }
+    function handleArrownUpOrDown(event, editor2, backward) {
+      const activeItem = getActiveCheckListItem();
+      if (activeItem != null) {
+        editor2.update(() => {
+          const listItem = (0,lexical__WEBPACK_IMPORTED_MODULE_6__.$getNearestNodeFromDOMNode)(activeItem);
+          if (!(0,_lexical_list__WEBPACK_IMPORTED_MODULE_8__.$isListItemNode)(listItem))
+            return;
+          const nextListItem = findCheckListItemSibling(listItem, backward);
+          if (nextListItem != null) {
+            nextListItem.selectStart();
+            const dom = editor2.getElementByKey(nextListItem.__key);
+            if (dom != null) {
+              event.preventDefault();
+              setTimeout(() => {
+                dom.focus();
+              }, 0);
+            }
+          }
+        });
+      }
+      return false;
+    }
+    return (_ctx, _cache) => {
+      return null;
+    };
+  }
+});
+
+
+
+/***/ }),
+
+/***/ "./node_modules/lexical/Lexical.dev.js":
+/*!*********************************************!*\
+  !*** ./node_modules/lexical/Lexical.dev.js ***!
+  \*********************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const getSelection = () => window.getSelection();
+
+var getDOMSelection = getSelection;
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+// DOM
+const DOM_ELEMENT_TYPE = 1;
+const DOM_TEXT_TYPE = 3; // Reconciling
+
+const NO_DIRTY_NODES = 0;
+const HAS_DIRTY_NODES = 1;
+const FULL_RECONCILE = 2; // Text node modes
+
+const IS_NORMAL = 0;
+const IS_TOKEN = 1;
+const IS_SEGMENTED = 2;
+const IS_INERT = 3; // Text node formatting
+
+const IS_BOLD = 1;
+const IS_ITALIC = 1 << 1;
+const IS_STRIKETHROUGH = 1 << 2;
+const IS_UNDERLINE = 1 << 3;
+const IS_CODE = 1 << 4;
+const IS_SUBSCRIPT = 1 << 5;
+const IS_SUPERSCRIPT = 1 << 6; // Text node details
+
+const IS_DIRECTIONLESS = 1;
+const IS_UNMERGEABLE = 1 << 1; // Element node formatting
+
+const IS_ALIGN_LEFT = 1;
+const IS_ALIGN_CENTER = 2;
+const IS_ALIGN_RIGHT = 3;
+const IS_ALIGN_JUSTIFY = 4; // Reconciliation
+
+const ZERO_WIDTH_CHAR = '\u200b';
+const DOUBLE_LINE_BREAK = '\n\n';
+const RTL = '\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC';
+const LTR = 'A-Za-z\u00C0-\u00D6\u00D8-\u00F6' + '\u00F8-\u02B8\u0300-\u0590\u0800-\u1FFF\u200E\u2C00-\uFB1C' + '\uFE00-\uFE6F\uFEFD-\uFFFF';
+const RTL_REGEX = new RegExp('^[^' + LTR + ']*[' + RTL + ']');
+const LTR_REGEX = new RegExp('^[^' + RTL + ']*[' + LTR + ']');
+const TEXT_TYPE_TO_FORMAT = {
+  bold: IS_BOLD,
+  code: IS_CODE,
+  italic: IS_ITALIC,
+  strikethrough: IS_STRIKETHROUGH,
+  subscript: IS_SUBSCRIPT,
+  superscript: IS_SUPERSCRIPT,
+  underline: IS_UNDERLINE
+};
+const ELEMENT_TYPE_TO_FORMAT = {
+  center: IS_ALIGN_CENTER,
+  justify: IS_ALIGN_JUSTIFY,
+  left: IS_ALIGN_LEFT,
+  right: IS_ALIGN_RIGHT
+};
+const TEXT_MODE_TO_TYPE = {
+  inert: IS_INERT,
+  normal: IS_NORMAL,
+  segmented: IS_SEGMENTED,
+  token: IS_TOKEN
+};
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const CAN_USE_DOM = typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined';
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const documentMode = CAN_USE_DOM && 'documentMode' in document ? document.documentMode : null;
+const IS_APPLE = CAN_USE_DOM && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+const IS_FIREFOX = CAN_USE_DOM && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
+const CAN_USE_BEFORE_INPUT = CAN_USE_DOM && 'InputEvent' in window && !documentMode ? 'getTargetRanges' in new window.InputEvent('input') : false;
+const IS_SAFARI = CAN_USE_DOM && /Version\/[\d\.]+.*Safari/.test(navigator.userAgent);
+const IS_IOS = CAN_USE_DOM && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; // Keep these in case we need to use them in the future.
+// export const IS_WINDOWS: boolean = CAN_USE_DOM && /Win/.test(navigator.platform);
+// export const IS_CHROME: boolean = CAN_USE_DOM && /^(?=.*Chrome).*/i.test(navigator.userAgent);
+// export const canUseTextInputEvent: boolean = CAN_USE_DOM && 'TextEvent' in window && !documentMode;
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+let keyCounter = 0;
+function generateRandomKey() {
+  return '' + keyCounter++;
+}
+function getRegisteredNodeOrThrow(editor, nodeType) {
+  const registeredNode = editor._nodes.get(nodeType);
+
+  if (registeredNode === undefined) {
+    {
+      throw Error(`registeredNode: Type ${nodeType} not found`);
+    }
+  }
+
+  return registeredNode;
+}
+const scheduleMicroTask = typeof queueMicrotask === 'function' ? queueMicrotask : fn => {
+  // No window prefix intended (#1400)
+  Promise.resolve().then(fn);
+};
+
+function isSelectionCapturedInDecoratorInput(anchorDOM) {
+  const activeElement = document.activeElement;
+  const nodeName = activeElement !== null ? activeElement.nodeName : null;
+  return !$isDecoratorNode($getNearestNodeFromDOMNode(anchorDOM)) || nodeName !== 'INPUT' && nodeName !== 'TEXTAREA';
+}
+
+function isSelectionWithinEditor(editor, anchorDOM, focusDOM) {
+  const rootElement = editor.getRootElement();
+
+  try {
+    return rootElement !== null && rootElement.contains(anchorDOM) && rootElement.contains(focusDOM) && // Ignore if selection is within nested editor
+    anchorDOM !== null && isSelectionCapturedInDecoratorInput(anchorDOM) && getNearestEditorFromDOMNode(anchorDOM) === editor;
+  } catch (error) {
+    return false;
+  }
+}
+function getNearestEditorFromDOMNode(node) {
+  let currentNode = node;
+
+  while (currentNode != null) {
+    // $FlowFixMe: internal field
+    const editor = currentNode.__lexicalEditor;
+
+    if (editor != null && !editor.isReadOnly()) {
+      return editor;
+    }
+
+    currentNode = currentNode.parentNode;
+  }
+
+  return null;
+}
+function getTextDirection(text) {
+  if (RTL_REGEX.test(text)) {
+    return 'rtl';
+  }
+
+  if (LTR_REGEX.test(text)) {
+    return 'ltr';
+  }
+
+  return null;
+}
+function $isTokenOrInertOrSegmented(node) {
+  return $isTokenOrInert(node) || node.isSegmented();
+}
+function $isTokenOrInert(node) {
+  return node.isToken() || node.isInert();
+}
+function getDOMTextNode(element) {
+  let node = element;
+
+  while (node != null) {
+    if (node.nodeType === DOM_TEXT_TYPE) {
+      // $FlowFixMe: this is a Text
+      return node;
+    }
+
+    node = node.firstChild;
+  }
+
+  return null;
+}
+function toggleTextFormatType(format, type, alignWithFormat) {
+  const activeFormat = TEXT_TYPE_TO_FORMAT[type];
+  const isStateFlagPresent = format & activeFormat;
+
+  if (isStateFlagPresent && (alignWithFormat === null || (alignWithFormat & activeFormat) === 0)) {
+    // Remove the state flag.
+    return format ^ activeFormat;
+  }
+
+  if (alignWithFormat === null || alignWithFormat & activeFormat) {
+    // Add the state flag.
+    return format | activeFormat;
+  }
+
+  return format;
+}
+function $isLeafNode(node) {
+  return $isTextNode(node) || $isLineBreakNode(node) || $isDecoratorNode(node);
+}
+function $setNodeKey(node, existingKey) {
+  if (existingKey != null) {
+    node.__key = existingKey;
+    return;
+  }
+
+  errorOnReadOnly();
+  errorOnInfiniteTransforms();
+  const editor = getActiveEditor();
+  const editorState = getActiveEditorState();
+  const key = generateRandomKey();
+
+  editorState._nodeMap.set(key, node); // TODO Split this function into leaf/element
+
+
+  if ($isElementNode(node)) {
+    editor._dirtyElements.set(key, true);
+  } else {
+    editor._dirtyLeaves.add(key);
+  }
+
+  editor._cloneNotNeeded.add(key);
+
+  editor._dirtyType = HAS_DIRTY_NODES;
+  node.__key = key;
+}
+
+function internalMarkParentElementsAsDirty(parentKey, nodeMap, dirtyElements) {
+  let nextParentKey = parentKey;
+
+  while (nextParentKey !== null) {
+    if (dirtyElements.has(nextParentKey)) {
+      return;
+    }
+
+    const node = nodeMap.get(nextParentKey);
+
+    if (node === undefined) {
+      break;
+    }
+
+    dirtyElements.set(nextParentKey, false);
+    nextParentKey = node.__parent;
+  }
+}
+
+function removeFromParent(writableNode) {
+  const oldParent = writableNode.getParent();
+
+  if (oldParent !== null) {
+    const writableParent = oldParent.getWritable();
+    const children = writableParent.__children;
+    const index = children.indexOf(writableNode.__key);
+
+    if (index === -1) {
+      {
+        throw Error(`Node is not a child of its parent`);
+      }
+    }
+
+    internalMarkSiblingsAsDirty(writableNode);
+    children.splice(index, 1);
+  }
+} // Never use this function directly! It will break
+// the cloning heuristic. Instead use node.getWritable().
+
+function internalMarkNodeAsDirty(node) {
+  errorOnInfiniteTransforms();
+  const latest = node.getLatest();
+  const parent = latest.__parent;
+  const editorState = getActiveEditorState();
+  const editor = getActiveEditor();
+  const nodeMap = editorState._nodeMap;
+  const dirtyElements = editor._dirtyElements;
+
+  if (parent !== null) {
+    internalMarkParentElementsAsDirty(parent, nodeMap, dirtyElements);
+  }
+
+  const key = latest.__key;
+  editor._dirtyType = HAS_DIRTY_NODES;
+
+  if ($isElementNode(node)) {
+    dirtyElements.set(key, true);
+  } else {
+    // TODO split internally MarkNodeAsDirty into two dedicated Element/leave functions
+    editor._dirtyLeaves.add(key);
+  }
+}
+function internalMarkSiblingsAsDirty(node) {
+  const previousNode = node.getPreviousSibling();
+  const nextNode = node.getNextSibling();
+
+  if (previousNode !== null) {
+    internalMarkNodeAsDirty(previousNode);
+  }
+
+  if (nextNode !== null) {
+    internalMarkNodeAsDirty(nextNode);
+  }
+}
+function $setCompositionKey(compositionKey) {
+  errorOnReadOnly();
+  const editor = getActiveEditor();
+  const previousCompositionKey = editor._compositionKey;
+
+  if (compositionKey !== previousCompositionKey) {
+    editor._compositionKey = compositionKey;
+
+    if (previousCompositionKey !== null) {
+      const node = $getNodeByKey(previousCompositionKey);
+
+      if (node !== null) {
+        node.getWritable();
+      }
+    }
+
+    if (compositionKey !== null) {
+      const node = $getNodeByKey(compositionKey);
+
+      if (node !== null) {
+        node.getWritable();
+      }
+    }
+  }
+}
+function $getCompositionKey() {
+  const editor = getActiveEditor();
+  return editor._compositionKey;
+}
+function $getNodeByKey(key, _editorState) {
+  const editorState = _editorState || getActiveEditorState();
+
+  const node = editorState._nodeMap.get(key);
+
+  if (node === undefined) {
+    return null;
+  }
+
+  return node;
+}
+function getNodeFromDOMNode(dom, editorState) {
+  const editor = getActiveEditor(); // $FlowFixMe: internal field
+
+  const key = dom['__lexicalKey_' + editor._key];
+
+  if (key !== undefined) {
+    return $getNodeByKey(key, editorState);
+  }
+
+  return null;
+}
+function $getNearestNodeFromDOMNode(startingDOM, editorState) {
+  let dom = startingDOM;
+
+  while (dom != null) {
+    const node = getNodeFromDOMNode(dom, editorState);
+
+    if (node !== null) {
+      return node;
+    }
+
+    dom = dom.parentNode;
+  }
+
+  return null;
+}
+function cloneDecorators(editor) {
+  const currentDecorators = editor._decorators;
+  const pendingDecorators = Object.assign({}, currentDecorators);
+  editor._pendingDecorators = pendingDecorators;
+  return pendingDecorators;
+}
+function getEditorStateTextContent(editorState) {
+  return editorState.read(view => $getRoot().getTextContent());
+}
+function markAllNodesAsDirty(editor, type) {
+  // Mark all existing text nodes as dirty
+  updateEditor(editor, () => {
+    const editorState = getActiveEditorState();
+
+    if (editorState.isEmpty()) {
+      return;
+    }
+
+    if (type === 'root') {
+      $getRoot().markDirty();
+      return;
+    }
+
+    const nodeMap = editorState._nodeMap;
+
+    for (const [, node] of nodeMap) {
+      node.markDirty();
+    }
+  }, editor._pendingEditorState === null ? {
+    tag: 'history-merge'
+  } : undefined);
+}
+function $getRoot() {
+  return internalGetRoot(getActiveEditorState());
+}
+function internalGetRoot(editorState) {
+  return editorState._nodeMap.get('root' // $FlowFixMe: root is always in our Map
+  );
+}
+function $setSelection(selection) {
+  const editorState = getActiveEditorState();
+
+  if (selection !== null) {
+    if (Object.isFrozen(selection)) {
+      {
+        throw Error(`$setSelection called on frozen selection object. Ensure selection is cloned before passing in.`);
+      }
+    }
+
+    selection.dirty = true;
+    selection._cachedNodes = null;
+  }
+
+  editorState._selection = selection;
+}
+function $flushMutations$1() {
+  errorOnReadOnly();
+  const editor = getActiveEditor();
+  flushRootMutations(editor);
+}
+function getNodeFromDOM(dom) {
+  const editor = getActiveEditor();
+  const nodeKey = getNodeKeyFromDOM(dom, editor);
+
+  if (nodeKey === null) {
+    const rootElement = editor.getRootElement();
+
+    if (dom === rootElement) {
+      return $getNodeByKey('root');
+    }
+
+    return null;
+  }
+
+  return $getNodeByKey(nodeKey);
+}
+function getTextNodeOffset(node, moveSelectionToEnd) {
+  return moveSelectionToEnd ? node.getTextContentSize() : 0;
+}
+
+function getNodeKeyFromDOM( // Note that node here refers to a DOM Node, not an Lexical Node
+dom, editor) {
+  let node = dom;
+
+  while (node != null) {
+    const key = // $FlowFixMe: internal field
+    node['__lexicalKey_' + editor._key];
+
+    if (key !== undefined) {
+      return key;
+    }
+
+    node = node.parentNode;
+  }
+
+  return null;
+}
+
+function doesContainGrapheme(str) {
+  return /[\uD800-\uDBFF][\uDC00-\uDFFF]/g.test(str);
+}
+function getEditorsToPropagate(editor) {
+  const editorsToPropagate = [];
+  let currentEditor = editor;
+
+  while (currentEditor !== null) {
+    editorsToPropagate.push(currentEditor);
+    currentEditor = currentEditor._parentEditor;
+  }
+
+  return editorsToPropagate;
+}
+function createUID() {
+  return Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
+}
+function $updateSelectedTextFromDOM(editor, isCompositionEnd, data) {
+  // Update the text content with the latest composition text
+  const domSelection = getDOMSelection();
+
+  if (domSelection === null) {
+    return;
+  }
+
+  const anchorNode = domSelection.anchorNode;
+  let {
+    anchorOffset,
+    focusOffset
+  } = domSelection;
+
+  if (anchorNode !== null && anchorNode.nodeType === DOM_TEXT_TYPE) {
+    const node = $getNearestNodeFromDOMNode(anchorNode);
+
+    if ($isTextNode(node)) {
+      let textContent = anchorNode.nodeValue; // Data is intentionally truthy, as we check for boolean, null and empty string.
+
+      if (textContent === ZERO_WIDTH_CHAR && data) {
+        const offset = data.length;
+        textContent = data;
+        anchorOffset = offset;
+        focusOffset = offset;
+      }
+
+      $updateTextNodeFromDOMContent(node, textContent, anchorOffset, focusOffset, isCompositionEnd);
+    }
+  }
+}
+function $updateTextNodeFromDOMContent(textNode, textContent, anchorOffset, focusOffset, compositionEnd) {
+  let node = textNode;
+
+  if (node.isAttached() && (compositionEnd || !node.isDirty())) {
+    const isComposing = node.isComposing();
+    let normalizedTextContent = textContent;
+
+    if ((isComposing || compositionEnd) && textContent[textContent.length - 1] === ZERO_WIDTH_CHAR) {
+      normalizedTextContent = textContent.slice(0, -1);
+    }
+
+    const prevTextContent = node.getTextContent();
+
+    if (compositionEnd || normalizedTextContent !== prevTextContent) {
+      if (normalizedTextContent === '') {
+        $setCompositionKey(null);
+
+        if (!IS_SAFARI && !IS_IOS) {
+          // For composition (mainly Android), we have to remove the node on a later update
+          const editor = getActiveEditor();
+          setTimeout(() => {
+            editor.update(() => {
+              if (node.isAttached()) {
+                node.remove();
+              }
+            });
+          }, 20);
+        } else {
+          node.remove();
+        }
+
+        return;
+      }
+
+      const parent = node.getParent();
+      const prevSelection = $getPreviousSelection();
+
+      if ($isTokenOrInert(node) || $getCompositionKey() !== null && !isComposing || // Check if character was added at the start, and we need
+      // to clear this input from occuring as that action wasn't
+      // permitted.
+      parent !== null && $isRangeSelection(prevSelection) && !parent.canInsertTextBefore() && prevSelection.anchor.offset === 0) {
+        node.markDirty();
+        return;
+      }
+
+      const selection = $getSelection();
+
+      if (!$isRangeSelection(selection) || anchorOffset === null || focusOffset === null) {
+        node.setTextContent(normalizedTextContent);
+        return;
+      }
+
+      selection.setTextNodeRange(node, anchorOffset, node, focusOffset);
+
+      if (node.isSegmented()) {
+        const originalTextContent = node.getTextContent();
+        const replacement = $createTextNode(originalTextContent);
+        node.replace(replacement);
+        node = replacement;
+      }
+
+      node.setTextContent(normalizedTextContent);
+    }
+  }
+}
+
+function $shouldInsertTextAfterOrBeforeTextNode(selection, node) {
+  if (node.isSegmented()) {
+    return true;
+  }
+
+  if (!selection.isCollapsed()) {
+    return false;
+  }
+
+  const offset = selection.anchor.offset;
+  const parent = node.getParentOrThrow();
+  const isToken = node.isToken();
+  const shouldInsertTextBefore = offset === 0 && (!node.canInsertTextBefore() || !parent.canInsertTextBefore() || isToken);
+  const shouldInsertTextAfter = node.getTextContentSize() === offset && (!node.canInsertTextBefore() || !parent.canInsertTextBefore() || isToken);
+  return shouldInsertTextBefore || shouldInsertTextAfter;
+}
+
+function $shouldPreventDefaultAndInsertText(selection, text, isBeforeInput) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const anchorNode = anchor.getNode();
+  const domSelection = getDOMSelection();
+  const domAnchorNode = domSelection !== null ? domSelection.anchorNode : null;
+  const anchorKey = anchor.key;
+  const backingAnchorElement = getActiveEditor().getElementByKey(anchorKey);
+  return anchorKey !== focus.key || // If we're working with a non-text node.
+  !$isTextNode(anchorNode) || // If we're working with a range that is not during composition.
+  anchor.offset !== focus.offset && !anchorNode.isComposing() || // If the text length is more than a single character and we're either
+  // dealing with this in "beforeinput" or where the node has already recently
+  // been changed (thus is dirty).
+  (isBeforeInput || anchorNode.isDirty()) && text.length > 1 || // If the DOM selection element is not the same as the backing node
+  backingAnchorElement !== null && !anchorNode.isComposing() && domAnchorNode !== getDOMTextNode(backingAnchorElement) || // Check if we're changing from bold to italics, or some other format.
+  anchorNode.getFormat() !== selection.format || // One last set of heuristics to check against.
+  $shouldInsertTextAfterOrBeforeTextNode(selection, anchorNode);
+}
+function isTab(keyCode, altKey, ctrlKey, metaKey) {
+  return keyCode === 9 && !altKey && !ctrlKey && !metaKey;
+}
+function isBold(keyCode, altKey, metaKey, ctrlKey) {
+  return keyCode === 66 && !altKey && controlOrMeta(metaKey, ctrlKey);
+}
+function isItalic(keyCode, altKey, metaKey, ctrlKey) {
+  return keyCode === 73 && !altKey && controlOrMeta(metaKey, ctrlKey);
+}
+function isUnderline(keyCode, altKey, metaKey, ctrlKey) {
+  return keyCode === 85 && !altKey && controlOrMeta(metaKey, ctrlKey);
+}
+function isParagraph(keyCode, shiftKey) {
+  return isReturn(keyCode) && !shiftKey;
+}
+function isLineBreak(keyCode, shiftKey) {
+  return isReturn(keyCode) && shiftKey;
+} // Inserts a new line after the selection
+
+function isOpenLineBreak(keyCode, ctrlKey) {
+  // 79 = KeyO
+  return IS_APPLE && ctrlKey && keyCode === 79;
+}
+function isDeleteWordBackward(keyCode, altKey, ctrlKey) {
+  return isBackspace(keyCode) && (IS_APPLE ? altKey : ctrlKey);
+}
+function isDeleteWordForward(keyCode, altKey, ctrlKey) {
+  return isDelete(keyCode) && (IS_APPLE ? altKey : ctrlKey);
+}
+function isDeleteLineBackward(keyCode, metaKey) {
+  return IS_APPLE && metaKey && isBackspace(keyCode);
+}
+function isDeleteLineForward(keyCode, metaKey) {
+  return IS_APPLE && metaKey && isDelete(keyCode);
+}
+function isDeleteBackward(keyCode, altKey, metaKey, ctrlKey) {
+  if (IS_APPLE) {
+    if (altKey || metaKey) {
+      return false;
+    }
+
+    return isBackspace(keyCode) || keyCode === 72 && ctrlKey;
+  }
+
+  if (ctrlKey || altKey || metaKey) {
+    return false;
+  }
+
+  return isBackspace(keyCode);
+}
+function isDeleteForward(keyCode, ctrlKey, shiftKey, altKey, metaKey) {
+  if (IS_APPLE) {
+    if (shiftKey || altKey || metaKey) {
+      return false;
+    }
+
+    return isDelete(keyCode) || keyCode === 68 && ctrlKey;
+  }
+
+  if (ctrlKey || altKey || metaKey) {
+    return false;
+  }
+
+  return isDelete(keyCode);
+}
+function isUndo(keyCode, shiftKey, metaKey, ctrlKey) {
+  return keyCode === 90 && !shiftKey && controlOrMeta(metaKey, ctrlKey);
+}
+function isRedo(keyCode, shiftKey, metaKey, ctrlKey) {
+  if (IS_APPLE) {
+    return keyCode === 90 && metaKey && shiftKey;
+  }
+
+  return keyCode === 89 && ctrlKey || keyCode === 90 && ctrlKey && shiftKey;
+}
+
+function isArrowLeft(keyCode) {
+  return keyCode === 37;
+}
+
+function isArrowRight(keyCode) {
+  return keyCode === 39;
+}
+
+function isArrowUp(keyCode) {
+  return keyCode === 38;
+}
+
+function isArrowDown(keyCode) {
+  return keyCode === 40;
+}
+
+function isMoveBackward(keyCode, ctrlKey, shiftKey, altKey, metaKey) {
+  return isArrowLeft(keyCode) && !ctrlKey && !metaKey && !altKey;
+}
+function isMoveForward(keyCode, ctrlKey, shiftKey, altKey, metaKey) {
+  return isArrowRight(keyCode) && !ctrlKey && !metaKey && !altKey;
+}
+function isMoveUp(keyCode, ctrlKey, shiftKey, altKey, metaKey) {
+  return isArrowUp(keyCode) && !ctrlKey && !metaKey;
+}
+function isMoveDown(keyCode, ctrlKey, shiftKey, altKey, metaKey) {
+  return isArrowDown(keyCode) && !ctrlKey && !metaKey;
+}
+function isModifier(ctrlKey, shiftKey, altKey, metaKey) {
+  return ctrlKey || shiftKey || altKey || metaKey;
+}
+function isSpace(keyCode) {
+  return keyCode === 32;
+}
+function controlOrMeta(metaKey, ctrlKey) {
+  if (IS_APPLE) {
+    return metaKey;
+  }
+
+  return ctrlKey;
+}
+function isReturn(keyCode) {
+  return keyCode === 13;
+}
+function isBackspace(keyCode) {
+  return keyCode === 8;
+}
+function isEscape(keyCode) {
+  return keyCode === 27;
+}
+function isDelete(keyCode) {
+  return keyCode === 46;
+}
+function getCachedClassNameArray(classNamesTheme, classNameThemeType) {
+  const classNames = classNamesTheme[classNameThemeType]; // As we're using classList, we need
+  // to handle className tokens that have spaces.
+  // The easiest way to do this to convert the
+  // className tokens to an array that can be
+  // applied to classList.add()/remove().
+
+  if (typeof classNames === 'string') {
+    const classNamesArr = classNames.split(' ');
+    classNamesTheme[classNameThemeType] = classNamesArr;
+    return classNamesArr;
+  }
+
+  return classNames;
+}
+function setMutatedNode(mutatedNodes, registeredNodes, mutationListeners, node, mutation) {
+  if (mutationListeners.size === 0) {
+    return;
+  }
+
+  const nodeType = node.__type;
+  const nodeKey = node.__key;
+  const registeredNode = registeredNodes.get(nodeType);
+
+  if (registeredNode === undefined) {
+    {
+      throw Error(`Type ${nodeType} not in registeredNodes`);
+    }
+  }
+
+  const klass = registeredNode.klass;
+  let mutatedNodesByType = mutatedNodes.get(klass);
+
+  if (mutatedNodesByType === undefined) {
+    mutatedNodesByType = new Map();
+    mutatedNodes.set(klass, mutatedNodesByType);
+  }
+
+  if (!mutatedNodesByType.has(nodeKey)) {
+    mutatedNodesByType.set(nodeKey, mutation);
+  }
+}
+function $nodesOfType(klass) {
+  const editorState = getActiveEditorState();
+  const readOnly = editorState._readOnly;
+  const klassType = klass.getType();
+  const nodes = editorState._nodeMap;
+  const nodesOfType = [];
+
+  for (const [, node] of nodes) {
+    if (node instanceof klass && node.__type === klassType && (readOnly || node.isAttached())) {
+      nodesOfType.push(node);
+    }
+  }
+
+  return nodesOfType;
+}
+
+function resolveElement(element, isBackward, focusOffset) {
+  const parent = element.getParent();
+  let offset = focusOffset;
+  let block = element;
+
+  if (parent !== null) {
+    if (isBackward && focusOffset === 0) {
+      offset = block.getIndexWithinParent();
+      block = parent;
+    } else if (!isBackward && focusOffset === block.getChildrenSize()) {
+      offset = block.getIndexWithinParent() + 1;
+      block = parent;
+    }
+  }
+
+  return block.getChildAtIndex(isBackward ? offset - 1 : offset);
+}
+
+function $getDecoratorNode(focus, isBackward) {
+  const focusOffset = focus.offset;
+
+  if (focus.type === 'element') {
+    const block = focus.getNode();
+    return resolveElement(block, isBackward, focusOffset);
+  } else {
+    const focusNode = focus.getNode();
+
+    if (isBackward && focusOffset === 0 || !isBackward && focusOffset === focusNode.getTextContentSize()) {
+      const possibleNode = isBackward ? focusNode.getPreviousSibling() : focusNode.getNextSibling();
+
+      if (possibleNode === null) {
+        return resolveElement(focusNode.getParentOrThrow(), isBackward, focusNode.getIndexWithinParent() + (isBackward ? 0 : 1));
+      }
+
+      return possibleNode;
+    }
+  }
+
+  return null;
+}
+function isFirefoxClipboardEvents() {
+  const event = window.event;
+  const inputType = event && event.inputType;
+  return inputType === 'insertFromPaste' || inputType === 'insertFromPasteAsQuotation';
+}
+function dispatchCommand(editor, type, payload) {
+  return triggerCommandListeners(editor, type, payload);
+}
+function $textContentRequiresDoubleLinebreakAtEnd(node) {
+  return !$isRootNode(node) && !node.isLastChild() && !node.isInline();
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function $garbageCollectDetachedDecorators(editor, pendingEditorState) {
+  const currentDecorators = editor._decorators;
+  const pendingDecorators = editor._pendingDecorators;
+  let decorators = pendingDecorators || currentDecorators;
+  const nodeMap = pendingEditorState._nodeMap;
+  let key;
+
+  for (key in decorators) {
+    if (!nodeMap.has(key)) {
+      if (decorators === currentDecorators) {
+        decorators = cloneDecorators(editor);
+      }
+
+      delete decorators[key];
+    }
+  }
+}
+
+function $garbageCollectDetachedDeepChildNodes(node, parentKey, prevNodeMap, nodeMap, dirtyNodes) {
+  const children = node.__children;
+  const childrenLength = children.length;
+
+  for (let i = 0; i < childrenLength; i++) {
+    const childKey = children[i];
+    const child = nodeMap.get(childKey);
+
+    if (child !== undefined && child.__parent === parentKey) {
+      if ($isElementNode(child)) {
+        $garbageCollectDetachedDeepChildNodes(child, childKey, prevNodeMap, nodeMap, dirtyNodes);
+      } // If we have created a node and it was dereferenced, then also
+      // remove it from out dirty nodes Set.
+
+
+      if (!prevNodeMap.has(childKey)) {
+        dirtyNodes.delete(childKey);
+      }
+
+      nodeMap.delete(childKey);
+    }
+  }
+}
+
+function $garbageCollectDetachedNodes(prevEditorState, editorState, dirtyLeaves, dirtyElements) {
+  const prevNodeMap = prevEditorState._nodeMap;
+  const nodeMap = editorState._nodeMap;
+
+  for (const nodeKey of dirtyLeaves) {
+    const node = nodeMap.get(nodeKey);
+
+    if (node !== undefined && !node.isAttached()) {
+      if (!prevNodeMap.has(nodeKey)) {
+        dirtyLeaves.delete(nodeKey);
+      }
+
+      nodeMap.delete(nodeKey);
+    }
+  }
+
+  for (const [nodeKey] of dirtyElements) {
+    const node = nodeMap.get(nodeKey);
+
+    if (node !== undefined) {
+      // Garbage collect node and its children if they exist
+      if (!node.isAttached()) {
+        if ($isElementNode(node)) {
+          $garbageCollectDetachedDeepChildNodes(node, nodeKey, prevNodeMap, nodeMap, dirtyElements);
+        } // If we have created a node and it was dereferenced, then also
+        // remove it from out dirty nodes Set.
+
+
+        if (!prevNodeMap.has(nodeKey)) {
+          dirtyElements.delete(nodeKey);
+        }
+
+        nodeMap.delete(nodeKey);
+      }
+    }
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+function $canSimpleTextNodesBeMerged(node1, node2) {
+  const node1Mode = node1.__mode;
+  const node1Format = node1.__format;
+  const node1Style = node1.__style;
+  const node2Mode = node2.__mode;
+  const node2Format = node2.__format;
+  const node2Style = node2.__style;
+  return (node1Mode === null || node1Mode === node2Mode) && (node1Format === null || node1Format === node2Format) && (node1Style === null || node1Style === node2Style);
+}
+
+function $mergeTextNodes(node1, node2) {
+  const writableNode1 = node1.mergeWithSibling(node2);
+
+  const normalizedNodes = getActiveEditor()._normalizedNodes;
+
+  normalizedNodes.add(node1.__key);
+  normalizedNodes.add(node2.__key);
+  return writableNode1;
+}
+
+function $normalizeTextNode(textNode) {
+  let node = textNode;
+
+  if (node.__text === '' && node.isSimpleText() && !node.isUnmergeable()) {
+    node.remove();
+    return;
+  } // Backward
+
+
+  let previousNode;
+
+  while ((previousNode = node.getPreviousSibling()) !== null && $isTextNode(previousNode) && previousNode.isSimpleText() && !previousNode.isUnmergeable()) {
+    if (previousNode.__text === '') {
+      previousNode.remove();
+    } else if ($canSimpleTextNodesBeMerged(previousNode, node)) {
+      node = $mergeTextNodes(previousNode, node);
+      break;
+    } else {
+      break;
+    }
+  } // Forward
+
+
+  let nextNode;
+
+  while ((nextNode = node.getNextSibling()) !== null && $isTextNode(nextNode) && nextNode.isSimpleText() && !nextNode.isUnmergeable()) {
+    if (nextNode.__text === '') {
+      nextNode.remove();
+    } else if ($canSimpleTextNodesBeMerged(node, nextNode)) {
+      node = $mergeTextNodes(node, nextNode);
+      break;
+    } else {
+      break;
+    }
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function $createNodeFromParse(parsedNode, parsedNodeMap) {
+  errorOnReadOnly();
+  const editor = getActiveEditor();
+  return internalCreateNodeFromParse(parsedNode, parsedNodeMap, editor, null);
+}
+function internalCreateNodeFromParse(parsedNode, parsedNodeMap, editor, parentKey, state = {
+  originalSelection: null
+}) {
+  const nodeType = parsedNode.__type;
+
+  const registeredNode = editor._nodes.get(nodeType);
+
+  if (registeredNode === undefined) {
+    {
+      throw Error(`createNodeFromParse: type "${nodeType}" + not found`);
+    }
+  } // Check for properties that are editors
+
+
+  for (const property in parsedNode) {
+    const value = parsedNode[property];
+
+    if (value != null && typeof value === 'object') {
+      const parsedEditorState = value.editorState;
+
+      if (parsedEditorState != null) {
+        const nestedEditor = createEditor();
+        nestedEditor._nodes = editor._nodes;
+        nestedEditor._parentEditor = editor._parentEditor;
+        nestedEditor._pendingEditorState = parseEditorState(parsedEditorState, nestedEditor);
+        parsedNode[property] = nestedEditor;
+      }
+    }
+  }
+
+  const NodeKlass = registeredNode.klass;
+  const parsedKey = parsedNode.__key; // We set the parsedKey to undefined before calling clone() so that
+  // we get a new random key assigned.
+
+  parsedNode.__key = undefined;
+  const node = NodeKlass.clone(parsedNode);
+  parsedNode.__key = parsedKey;
+  const key = node.__key;
+
+  if ($isRootNode(node)) {
+    const editorState = getActiveEditorState();
+
+    editorState._nodeMap.set('root', node);
+  }
+
+  node.__parent = parentKey; // We will need to recursively handle the children in the case
+  // of a ElementNode.
+
+  if ($isElementNode(node)) {
+    const children = parsedNode.__children;
+
+    for (let i = 0; i < children.length; i++) {
+      const childKey = children[i];
+      const parsedChild = parsedNodeMap.get(childKey);
+
+      if (parsedChild !== undefined) {
+        const child = internalCreateNodeFromParse(parsedChild, parsedNodeMap, editor, key, state);
+        const newChildKey = child.__key;
+
+        node.__children.push(newChildKey);
+      }
+    }
+
+    node.__indent = parsedNode.__indent;
+    node.__format = parsedNode.__format;
+    node.__dir = parsedNode.__dir;
+  } else if ($isTextNode(node)) {
+    node.__format = parsedNode.__format;
+    node.__style = parsedNode.__style;
+    node.__mode = parsedNode.__mode;
+    node.__detail = parsedNode.__detail;
+  } // The selection might refer to an old node whose key has changed. Produce a
+  // new selection record with the old keys mapped to the new ones.
+
+
+  const originalSelection = state != null ? state.originalSelection : undefined;
+
+  if (originalSelection != null) {
+    let remappedSelection = state.remappedSelection;
+
+    if (originalSelection.type === 'range') {
+      const anchor = originalSelection.anchor;
+      const focus = originalSelection.focus;
+
+      if (remappedSelection == null && (parsedKey === anchor.key || parsedKey === focus.key)) {
+        state.remappedSelection = remappedSelection = {
+          anchor: { ...anchor
+          },
+          focus: { ...focus
+          },
+          type: 'range'
+        };
+      }
+
+      if (remappedSelection != null && remappedSelection.type === 'range') {
+        if (parsedKey === anchor.key) {
+          remappedSelection.anchor.key = key;
+        }
+
+        if (parsedKey === focus.key) {
+          remappedSelection.focus.key = key;
+        }
+      }
+    } else if (originalSelection.type === 'node') {
+      const nodes = originalSelection.nodes;
+      const indexOf = nodes.indexOf(parsedKey);
+
+      if (indexOf !== -1) {
+        if (remappedSelection == null) {
+          state.remappedSelection = remappedSelection = {
+            nodes: [...nodes],
+            type: 'node'
+          };
+        }
+
+        if (remappedSelection.type === 'node') {
+          remappedSelection.nodes.splice(indexOf, 1, key);
+        }
+      }
+    } else if (originalSelection.type === 'grid') {
+      const gridKey = originalSelection.gridKey;
+      const anchorCellKey = originalSelection.anchor.key;
+      const focusCellKey = originalSelection.focus.key;
+
+      if (remappedSelection == null && (gridKey === parsedKey || gridKey === anchorCellKey || gridKey === focusCellKey)) {
+        state.remappedSelection = remappedSelection = { ...originalSelection,
+          type: 'grid'
+        };
+      }
+
+      if (remappedSelection != null && remappedSelection.type === 'grid') {
+        if (gridKey === parsedKey) {
+          remappedSelection.gridKey = key;
+        }
+
+        if (anchorCellKey === parsedKey) {
+          remappedSelection.anchor.key = key;
+        }
+
+        if (focusCellKey === parsedKey) {
+          remappedSelection.focus.key = key;
+        }
+      }
+    }
+  }
+
+  return node;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function createCommand() {
+  // $FlowFixMe: avoid freezing the object for perf reasons
+  return {};
+}
+const SELECTION_CHANGE_COMMAND = createCommand();
+const CLICK_COMMAND = createCommand();
+const DELETE_CHARACTER_COMMAND = createCommand();
+const INSERT_LINE_BREAK_COMMAND = createCommand();
+const INSERT_PARAGRAPH_COMMAND = createCommand();
+const INSERT_TEXT_COMMAND = createCommand();
+const PASTE_COMMAND = createCommand();
+const REMOVE_TEXT_COMMAND = createCommand();
+const DELETE_WORD_COMMAND = createCommand();
+const DELETE_LINE_COMMAND = createCommand();
+const FORMAT_TEXT_COMMAND = createCommand();
+const UNDO_COMMAND = createCommand();
+const REDO_COMMAND = createCommand();
+const KEY_ARROW_RIGHT_COMMAND = createCommand();
+const KEY_ARROW_LEFT_COMMAND = createCommand();
+const KEY_ARROW_UP_COMMAND = createCommand();
+const KEY_ARROW_DOWN_COMMAND = createCommand();
+const KEY_ENTER_COMMAND = createCommand();
+const KEY_SPACE_COMMAND = createCommand();
+const KEY_BACKSPACE_COMMAND = createCommand();
+const KEY_ESCAPE_COMMAND = createCommand();
+const KEY_DELETE_COMMAND = createCommand();
+const KEY_TAB_COMMAND = createCommand();
+const INDENT_CONTENT_COMMAND = createCommand();
+const OUTDENT_CONTENT_COMMAND = createCommand();
+const DROP_COMMAND = createCommand();
+const FORMAT_ELEMENT_COMMAND = createCommand();
+const DRAGSTART_COMMAND = createCommand();
+const DRAGEND_COMMAND = createCommand();
+const COPY_COMMAND = createCommand();
+const CUT_COMMAND = createCommand();
+const CLEAR_EDITOR_COMMAND = createCommand();
+const CLEAR_HISTORY_COMMAND = createCommand();
+const CAN_REDO_COMMAND = createCommand();
+const CAN_UNDO_COMMAND = createCommand();
+const FOCUS_COMMAND = createCommand();
+const BLUR_COMMAND = createCommand();
+const KEY_MODIFIER_COMMAND = createCommand();
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const PASS_THROUGH_COMMAND = Object.freeze({});
+const ANDROID_COMPOSITION_LATENCY = 30;
+const rootElementEvents = [// $FlowIgnore bad event inheritance
+['keydown', onKeyDown], // $FlowIgnore bad event inheritance
+['compositionstart', onCompositionStart], // $FlowIgnore bad event inheritance
+['compositionend', onCompositionEnd], // $FlowIgnore bad event inheritance
+['input', onInput], // $FlowIgnore bad event inheritance
+['click', onClick], ['cut', PASS_THROUGH_COMMAND], ['copy', PASS_THROUGH_COMMAND], ['dragstart', PASS_THROUGH_COMMAND], ['paste', PASS_THROUGH_COMMAND], ['focus', PASS_THROUGH_COMMAND], ['blur', PASS_THROUGH_COMMAND]];
+
+if (CAN_USE_BEFORE_INPUT) {
+  // $FlowIgnore bad event inheritance
+  rootElementEvents.push(['beforeinput', onBeforeInput]);
+} else {
+  rootElementEvents.push(['drop', PASS_THROUGH_COMMAND]);
+}
+
+let lastKeyDownTimeStamp = 0;
+let rootElementsRegistered = 0;
+let isSelectionChangeFromReconcile = false;
+let isInsertLineBreak = false;
+let isFirefoxEndingComposition = false;
+let collapsedSelectionFormat = [0, 0, 'root', 0];
+
+function shouldSkipSelectionChange(domNode, offset) {
+  return domNode !== null && domNode.nodeType === DOM_TEXT_TYPE && offset !== 0 && offset !== domNode.nodeValue.length;
+}
+
+function onSelectionChange(domSelection, editor, isActive) {
+  if (isSelectionChangeFromReconcile) {
+    isSelectionChangeFromReconcile = false;
+    const {
+      anchorNode,
+      anchorOffset,
+      focusNode,
+      focusOffset
+    } = domSelection; // If native DOM selection is on a DOM element, then
+    // we should continue as usual, as Lexical's selection
+    // may have normalized to a better child. If the DOM
+    // element is a text node, we can safely apply this
+    // optimization and skip the selection change entirely.
+    // We also need to check if the offset is at the boundary,
+    // because in this case, we might need to normalize to a
+    // sibling instead.
+
+    if (shouldSkipSelectionChange(anchorNode, anchorOffset) && shouldSkipSelectionChange(focusNode, focusOffset)) {
+      return;
+    }
+  }
+
+  updateEditor(editor, () => {
+    // Non-active editor don't need any extra logic for selection, it only needs update
+    // to reconcile selection (set it to null) to ensure that only one editor has non-null selection.
+    if (!isActive) {
+      $setSelection(null);
+      return;
+    }
+
+    const selection = $getSelection(); // Update the selection format
+
+    if ($isRangeSelection(selection)) {
+      const anchor = selection.anchor;
+      const anchorNode = anchor.getNode();
+
+      if (selection.isCollapsed()) {
+        // Badly interpreted range selection when collapsed - #1482
+        if (domSelection.type === 'Range') {
+          selection.dirty = true;
+        } // If we have marked a collapsed selection format, and we're
+        // within the given time range – then attempt to use that format
+        // instead of getting the format from the anchor node.
+
+
+        const currentTimeStamp = window.event.timeStamp;
+        const [lastFormat, lastOffset, lastKey, timeStamp] = collapsedSelectionFormat;
+
+        if (currentTimeStamp < timeStamp + 200 && anchor.offset === lastOffset && anchor.key === lastKey) {
+          selection.format = lastFormat;
+        } else {
+          if (anchor.type === 'text') {
+            selection.format = anchorNode.getFormat();
+          } else if (anchor.type === 'element') {
+            selection.format = 0;
+          }
+        }
+      } else {
+        const focus = selection.focus;
+        const focusNode = focus.getNode();
+        let combinedFormat = 0;
+
+        if (anchor.type === 'text') {
+          combinedFormat |= anchorNode.getFormat();
+        }
+
+        if (focus.type === 'text' && !anchorNode.is(focusNode)) {
+          combinedFormat |= focusNode.getFormat();
+        }
+
+        selection.format = combinedFormat;
+      }
+    }
+
+    dispatchCommand(editor, SELECTION_CHANGE_COMMAND);
+  });
+} // This is a work-around is mainly Chrome specific bug where if you select
+// the contents of an empty block, you cannot easily unselect anything.
+// This results in a tiny selection box that looks buggy/broken. This can
+// also help other browsers when selection might "appear" lost, when it
+// really isn't.
+
+
+function onClick(event, editor) {
+  updateEditor(editor, () => {
+    const selection = $getSelection();
+
+    if ($isRangeSelection(selection)) {
+      const anchor = selection.anchor;
+
+      if (anchor.type === 'element' && anchor.offset === 0 && selection.isCollapsed() && $getRoot().getChildrenSize() === 1 && anchor.getNode().getTopLevelElementOrThrow().isEmpty()) {
+        const lastSelection = $getPreviousSelection();
+
+        if (lastSelection !== null && selection.is(lastSelection)) {
+          getDOMSelection().removeAllRanges();
+          selection.dirty = true;
+        }
+      }
+    }
+
+    dispatchCommand(editor, CLICK_COMMAND, event);
+  });
+}
+
+function $applyTargetRange(selection, event) {
+  if (event.getTargetRanges) {
+    const targetRange = event.getTargetRanges()[0];
+
+    if (targetRange) {
+      selection.applyDOMRange(targetRange);
+    }
+  }
+}
+
+function $canRemoveText(anchorNode, focusNode) {
+  return anchorNode !== focusNode || $isElementNode(anchorNode) || $isElementNode(focusNode) || !$isTokenOrInert(anchorNode) || !$isTokenOrInert(focusNode);
+}
+
+function onBeforeInput(event, editor) {
+  const inputType = event.inputType; // We let the browser do its own thing for composition.
+
+  if (inputType === 'deleteCompositionText' || // If we're pasting in FF, we shouldn't get this event
+  // as the `paste` event should have triggered, unless the
+  // user has dom.event.clipboardevents.enabled disabled in
+  // about:config. In that case, we need to process the
+  // pasted content in the DOM mutation phase.
+  IS_FIREFOX && isFirefoxClipboardEvents()) {
+    return;
+  } else if (inputType === 'insertCompositionText') {
+    // This logic handles insertion of text between different
+    // format text types. We have to detect a change in type
+    // during composition and see if the previous text contains
+    // part of the composed text to work out the actual text that
+    // we need to insert.
+    const composedText = event.data;
+
+    if (composedText) {
+      updateEditor(editor, () => {
+        const selection = $getSelection();
+
+        if ($isRangeSelection(selection)) {
+          const anchor = selection.anchor;
+          const node = anchor.getNode();
+          const prevNode = node.getPreviousSibling();
+
+          if (anchor.offset === 0 && $isTextNode(node) && $isTextNode(prevNode) && node.getTextContent() === ' ' && prevNode.getFormat() !== selection.format) {
+            const prevTextContent = prevNode.getTextContent();
+
+            if (composedText.indexOf(prevTextContent) === 0) {
+              const insertedText = composedText.slice(prevTextContent.length);
+              dispatchCommand(editor, INSERT_TEXT_COMMAND, insertedText);
+              setTimeout(() => {
+                updateEditor(editor, () => {
+                  node.select();
+                });
+              }, ANDROID_COMPOSITION_LATENCY);
+            }
+          }
+        }
+      });
+    }
+
+    return;
+  }
+
+  updateEditor(editor, () => {
+    const selection = $getSelection();
+
+    if (inputType === 'deleteContentBackward') {
+      if (selection === null) {
+        // Use previous selection
+        const prevSelection = $getPreviousSelection();
+
+        if (!$isRangeSelection(prevSelection)) {
+          return;
+        }
+
+        $setSelection(prevSelection.clone());
+      } // Used for Android
+
+
+      $setCompositionKey(null);
+      event.preventDefault();
+      lastKeyDownTimeStamp = 0;
+      dispatchCommand(editor, DELETE_CHARACTER_COMMAND, true); // Fixes an Android bug where selection flickers when backspacing
+
+      setTimeout(() => {
+        updateEditor(editor, () => {
+          $setCompositionKey(null);
+        });
+      }, ANDROID_COMPOSITION_LATENCY);
+      return;
+    }
+
+    if (!$isRangeSelection(selection)) {
+      return;
+    }
+
+    const data = event.data;
+
+    if (!selection.dirty && selection.isCollapsed() && !$isRootNode(selection.anchor.getNode())) {
+      $applyTargetRange(selection, event);
+    }
+
+    const anchor = selection.anchor;
+    const focus = selection.focus;
+    const anchorNode = anchor.getNode();
+    const focusNode = focus.getNode();
+
+    if (inputType === 'insertText') {
+      if (data === '\n') {
+        event.preventDefault();
+        dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND);
+      } else if (data === DOUBLE_LINE_BREAK) {
+        event.preventDefault();
+        dispatchCommand(editor, INSERT_PARAGRAPH_COMMAND);
+      } else if (data == null && event.dataTransfer) {
+        // Gets around a Safari text replacement bug.
+        const text = event.dataTransfer.getData('text/plain');
+        event.preventDefault();
+        selection.insertRawText(text);
+      } else if (data != null && $shouldPreventDefaultAndInsertText(selection, data, true)) {
+        event.preventDefault();
+        dispatchCommand(editor, INSERT_TEXT_COMMAND, data);
+      }
+
+      return;
+    } // Prevent the browser from carrying out
+    // the input event, so we can control the
+    // output.
+
+
+    event.preventDefault();
+
+    switch (inputType) {
+      case 'insertFromYank':
+      case 'insertFromDrop':
+      case 'insertReplacementText':
+        {
+          dispatchCommand(editor, INSERT_TEXT_COMMAND, event);
+          break;
+        }
+
+      case 'insertFromComposition':
+        {
+          // This is the end of composition
+          $setCompositionKey(null);
+          dispatchCommand(editor, INSERT_TEXT_COMMAND, event);
+          break;
+        }
+
+      case 'insertLineBreak':
+        {
+          // Used for Android
+          $setCompositionKey(null);
+          dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND);
+          break;
+        }
+
+      case 'insertParagraph':
+        {
+          // Used for Android
+          $setCompositionKey(null); // Some browsers do not provide the type "insertLineBreak".
+          // So instead, we need to infer it from the keyboard event.
+
+          if (isInsertLineBreak) {
+            isInsertLineBreak = false;
+            dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND);
+          } else {
+            dispatchCommand(editor, INSERT_PARAGRAPH_COMMAND);
+          }
+
+          break;
+        }
+
+      case 'insertFromPaste':
+      case 'insertFromPasteAsQuotation':
+        {
+          dispatchCommand(editor, PASTE_COMMAND, event);
+          break;
+        }
+
+      case 'deleteByComposition':
+        {
+          if ($canRemoveText(anchorNode, focusNode)) {
+            dispatchCommand(editor, REMOVE_TEXT_COMMAND);
+          }
+
+          break;
+        }
+
+      case 'deleteByDrag':
+      case 'deleteByCut':
+        {
+          dispatchCommand(editor, REMOVE_TEXT_COMMAND);
+          break;
+        }
+
+      case 'deleteContent':
+        {
+          dispatchCommand(editor, DELETE_CHARACTER_COMMAND, false);
+          break;
+        }
+
+      case 'deleteWordBackward':
+        {
+          dispatchCommand(editor, DELETE_WORD_COMMAND, true);
+          break;
+        }
+
+      case 'deleteWordForward':
+        {
+          dispatchCommand(editor, DELETE_WORD_COMMAND, false);
+          break;
+        }
+
+      case 'deleteHardLineBackward':
+      case 'deleteSoftLineBackward':
+        {
+          dispatchCommand(editor, DELETE_LINE_COMMAND, true);
+          break;
+        }
+
+      case 'deleteContentForward':
+      case 'deleteHardLineForward':
+      case 'deleteSoftLineForward':
+        {
+          dispatchCommand(editor, DELETE_LINE_COMMAND, false);
+          break;
+        }
+
+      case 'formatStrikeThrough':
+        {
+          dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'strikethrough');
+          break;
+        }
+
+      case 'formatBold':
+        {
+          dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'bold');
+          break;
+        }
+
+      case 'formatItalic':
+        {
+          dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'italic');
+          break;
+        }
+
+      case 'formatUnderline':
+        {
+          dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'underline');
+          break;
+        }
+
+      case 'historyUndo':
+        {
+          dispatchCommand(editor, UNDO_COMMAND);
+          break;
+        }
+
+      case 'historyRedo':
+        {
+          dispatchCommand(editor, REDO_COMMAND);
+          break;
+        }
+
+    }
+  });
+}
+
+function onInput(event, editor) {
+  // We don't want the onInput to bubble, in the case of nested editors.
+  event.stopPropagation();
+  updateEditor(editor, () => {
+    const selection = $getSelection();
+    const data = event.data;
+
+    if (data != null && $isRangeSelection(selection) && $shouldPreventDefaultAndInsertText(selection, data, false)) {
+      // Given we're over-riding the default behavior, we will need
+      // to ensure to disable composition before dispatching the
+      // insertText command for when changing the sequence for FF.
+      if (isFirefoxEndingComposition) {
+        onCompositionEndImpl(editor, data);
+        isFirefoxEndingComposition = false;
+      }
+
+      dispatchCommand(editor, INSERT_TEXT_COMMAND, data); // This ensures consistency on Android.
+
+      if (editor._compositionKey !== null) {
+        lastKeyDownTimeStamp = 0;
+        $setCompositionKey(null);
+      }
+    } else {
+      $updateSelectedTextFromDOM(editor, false); // onInput always fires after onCompositionEnd for FF.
+
+      if (isFirefoxEndingComposition) {
+        onCompositionEndImpl(editor, data);
+        isFirefoxEndingComposition = false;
+      }
+    } // Also flush any other mutations that might have occurred
+    // since the change.
+
+
+    $flushMutations$1();
+  });
+}
+
+function onCompositionStart(event, editor) {
+  updateEditor(editor, () => {
+    const selection = $getSelection();
+
+    if ($isRangeSelection(selection) && !editor.isComposing()) {
+      const anchor = selection.anchor;
+      $setCompositionKey(anchor.key);
+
+      if ( // If it has been 30ms since the last keydown, then we should
+      // apply the empty space heuristic.
+      event.timeStamp < lastKeyDownTimeStamp + ANDROID_COMPOSITION_LATENCY || // FF has issues around composing multibyte characters, so we also
+      // need to invoke the empty space heuristic below.
+      IS_FIREFOX && anchor.type === 'element' || !selection.isCollapsed() || selection.anchor.getNode().getFormat() !== selection.format) {
+        // We insert an empty space, ready for the composition
+        // to get inserted into the new node we create. If
+        // we don't do this, Safari will fail on us because
+        // there is no text node matching the selection.
+        dispatchCommand(editor, INSERT_TEXT_COMMAND, ' ');
+      }
+    }
+  });
+}
+
+function onCompositionEndImpl(editor, data) {
+  const compositionKey = editor._compositionKey;
+  $setCompositionKey(null); // Handle termination of composition.
+
+  if (compositionKey !== null && data != null) {
+    // Composition can sometimes move to an adjacent DOM node when backspacing.
+    // So check for the empty case.
+    if (data === '') {
+      const node = $getNodeByKey(compositionKey);
+      const textNode = getDOMTextNode(editor.getElementByKey(compositionKey));
+
+      if (textNode !== null && $isTextNode(node)) {
+        $updateTextNodeFromDOMContent(node, textNode.nodeValue, null, null, true);
+      }
+
+      return;
+    } // Composition can sometimes be that of a new line. In which case, we need to
+    // handle that accordingly.
+
+
+    if (data[data.length - 1] === '\n') {
+      const selection = $getSelection();
+
+      if ($isRangeSelection(selection)) {
+        // If the last character is a line break, we also need to insert
+        // a line break.
+        const focus = selection.focus;
+        selection.anchor.set(focus.key, focus.offset, focus.type);
+        dispatchCommand(editor, KEY_ENTER_COMMAND, null);
+        return;
+      }
+    }
+  }
+
+  $updateSelectedTextFromDOM(editor, true, data);
+}
+
+function onCompositionEnd(event, editor) {
+  // Firefox fires onCompositionEnd before onInput, but Chrome/Webkit,
+  // fire onInput before onCompositionEnd. To ensure the sequence works
+  // like Chrome/Webkit we use the isFirefoxEndingComposition flag to
+  // defer handling of onCompositionEnd in Firefox till we have processed
+  // the logic in onInput.
+  if (IS_FIREFOX) {
+    isFirefoxEndingComposition = true;
+  } else {
+    updateEditor(editor, () => {
+      onCompositionEndImpl(editor, event.data);
+    });
+  }
+}
+
+function onKeyDown(event, editor) {
+  lastKeyDownTimeStamp = event.timeStamp;
+
+  if (editor.isComposing()) {
+    return;
+  }
+
+  const {
+    keyCode,
+    shiftKey,
+    ctrlKey,
+    metaKey,
+    altKey
+  } = event;
+
+  if (isMoveForward(keyCode, ctrlKey, shiftKey, altKey, metaKey)) {
+    dispatchCommand(editor, KEY_ARROW_RIGHT_COMMAND, event);
+  } else if (isMoveBackward(keyCode, ctrlKey, shiftKey, altKey, metaKey)) {
+    dispatchCommand(editor, KEY_ARROW_LEFT_COMMAND, event);
+  } else if (isMoveUp(keyCode, ctrlKey, shiftKey, altKey, metaKey)) {
+    dispatchCommand(editor, KEY_ARROW_UP_COMMAND, event);
+  } else if (isMoveDown(keyCode, ctrlKey, shiftKey, altKey, metaKey)) {
+    dispatchCommand(editor, KEY_ARROW_DOWN_COMMAND, event);
+  } else if (isLineBreak(keyCode, shiftKey)) {
+    isInsertLineBreak = true;
+    dispatchCommand(editor, KEY_ENTER_COMMAND, event);
+  } else if (isSpace(keyCode)) {
+    dispatchCommand(editor, KEY_SPACE_COMMAND, event);
+  } else if (isOpenLineBreak(keyCode, ctrlKey)) {
+    event.preventDefault();
+    isInsertLineBreak = true;
+    dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND, true);
+  } else if (isParagraph(keyCode, shiftKey)) {
+    isInsertLineBreak = false;
+    dispatchCommand(editor, KEY_ENTER_COMMAND, event);
+  } else if (isDeleteBackward(keyCode, altKey, metaKey, ctrlKey)) {
+    if (isBackspace(keyCode)) {
+      dispatchCommand(editor, KEY_BACKSPACE_COMMAND, event);
+    } else {
+      event.preventDefault();
+      dispatchCommand(editor, DELETE_CHARACTER_COMMAND, true);
+    }
+  } else if (isEscape(keyCode)) {
+    dispatchCommand(editor, KEY_ESCAPE_COMMAND, event);
+  } else if (isDeleteForward(keyCode, ctrlKey, shiftKey, altKey, metaKey)) {
+    if (isDelete(keyCode)) {
+      dispatchCommand(editor, KEY_DELETE_COMMAND, event);
+    } else {
+      event.preventDefault();
+      dispatchCommand(editor, DELETE_CHARACTER_COMMAND, false);
+    }
+  } else if (isDeleteWordBackward(keyCode, altKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, DELETE_WORD_COMMAND, true);
+  } else if (isDeleteWordForward(keyCode, altKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, DELETE_WORD_COMMAND, false);
+  } else if (isDeleteLineBackward(keyCode, metaKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, DELETE_LINE_COMMAND, true);
+  } else if (isDeleteLineForward(keyCode, metaKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, DELETE_LINE_COMMAND, false);
+  } else if (isBold(keyCode, altKey, metaKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'bold');
+  } else if (isUnderline(keyCode, altKey, metaKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'underline');
+  } else if (isItalic(keyCode, altKey, metaKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, FORMAT_TEXT_COMMAND, 'italic');
+  } else if (isTab(keyCode, altKey, ctrlKey, metaKey)) {
+    dispatchCommand(editor, KEY_TAB_COMMAND, event);
+  } else if (isUndo(keyCode, shiftKey, metaKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, UNDO_COMMAND);
+  } else if (isRedo(keyCode, shiftKey, metaKey, ctrlKey)) {
+    event.preventDefault();
+    dispatchCommand(editor, REDO_COMMAND);
+  }
+
+  if (isModifier(ctrlKey, shiftKey, altKey, metaKey)) {
+    dispatchCommand(editor, KEY_MODIFIER_COMMAND, event);
+  }
+}
+
+function getRootElementRemoveHandles(rootElement) {
+  // $FlowFixMe: internal field
+  let eventHandles = rootElement.__lexicalEventHandles;
+
+  if (eventHandles === undefined) {
+    eventHandles = []; // $FlowFixMe: internal field
+
+    rootElement.__lexicalEventHandles = eventHandles;
+  }
+
+  return eventHandles;
+} // Mapping root editors to their active nested editors, contains nested editors
+// mapping only, so if root editor is selected map will have no reference to free up memory
+
+
+const activeNestedEditorsMap = new Map();
+
+function onDocumentSelectionChange(event) {
+  const selection = getDOMSelection();
+  const nextActiveEditor = getNearestEditorFromDOMNode(selection.anchorNode);
+
+  if (nextActiveEditor === null) {
+    return;
+  } // When editor receives selection change event, we're checking if
+  // it has any sibling editors (within same parent editor) that were active
+  // before, and trigger selection change on it to nullify selection.
+
+
+  const editors = getEditorsToPropagate(nextActiveEditor);
+  const rootEditor = editors[editors.length - 1];
+  const rootEditorKey = rootEditor._key;
+  const activeNestedEditor = activeNestedEditorsMap.get(rootEditorKey);
+  const prevActiveEditor = activeNestedEditor || rootEditor;
+
+  if (prevActiveEditor !== nextActiveEditor) {
+    onSelectionChange(selection, prevActiveEditor, false);
+  }
+
+  onSelectionChange(selection, nextActiveEditor, true); // If newly selected editor is nested, then add it to the map, clean map otherwise
+
+  if (nextActiveEditor !== rootEditor) {
+    activeNestedEditorsMap.set(rootEditorKey, nextActiveEditor);
+  } else if (activeNestedEditor) {
+    activeNestedEditorsMap.delete(rootEditorKey);
+  }
+}
+
+function addRootElementEvents(rootElement, editor) {
+  // We only want to have a single global selectionchange event handler, shared
+  // between all editor instances.
+  if (rootElementsRegistered === 0) {
+    const doc = rootElement.ownerDocument;
+    doc.addEventListener('selectionchange', onDocumentSelectionChange);
+  }
+
+  rootElementsRegistered++; // $FlowFixMe: internal field
+
+  rootElement.__lexicalEditor = editor;
+  const removeHandles = getRootElementRemoveHandles(rootElement);
+
+  for (let i = 0; i < rootElementEvents.length; i++) {
+    const [eventName, onEvent] = rootElementEvents[i];
+    const eventHandler = typeof onEvent === 'function' ? event => {
+      if (!editor.isReadOnly()) {
+        onEvent(event, editor);
+      }
+    } : event => {
+      if (!editor.isReadOnly()) {
+        switch (eventName) {
+          case 'cut':
+            return dispatchCommand(editor, CUT_COMMAND, event);
+
+          case 'copy':
+            return dispatchCommand(editor, COPY_COMMAND, event);
+
+          case 'paste':
+            return dispatchCommand(editor, PASTE_COMMAND, event);
+
+          case 'dragstart':
+            return dispatchCommand(editor, DRAGSTART_COMMAND, event);
+
+          case 'dragend':
+            return dispatchCommand(editor, DRAGEND_COMMAND, event);
+
+          case 'focus':
+            return dispatchCommand(editor, FOCUS_COMMAND, event);
+
+          case 'blur':
+            return dispatchCommand(editor, BLUR_COMMAND, event);
+
+          case 'drop':
+            return dispatchCommand(editor, DROP_COMMAND, event);
+        }
+      }
+    };
+    rootElement.addEventListener(eventName, eventHandler);
+    removeHandles.push(() => {
+      rootElement.removeEventListener(eventName, eventHandler);
+    });
+  }
+}
+function removeRootElementEvents(rootElement) {
+  if (rootElementsRegistered !== 0) {
+    rootElementsRegistered--; // We only want to have a single global selectionchange event handler, shared
+    // between all editor instances.
+
+    if (rootElementsRegistered === 0) {
+      const doc = rootElement.ownerDocument;
+      doc.removeEventListener('selectionchange', onDocumentSelectionChange);
+    }
+  } // $FlowFixMe: internal field
+
+
+  const editor = rootElement.__lexicalEditor;
+
+  if (editor != null) {
+    cleanActiveNestedEditorsMap(editor); // $FlowFixMe: internal field
+
+    rootElement.__lexicalEditor = null;
+  }
+
+  const removeHandles = getRootElementRemoveHandles(rootElement);
+
+  for (let i = 0; i < removeHandles.length; i++) {
+    removeHandles[i]();
+  } // $FlowFixMe: internal field
+
+
+  rootElement.__lexicalEventHandles = [];
+}
+
+function cleanActiveNestedEditorsMap(editor) {
+  if (editor._parentEditor !== null) {
+    // For nested editor cleanup map if this editor was marked as active
+    const editors = getEditorsToPropagate(editor);
+    const rootEditor = editors[editors.length - 1];
+    const rootEditorKey = rootEditor._key;
+
+    if (activeNestedEditorsMap.get(rootEditorKey) === editor) {
+      activeNestedEditorsMap.delete(rootEditorKey);
+    }
+  } else {
+    // For top-level editors cleanup map
+    activeNestedEditorsMap.delete(editor._key);
+  }
+}
+
+function markSelectionChangeFromReconcile() {
+  isSelectionChangeFromReconcile = true;
+}
+function markCollapsedSelectionFormat(format, offset, key, timeStamp) {
+  collapsedSelectionFormat = [format, offset, key, timeStamp];
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+let subTreeTextContent = '';
+let subTreeDirectionedTextContent = '';
+let editorTextContent = '';
+let activeEditorConfig;
+let activeEditor$1;
+let activeEditorNodes;
+let treatAllNodesAsDirty = false;
+let activeEditorStateReadOnly = false;
+let activeMutationListeners;
+let activeTextDirection = null;
+let activeDirtyElements;
+let activeDirtyLeaves;
+let activePrevNodeMap;
+let activeNextNodeMap;
+let activePrevKeyToDOMMap;
+let mutatedNodes;
+
+function destroyNode(key, parentDOM) {
+  const node = activePrevNodeMap.get(key);
+
+  if (parentDOM !== null) {
+    const dom = getPrevElementByKeyOrThrow(key);
+    parentDOM.removeChild(dom);
+  } // This logic is really important, otherwise we will leak DOM nodes
+  // when their corresponding LexicalNodes are removed from the editor state.
+
+
+  if (!activeNextNodeMap.has(key)) {
+    activeEditor$1._keyToDOMMap.delete(key);
+  }
+
+  if ($isElementNode(node)) {
+    const children = node.__children;
+    destroyChildren(children, 0, children.length - 1, null);
+  }
+
+  if (node !== undefined) {
+    setMutatedNode(mutatedNodes, activeEditorNodes, activeMutationListeners, node, 'destroyed');
+  }
+}
+
+function destroyChildren(children, _startIndex, endIndex, dom) {
+  let startIndex = _startIndex;
+
+  for (; startIndex <= endIndex; ++startIndex) {
+    const child = children[startIndex];
+
+    if (child !== undefined) {
+      destroyNode(child, dom);
+    }
+  }
+}
+
+function setTextAlign(domStyle, value) {
+  domStyle.setProperty('text-align', value);
+}
+
+function setElementIndent(dom, indent) {
+  dom.style.setProperty('padding-inline-start', indent === 0 ? '' : indent * 20 + 'px');
+}
+
+function setElementFormat(dom, format) {
+  const domStyle = dom.style;
+
+  if (format === 0) {
+    setTextAlign(domStyle, '');
+  } else if (format === IS_ALIGN_LEFT) {
+    setTextAlign(domStyle, 'left');
+  } else if (format === IS_ALIGN_CENTER) {
+    setTextAlign(domStyle, 'center');
+  } else if (format === IS_ALIGN_RIGHT) {
+    setTextAlign(domStyle, 'right');
+  } else if (format === IS_ALIGN_JUSTIFY) {
+    setTextAlign(domStyle, 'justify');
+  }
+}
+
+function createNode(key, parentDOM, insertDOM) {
+  const node = activeNextNodeMap.get(key);
+
+  if (node === undefined) {
+    {
+      throw Error(`createNode: node does not exist in nodeMap`);
+    }
+  }
+
+  const dom = node.createDOM(activeEditorConfig, activeEditor$1);
+  storeDOMWithKey(key, dom, activeEditor$1); // This helps preserve the text, and stops spell check tools from
+  // merging or break the spans (which happens if they are missing
+  // this attribute).
+
+  if ($isTextNode(node)) {
+    dom.setAttribute('data-lexical-text', 'true');
+  } else if ($isDecoratorNode(node)) {
+    dom.setAttribute('data-lexical-decorator', 'true');
+  }
+
+  if ($isElementNode(node)) {
+    const indent = node.__indent;
+
+    if (indent !== 0) {
+      setElementIndent(dom, indent);
+    }
+
+    const children = node.__children;
+    const childrenLength = children.length;
+
+    if (childrenLength !== 0) {
+      const endIndex = childrenLength - 1;
+      createChildrenWithDirection(children, endIndex, node, dom);
+    }
+
+    const format = node.__format;
+
+    if (format !== 0) {
+      setElementFormat(dom, format);
+    }
+
+    reconcileElementTerminatingLineBreak(null, children, dom);
+
+    if ($textContentRequiresDoubleLinebreakAtEnd(node)) {
+      subTreeTextContent += DOUBLE_LINE_BREAK;
+      editorTextContent += DOUBLE_LINE_BREAK;
+    }
+  } else {
+    const text = node.getTextContent();
+
+    if ($isDecoratorNode(node)) {
+      const decorator = node.decorate(activeEditor$1);
+
+      if (decorator !== null) {
+        reconcileDecorator(key, decorator);
+      } // Decorators are always non editable
+
+
+      dom.contentEditable = 'false';
+    } else if ($isTextNode(node)) {
+      if (!node.isDirectionless()) {
+        subTreeDirectionedTextContent += text;
+      }
+
+      if (node.isInert()) {
+        const domStyle = dom.style;
+        domStyle.pointerEvents = 'none';
+        domStyle.userSelect = 'none';
+        dom.contentEditable = 'false'; // To support Safari
+
+        domStyle.setProperty('-webkit-user-select', 'none');
+      }
+    }
+
+    subTreeTextContent += text;
+    editorTextContent += text;
+  }
+
+  if (parentDOM !== null) {
+    if (insertDOM != null) {
+      parentDOM.insertBefore(dom, insertDOM);
+    } else {
+      // $FlowFixMe: internal field
+      const possibleLineBreak = parentDOM.__lexicalLineBreak;
+
+      if (possibleLineBreak != null) {
+        parentDOM.insertBefore(dom, possibleLineBreak);
+      } else {
+        parentDOM.appendChild(dom);
+      }
+    }
+  }
+
+  {
+    // Freeze the node in DEV to prevent accidental mutations
+    Object.freeze(node);
+  }
+
+  setMutatedNode(mutatedNodes, activeEditorNodes, activeMutationListeners, node, 'created');
+  return dom;
+}
+
+function createChildrenWithDirection(children, endIndex, element, dom) {
+  const previousSubTreeDirectionedTextContent = subTreeDirectionedTextContent;
+  subTreeDirectionedTextContent = '';
+  createChildren(children, 0, endIndex, dom, null);
+  reconcileBlockDirection(element, dom);
+  subTreeDirectionedTextContent = previousSubTreeDirectionedTextContent;
+}
+
+function createChildren(children, _startIndex, endIndex, dom, insertDOM) {
+  const previousSubTreeTextContent = subTreeTextContent;
+  subTreeTextContent = '';
+  let startIndex = _startIndex;
+
+  for (; startIndex <= endIndex; ++startIndex) {
+    createNode(children[startIndex], dom, insertDOM);
+  } // $FlowFixMe: internal field
+
+
+  dom.__lexicalTextContent = subTreeTextContent;
+  subTreeTextContent = previousSubTreeTextContent + subTreeTextContent;
+}
+
+function isLastChildLineBreakOrDecorator(children, nodeMap) {
+  const childKey = children[children.length - 1];
+  const node = nodeMap.get(childKey);
+  return $isLineBreakNode(node) || $isDecoratorNode(node);
+} // If we end an element with a LinkBreakNode, then we need to add an additonal <br>
+
+
+function reconcileElementTerminatingLineBreak(prevChildren, nextChildren, dom) {
+  const prevLineBreak = prevChildren !== null && (prevChildren.length === 0 || isLastChildLineBreakOrDecorator(prevChildren, activePrevNodeMap));
+  const nextLineBreak = nextChildren !== null && (nextChildren.length === 0 || isLastChildLineBreakOrDecorator(nextChildren, activeNextNodeMap));
+
+  if (prevLineBreak) {
+    if (!nextLineBreak) {
+      // $FlowFixMe: internal field
+      const element = dom.__lexicalLineBreak;
+
+      if (element != null) {
+        dom.removeChild(element);
+      } // $FlowFixMe: internal field
+
+
+      dom.__lexicalLineBreak = null;
+    }
+  } else if (nextLineBreak) {
+    const element = document.createElement('br'); // $FlowFixMe: internal field
+
+    dom.__lexicalLineBreak = element;
+    dom.appendChild(element);
+  }
+}
+
+function reconcileBlockDirection(element, dom) {
+  const previousSubTreeDirectionTextContent = // $FlowFixMe: internal field
+  dom.__lexicalDirTextContent; // $FlowFixMe: internal field
+
+  const previousDirection = dom.__lexicalDir;
+
+  if (previousSubTreeDirectionTextContent !== subTreeDirectionedTextContent || previousDirection !== activeTextDirection) {
+    const hasEmptyDirectionedTextContent = subTreeDirectionedTextContent === '';
+    const direction = hasEmptyDirectionedTextContent ? activeTextDirection : getTextDirection(subTreeDirectionedTextContent);
+
+    if (direction !== previousDirection) {
+      const classList = dom.classList;
+      const theme = activeEditorConfig.theme;
+      let previousDirectionTheme = previousDirection !== null ? theme[previousDirection] : undefined;
+      let nextDirectionTheme = direction !== null ? theme[direction] : undefined; // Remove the old theme classes if they exist
+
+      if (previousDirectionTheme !== undefined) {
+        if (typeof previousDirectionTheme === 'string') {
+          const classNamesArr = previousDirectionTheme.split(' '); // $FlowFixMe: intentional
+
+          previousDirectionTheme = theme[previousDirection] = classNamesArr;
+        } // $FlowFixMe: intentional
+
+
+        classList.remove(...previousDirectionTheme);
+      }
+
+      if (direction === null || hasEmptyDirectionedTextContent && direction === 'ltr') {
+        // Remove direction
+        dom.removeAttribute('dir');
+      } else {
+        // Apply the new theme classes if they exist
+        if (nextDirectionTheme !== undefined) {
+          if (typeof nextDirectionTheme === 'string') {
+            const classNamesArr = nextDirectionTheme.split(' '); // $FlowFixMe: intentional
+
+            nextDirectionTheme = theme[direction] = classNamesArr;
+          }
+
+          classList.add(...nextDirectionTheme);
+        } // Update direction
+
+
+        dom.dir = direction;
+      }
+
+      if (!activeEditorStateReadOnly) {
+        const writableNode = element.getWritable();
+        writableNode.__dir = direction;
+      }
+    }
+
+    activeTextDirection = direction; // $FlowFixMe: internal field
+
+    dom.__lexicalDirTextContent = subTreeDirectionedTextContent; // $FlowFixMe: internal field
+
+    dom.__lexicalDir = direction;
+  }
+}
+
+function reconcileChildrenWithDirection(prevChildren, nextChildren, element, dom) {
+  const previousSubTreeDirectionTextContent = subTreeDirectionedTextContent;
+  subTreeDirectionedTextContent = '';
+  reconcileChildren(element, prevChildren, nextChildren, dom);
+  reconcileBlockDirection(element, dom);
+  subTreeDirectionedTextContent = previousSubTreeDirectionTextContent;
+}
+
+function reconcileChildren(element, prevChildren, nextChildren, dom) {
+  const previousSubTreeTextContent = subTreeTextContent;
+  subTreeTextContent = '';
+  const prevChildrenLength = prevChildren.length;
+  const nextChildrenLength = nextChildren.length;
+
+  if (prevChildrenLength === 1 && nextChildrenLength === 1) {
+    const prevChildKey = prevChildren[0];
+    const nextChildKey = nextChildren[0];
+
+    if (prevChildKey === nextChildKey) {
+      reconcileNode(prevChildKey, dom);
+    } else {
+      const lastDOM = getPrevElementByKeyOrThrow(prevChildKey);
+      const replacementDOM = createNode(nextChildKey, null, null);
+      dom.replaceChild(replacementDOM, lastDOM);
+      destroyNode(prevChildKey, null);
+    }
+  } else if (prevChildrenLength === 0) {
+    if (nextChildrenLength !== 0) {
+      createChildren(nextChildren, 0, nextChildrenLength - 1, dom, null);
+    }
+  } else if (nextChildrenLength === 0) {
+    if (prevChildrenLength !== 0) {
+      // $FlowFixMe: internal field
+      const lexicalLineBreak = dom.__lexicalLineBreak;
+      const canUseFastPath = lexicalLineBreak == null;
+      destroyChildren(prevChildren, 0, prevChildrenLength - 1, canUseFastPath ? null : dom);
+
+      if (canUseFastPath) {
+        // Fast path for removing DOM nodes
+        dom.textContent = '';
+      }
+    }
+  } else {
+    reconcileNodeChildren(prevChildren, nextChildren, prevChildrenLength, nextChildrenLength, element, dom);
+  }
+
+  if ($textContentRequiresDoubleLinebreakAtEnd(element)) {
+    subTreeTextContent += DOUBLE_LINE_BREAK;
+  } // $FlowFixMe: internal field
+
+
+  dom.__lexicalTextContent = subTreeTextContent;
+  subTreeTextContent = previousSubTreeTextContent + subTreeTextContent;
+}
+
+function reconcileNode(key, parentDOM) {
+  const prevNode = activePrevNodeMap.get(key);
+  let nextNode = activeNextNodeMap.get(key);
+
+  if (prevNode === undefined || nextNode === undefined) {
+    {
+      throw Error(`reconcileNode: prevNode or nextNode does not exist in nodeMap`);
+    }
+  }
+
+  const isDirty = treatAllNodesAsDirty || activeDirtyLeaves.has(key) || activeDirtyElements.has(key);
+  const dom = getElementByKeyOrThrow(activeEditor$1, key);
+
+  if (prevNode === nextNode && !isDirty) {
+    if ($isElementNode(prevNode)) {
+      // $FlowFixMe: internal field
+      const previousSubTreeTextContent = dom.__lexicalTextContent;
+
+      if (previousSubTreeTextContent !== undefined) {
+        subTreeTextContent += previousSubTreeTextContent;
+        editorTextContent += previousSubTreeTextContent;
+      } // $FlowFixMe: internal field
+
+
+      const previousSubTreeDirectionTextContent = dom.__lexicalDirTextContent;
+
+      if (previousSubTreeDirectionTextContent !== undefined) {
+        subTreeDirectionedTextContent += previousSubTreeDirectionTextContent;
+      }
+    } else {
+      const text = prevNode.getTextContent();
+
+      if ($isTextNode(prevNode) && !prevNode.isDirectionless()) {
+        subTreeDirectionedTextContent += text;
+      }
+
+      editorTextContent += text;
+      subTreeTextContent += text;
+    }
+
+    return dom;
+  }
+
+  if (prevNode !== nextNode && isDirty) {
+    setMutatedNode(mutatedNodes, activeEditorNodes, activeMutationListeners, nextNode, 'updated');
+  } // Update node. If it returns true, we need to unmount and re-create the node
+
+
+  if (nextNode.updateDOM(prevNode, dom, activeEditorConfig)) {
+    const replacementDOM = createNode(key, null, null);
+
+    if (parentDOM === null) {
+      {
+        throw Error(`reconcileNode: parentDOM is null`);
+      }
+    }
+
+    parentDOM.replaceChild(replacementDOM, dom);
+    destroyNode(key, null);
+    return replacementDOM;
+  }
+
+  if ($isElementNode(prevNode) && $isElementNode(nextNode)) {
+    // Reconcile element children
+    const nextIndent = nextNode.__indent;
+
+    if (nextIndent !== prevNode.__indent) {
+      setElementIndent(dom, nextIndent);
+    }
+
+    const nextFormat = nextNode.__format;
+
+    if (nextFormat !== prevNode.__format) {
+      setElementFormat(dom, nextFormat);
+    }
+
+    const prevChildren = prevNode.__children;
+    const nextChildren = nextNode.__children;
+    const childrenAreDifferent = prevChildren !== nextChildren;
+
+    if (childrenAreDifferent || isDirty) {
+      reconcileChildrenWithDirection(prevChildren, nextChildren, nextNode, dom);
+
+      if (!$isRootNode(nextNode)) {
+        reconcileElementTerminatingLineBreak(prevChildren, nextChildren, dom);
+      }
+    }
+
+    if ($textContentRequiresDoubleLinebreakAtEnd(nextNode)) {
+      subTreeTextContent += DOUBLE_LINE_BREAK;
+      editorTextContent += DOUBLE_LINE_BREAK;
+    }
+  } else {
+    const text = nextNode.getTextContent();
+
+    if ($isDecoratorNode(nextNode)) {
+      const decorator = nextNode.decorate(activeEditor$1);
+
+      if (decorator !== null) {
+        reconcileDecorator(key, decorator);
+      }
+
+      subTreeTextContent += text;
+      editorTextContent += text;
+    } else if ($isTextNode(nextNode) && !nextNode.isDirectionless()) {
+      // Handle text content, for LTR, LTR cases.
+      subTreeDirectionedTextContent += text;
+    }
+
+    subTreeTextContent += text;
+    editorTextContent += text;
+  }
+
+  if (!activeEditorStateReadOnly && $isRootNode(nextNode) && nextNode.__cachedText !== editorTextContent) {
+    // Cache the latest text content.
+    nextNode = nextNode.getWritable();
+    nextNode.__cachedText = editorTextContent;
+  }
+
+  {
+    // Freeze the node in DEV to prevent accidental mutations
+    Object.freeze(nextNode);
+  }
+
+  return dom;
+}
+
+function reconcileDecorator(key, decorator) {
+  let pendingDecorators = activeEditor$1._pendingDecorators;
+  const currentDecorators = activeEditor$1._decorators;
+
+  if (pendingDecorators === null) {
+    if (currentDecorators[key] === decorator) {
+      return;
+    }
+
+    pendingDecorators = cloneDecorators(activeEditor$1);
+  }
+
+  pendingDecorators[key] = decorator;
+}
+
+function getFirstChild(element) {
+  // $FlowFixMe: firstChild is always null or a Node
+  return element.firstChild;
+}
+
+function getNextSibling(element) {
+  // $FlowFixMe: nextSibling is always null or a Node
+  return element.nextSibling;
+}
+
+function reconcileNodeChildren(prevChildren, nextChildren, prevChildrenLength, nextChildrenLength, element, dom) {
+  const prevEndIndex = prevChildrenLength - 1;
+  const nextEndIndex = nextChildrenLength - 1;
+  let prevChildrenSet;
+  let nextChildrenSet;
+  let siblingDOM = getFirstChild(dom);
+  let prevIndex = 0;
+  let nextIndex = 0;
+
+  while (prevIndex <= prevEndIndex && nextIndex <= nextEndIndex) {
+    const prevKey = prevChildren[prevIndex];
+    const nextKey = nextChildren[nextIndex];
+
+    if (prevKey === nextKey) {
+      siblingDOM = getNextSibling(reconcileNode(nextKey, dom));
+      prevIndex++;
+      nextIndex++;
+    } else {
+      if (prevChildrenSet === undefined) {
+        prevChildrenSet = new Set(prevChildren);
+      }
+
+      if (nextChildrenSet === undefined) {
+        nextChildrenSet = new Set(nextChildren);
+      }
+
+      const nextHasPrevKey = nextChildrenSet.has(prevKey);
+      const prevHasNextKey = prevChildrenSet.has(nextKey);
+
+      if (!nextHasPrevKey) {
+        // Remove prev
+        siblingDOM = getNextSibling(getPrevElementByKeyOrThrow(prevKey));
+        destroyNode(prevKey, dom);
+        prevIndex++;
+      } else if (!prevHasNextKey) {
+        // Create next
+        createNode(nextKey, dom, siblingDOM);
+        nextIndex++;
+      } else {
+        // Move next
+        const childDOM = getElementByKeyOrThrow(activeEditor$1, nextKey);
+
+        if (childDOM === siblingDOM) {
+          siblingDOM = getNextSibling(reconcileNode(nextKey, dom));
+        } else {
+          if (siblingDOM != null) {
+            dom.insertBefore(childDOM, siblingDOM);
+          } else {
+            dom.appendChild(childDOM);
+          }
+
+          reconcileNode(nextKey, dom);
+        }
+
+        prevIndex++;
+        nextIndex++;
+      }
+    }
+  }
+
+  const appendNewChildren = prevIndex > prevEndIndex;
+  const removeOldChildren = nextIndex > nextEndIndex;
+
+  if (appendNewChildren && !removeOldChildren) {
+    const previousNode = nextChildren[nextEndIndex + 1];
+    const insertDOM = previousNode === undefined ? null : activeEditor$1.getElementByKey(previousNode);
+    createChildren(nextChildren, nextIndex, nextEndIndex, dom, insertDOM);
+  } else if (removeOldChildren && !appendNewChildren) {
+    destroyChildren(prevChildren, prevIndex, prevEndIndex, dom);
+  }
+}
+
+function reconcileRoot(prevEditorState, nextEditorState, editor, dirtyType, dirtyElements, dirtyLeaves) {
+  subTreeTextContent = '';
+  editorTextContent = '';
+  subTreeDirectionedTextContent = ''; // Rather than pass around a load of arguments through the stack recursively
+  // we instead set them as bindings within the scope of the module.
+
+  treatAllNodesAsDirty = dirtyType === FULL_RECONCILE;
+  activeTextDirection = null;
+  activeEditor$1 = editor;
+  activeEditorConfig = editor._config;
+  activeEditorNodes = editor._nodes;
+  activeMutationListeners = activeEditor$1._listeners.mutation;
+  activeDirtyElements = dirtyElements;
+  activeDirtyLeaves = dirtyLeaves;
+  activePrevNodeMap = prevEditorState._nodeMap;
+  activeNextNodeMap = nextEditorState._nodeMap;
+  activeEditorStateReadOnly = nextEditorState._readOnly;
+  activePrevKeyToDOMMap = new Map(editor._keyToDOMMap);
+  const currentMutatedNodes = new Map();
+  mutatedNodes = currentMutatedNodes;
+  reconcileNode('root', null); // We don't want a bunch of void checks throughout the scope
+  // so instead we make it seem that these values are always set.
+  // We also want to make sure we clear them down, otherwise we
+  // can leak memory.
+  // $FlowFixMe
+
+  activeEditor$1 = undefined; // $FlowFixMe
+
+  activeEditorNodes = undefined; // $FlowFixMe
+
+  activeDirtyElements = undefined; // $FlowFixMe
+
+  activeDirtyLeaves = undefined; // $FlowFixMe
+
+  activePrevNodeMap = undefined; // $FlowFixMe
+
+  activeNextNodeMap = undefined; // $FlowFixMe
+
+  activeEditorConfig = undefined; // $FlowFixMe
+
+  activePrevKeyToDOMMap = undefined; // $FlowFixMe
+
+  mutatedNodes = undefined;
+  return currentMutatedNodes;
+}
+
+function updateEditorState(rootElement, currentEditorState, pendingEditorState, currentSelection, pendingSelection, needsUpdate, editor) {
+  const observer = editor._observer;
+  let reconcileMutatedNodes = null;
+
+  if (needsUpdate && observer !== null) {
+    const dirtyType = editor._dirtyType;
+    const dirtyElements = editor._dirtyElements;
+    const dirtyLeaves = editor._dirtyLeaves;
+    observer.disconnect();
+
+    try {
+      reconcileMutatedNodes = reconcileRoot(currentEditorState, pendingEditorState, editor, dirtyType, dirtyElements, dirtyLeaves);
+    } finally {
+      observer.observe(rootElement, {
+        characterData: true,
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  const domSelection = getDOMSelection();
+
+  if (!editor._readOnly && domSelection !== null && (needsUpdate || pendingSelection === null || pendingSelection.dirty)) {
+    reconcileSelection(currentSelection, pendingSelection, editor, domSelection);
+  }
+
+  return reconcileMutatedNodes;
+}
+
+function scrollIntoViewIfNeeded(editor, node, rootElement) {
+  const element = // $FlowFixMe: this is valid, as we are checking the nodeType
+  node.nodeType === DOM_TEXT_TYPE ? node.parentNode : node;
+
+  if (element !== null) {
+    const rect = element.getBoundingClientRect();
+
+    if (rect.bottom > window.innerHeight) {
+      element.scrollIntoView(false);
+    } else if (rect.top < 0) {
+      element.scrollIntoView();
+    } else if (rootElement) {
+      const rootRect = rootElement.getBoundingClientRect();
+
+      if (rect.bottom > rootRect.bottom) {
+        element.scrollIntoView(false);
+      } else if (rect.top < rootRect.top) {
+        element.scrollIntoView();
+      }
+    }
+
+    editor._updateTags.add('scroll-into-view');
+  }
+}
+
+function reconcileSelection(prevSelection, nextSelection, editor, domSelection) {
+  const anchorDOMNode = domSelection.anchorNode;
+  const focusDOMNode = domSelection.focusNode;
+  const anchorOffset = domSelection.anchorOffset;
+  const focusOffset = domSelection.focusOffset;
+  const activeElement = document.activeElement;
+  const rootElement = editor._rootElement; // TODO: make this not hard-coded, and add another config option
+  // that makes this configurable.
+
+  if (editor._updateTags.has('collaboration') && activeElement !== rootElement) {
+    return;
+  }
+
+  if (!$isRangeSelection(nextSelection)) {
+    // We don't remove selection if the prevSelection is null because
+    // of editor.setRootElement(). If this occurs on init when the
+    // editor is already focused, then this can cause the editor to
+    // lose focus.
+    if (prevSelection !== null && isSelectionWithinEditor(editor, anchorDOMNode, focusDOMNode)) {
+      domSelection.removeAllRanges();
+    }
+
+    return;
+  }
+
+  const anchor = nextSelection.anchor;
+  const focus = nextSelection.focus;
+
+  {
+    // Freeze the selection in DEV to prevent accidental mutations
+    Object.freeze(anchor);
+    Object.freeze(focus);
+    Object.freeze(nextSelection);
+  }
+
+  const anchorKey = anchor.key;
+  const focusKey = focus.key;
+  const anchorDOM = getElementByKeyOrThrow(editor, anchorKey);
+  const focusDOM = getElementByKeyOrThrow(editor, focusKey);
+  const nextAnchorOffset = anchor.offset;
+  const nextFocusOffset = focus.offset;
+  const nextFormat = nextSelection.format;
+  const isCollapsed = nextSelection.isCollapsed();
+  let nextAnchorNode = anchorDOM;
+  let nextFocusNode = focusDOM;
+  let anchorFormatChanged = false;
+
+  if (anchor.type === 'text') {
+    nextAnchorNode = getDOMTextNode(anchorDOM);
+    anchorFormatChanged = anchor.getNode().getFormat() !== nextFormat;
+  }
+
+  if (focus.type === 'text') {
+    nextFocusNode = getDOMTextNode(focusDOM);
+  } // If we can't get an underlying text node for selection, then
+  // we should avoid setting selection to something incorrect.
+
+
+  if (nextAnchorNode === null || nextFocusNode === null) {
+    return;
+  }
+
+  if (isCollapsed && (prevSelection === null || anchorFormatChanged || prevSelection.format !== nextFormat)) {
+    markCollapsedSelectionFormat(nextFormat, nextAnchorOffset, anchorKey, performance.now());
+  } // Diff against the native DOM selection to ensure we don't do
+  // an unnecessary selection update. We also skip this check if
+  // we're moving selection to within an element, as this can
+  // sometimes be problematic around scrolling.
+
+
+  if (anchorOffset === nextAnchorOffset && focusOffset === nextFocusOffset && anchorDOMNode === nextAnchorNode && focusDOMNode === nextFocusNode && // Badly interpreted range selection when collapsed - #1482
+  !(domSelection.type === 'Range' && isCollapsed)) {
+    // If the root element does not have focus, ensure it has focus
+    if (rootElement !== null && (activeElement === null || !rootElement.contains(activeElement))) {
+      rootElement.focus({
+        preventScroll: true
+      });
+    } // In Safari/iOS if we have selection on an element, then we also
+    // need to additionally set the DOM selection, otherwise a selectionchange
+    // event will not fire.
+
+
+    if (!(IS_IOS || IS_SAFARI) || anchor.type !== 'element') {
+      return;
+    }
+  } // Apply the updated selection to the DOM. Note: this will trigger
+  // a "selectionchange" event, although it will be asynchronous.
+
+
+  try {
+    domSelection.setBaseAndExtent(nextAnchorNode, nextAnchorOffset, nextFocusNode, nextFocusOffset);
+
+    if (nextSelection.isCollapsed() && rootElement === activeElement) {
+      scrollIntoViewIfNeeded(editor, nextAnchorNode, rootElement);
+    }
+
+    markSelectionChangeFromReconcile();
+  } catch (error) {// If we encounter an error, continue. This can sometimes
+    // occur with FF and there's no good reason as to why it
+    // should happen.
+  }
+}
+
+function storeDOMWithKey(key, dom, editor) {
+  const keyToDOMMap = editor._keyToDOMMap; // $FlowFixMe: internal field
+
+  dom['__lexicalKey_' + editor._key] = key;
+  keyToDOMMap.set(key, dom);
+}
+
+function getPrevElementByKeyOrThrow(key) {
+  const element = activePrevKeyToDOMMap.get(key);
+
+  if (element === undefined) {
+    {
+      throw Error(`Reconciliation: could not find DOM element for node key "${key}"`);
+    }
+  }
+
+  return element;
+}
+
+function getElementByKeyOrThrow(editor, key) {
+  const element = editor._keyToDOMMap.get(key);
+
+  if (element === undefined) {
+    {
+      throw Error(`Reconciliation: could not find DOM element for node key "${key}"`);
+    }
+  }
+
+  return element;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+let activeEditorState = null;
+let activeEditor = null;
+let isReadOnlyMode = false;
+let isAttemptingToRecoverFromReconcilerError = false;
+let infiniteTransformCount = 0;
+function isCurrentlyReadOnlyMode() {
+  return isReadOnlyMode;
+}
+function errorOnReadOnly() {
+  if (isReadOnlyMode) {
+    {
+      throw Error(`Cannot use method in read-only mode.`);
+    }
+  }
+}
+function errorOnInfiniteTransforms() {
+  if (infiniteTransformCount > 99) {
+    {
+      throw Error(`One or more transforms are endlessly triggering additional transforms. May have encountered infinite recursion caused by transforms that have their preconditions too lose and/or conflict with each other.`);
+    }
+  }
+}
+function getActiveEditorState() {
+  if (activeEditorState === null) {
+    {
+      throw Error(`Unable to find an active editor state. State helpers or node methods can only be used synchronously during the callback of editor.update() or editorState.read().`);
+    }
+  }
+
+  return activeEditorState;
+}
+function getActiveEditor() {
+  if (activeEditor === null) {
+    {
+      throw Error(`Unable to find an active editor. This method can only be used synchronously during the callback of editor.update().`);
+    }
+  }
+
+  return activeEditor;
+}
+function $applyTransforms(editor, node, transformsCache) {
+  const type = node.__type;
+  const registeredNode = getRegisteredNodeOrThrow(editor, type);
+  let transformsArr = transformsCache.get(type);
+
+  if (transformsArr === undefined) {
+    transformsArr = Array.from(registeredNode.transforms);
+    transformsCache.set(type, transformsArr);
+  }
+
+  const transformsArrLength = transformsArr.length;
+
+  for (let i = 0; i < transformsArrLength; i++) {
+    transformsArr[i](node);
+
+    if (!node.isAttached()) {
+      break;
+    }
+  }
+}
+
+function $isNodeValidForTransform(node, compositionKey) {
+  return node !== undefined && // We don't want to transform nodes being composed
+  node.__key !== compositionKey && node.isAttached();
+}
+
+function $normalizeAllDirtyTextNodes(editorState, editor) {
+  const dirtyLeaves = editor._dirtyLeaves;
+  const nodeMap = editorState._nodeMap;
+
+  for (const nodeKey of dirtyLeaves) {
+    const node = nodeMap.get(nodeKey);
+
+    if ($isTextNode(node) && node.isAttached() && node.isSimpleText() && !node.isUnmergeable()) {
+      $normalizeTextNode(node);
+    }
+  }
+}
+/**
+ * Transform heuristic:
+ * 1. We transform leaves first. If transforms generate additional dirty nodes we repeat step 1.
+ * The reasoning behind this is that marking a leaf as dirty marks all its parent elements as dirty too.
+ * 2. We transform elements. If element transforms generate additional dirty nodes we repeat step 1.
+ * If element transforms only generate additional dirty elements we only repeat step 2.
+ *
+ * Note that to keep track of newly dirty nodes and subtress we leverage the editor._dirtyNodes and
+ * editor._subtrees which we reset in every loop.
+ */
+
+
+function $applyAllTransforms(editorState, editor) {
+  const dirtyLeaves = editor._dirtyLeaves;
+  const dirtyElements = editor._dirtyElements;
+  const nodeMap = editorState._nodeMap;
+  const compositionKey = $getCompositionKey();
+  const transformsCache = new Map();
+  let untransformedDirtyLeaves = dirtyLeaves;
+  let untransformedDirtyLeavesLength = untransformedDirtyLeaves.size;
+  let untransformedDirtyElements = dirtyElements;
+  let untransformedDirtyElementsLength = untransformedDirtyElements.size;
+
+  while (untransformedDirtyLeavesLength > 0 || untransformedDirtyElementsLength > 0) {
+    if (untransformedDirtyLeavesLength > 0) {
+      // We leverage editor._dirtyLeaves to track the new dirty leaves after the transforms
+      editor._dirtyLeaves = new Set();
+
+      for (const nodeKey of untransformedDirtyLeaves) {
+        const node = nodeMap.get(nodeKey);
+
+        if ($isTextNode(node) && node.isAttached() && node.isSimpleText() && !node.isUnmergeable()) {
+          $normalizeTextNode(node);
+        }
+
+        if (node !== undefined && $isNodeValidForTransform(node, compositionKey)) {
+          $applyTransforms(editor, node, transformsCache);
+        }
+
+        dirtyLeaves.add(nodeKey);
+      }
+
+      untransformedDirtyLeaves = editor._dirtyLeaves;
+      untransformedDirtyLeavesLength = untransformedDirtyLeaves.size; // We want to prioritize node transforms over element transforms
+
+      if (untransformedDirtyLeavesLength > 0) {
+        infiniteTransformCount++;
+        continue;
+      }
+    } // All dirty leaves have been processed. Let's do elements!
+    // We have previously processed dirty leaves, so let's restart the editor leaves Set to track
+    // new ones caused by element transforms
+
+
+    editor._dirtyLeaves = new Set();
+    editor._dirtyElements = new Map();
+
+    for (const currentUntransformedDirtyElement of untransformedDirtyElements) {
+      const nodeKey = currentUntransformedDirtyElement[0];
+      const intentionallyMarkedAsDirty = currentUntransformedDirtyElement[1];
+
+      if (nodeKey === 'root' || !intentionallyMarkedAsDirty) {
+        continue;
+      }
+
+      const node = nodeMap.get(nodeKey);
+
+      if (node !== undefined && $isNodeValidForTransform(node, compositionKey)) {
+        $applyTransforms(editor, node, transformsCache);
+      }
+
+      dirtyElements.set(nodeKey, intentionallyMarkedAsDirty);
+    }
+
+    untransformedDirtyLeaves = editor._dirtyLeaves;
+    untransformedDirtyLeavesLength = untransformedDirtyLeaves.size;
+    untransformedDirtyElements = editor._dirtyElements;
+    untransformedDirtyElementsLength = untransformedDirtyElements.size;
+    infiniteTransformCount++;
+  }
+
+  editor._dirtyLeaves = dirtyLeaves;
+  editor._dirtyElements = dirtyElements;
+}
+
+function parseEditorState(parsedEditorState, editor) {
+  const nodeMap = new Map();
+  const editorState = new EditorState(nodeMap);
+  const nodeParserState = {
+    originalSelection: parsedEditorState._selection
+  };
+  const previousActiveEditorState = activeEditorState;
+  const previousReadOnlyMode = isReadOnlyMode;
+  const previousActiveEditor = activeEditor;
+  activeEditorState = editorState;
+  isReadOnlyMode = false;
+  activeEditor = editor;
+
+  try {
+    const parsedNodeMap = new Map(parsedEditorState._nodeMap); // $FlowFixMe: root always exists in Map
+
+    const parsedRoot = parsedNodeMap.get('root');
+    internalCreateNodeFromParse(parsedRoot, parsedNodeMap, editor, null
+    /* parentKey */
+    , nodeParserState);
+  } finally {
+    activeEditorState = previousActiveEditorState;
+    isReadOnlyMode = previousReadOnlyMode;
+    activeEditor = previousActiveEditor;
+  }
+
+  editorState._selection = internalCreateSelectionFromParse(nodeParserState.remappedSelection || nodeParserState.originalSelection);
+  return editorState;
+} // This technically isn't an update but given we need
+// exposure to the module's active bindings, we have this
+// function here
+
+function readEditorState(editorState, callbackFn) {
+  const previousActiveEditorState = activeEditorState;
+  const previousReadOnlyMode = isReadOnlyMode;
+  const previousActiveEditor = activeEditor;
+  activeEditorState = editorState;
+  isReadOnlyMode = true;
+  activeEditor = null;
+
+  try {
+    return callbackFn();
+  } finally {
+    activeEditorState = previousActiveEditorState;
+    isReadOnlyMode = previousReadOnlyMode;
+    activeEditor = previousActiveEditor;
+  }
+}
+
+function handleDEVOnlyPendingUpdateGuarantees(pendingEditorState) {
+  // Given we can't Object.freeze the nodeMap as it's a Map,
+  // we instead replace its set, clear and delete methods.
+  const nodeMap = pendingEditorState._nodeMap; // $FlowFixMe: this is allowed
+
+  nodeMap.set = () => {
+    throw new Error('Cannot call set() on a frozen Lexical node map');
+  }; // $FlowFixMe: this is allowed
+
+
+  nodeMap.clear = () => {
+    throw new Error('Cannot call clear() on a frozen Lexical node map');
+  }; // $FlowFixMe: this is allowed
+
+
+  nodeMap.delete = () => {
+    throw new Error('Cannot call delete() on a frozen Lexical node map');
+  };
+}
+
+function commitPendingUpdates(editor) {
+  const pendingEditorState = editor._pendingEditorState;
+  const rootElement = editor._rootElement;
+  const headless = editor._headless;
+
+  if (rootElement === null && !headless || pendingEditorState === null) {
+    return;
+  }
+
+  const currentEditorState = editor._editorState;
+  const currentSelection = currentEditorState._selection;
+  const pendingSelection = pendingEditorState._selection;
+  const needsUpdate = editor._dirtyType !== NO_DIRTY_NODES;
+  editor._pendingEditorState = null;
+  editor._editorState = pendingEditorState;
+  const previousActiveEditorState = activeEditorState;
+  const previousReadOnlyMode = isReadOnlyMode;
+  const previousActiveEditor = activeEditor;
+  const previouslyUpdating = editor._updating;
+  activeEditor = editor;
+  activeEditorState = pendingEditorState;
+  isReadOnlyMode = false; // We don't want updates to sync block the reconcilation.
+
+  editor._updating = true;
+
+  try {
+    if (!headless && rootElement !== null) {
+      const mutatedNodes = updateEditorState(rootElement, currentEditorState, pendingEditorState, currentSelection, pendingSelection, needsUpdate, editor);
+
+      if (mutatedNodes !== null) {
+        triggerMutationListeners(editor, currentEditorState, pendingEditorState, mutatedNodes);
+      }
+    }
+  } catch (error) {
+    // Report errors
+    editor._onError(error); // Reset editor and restore incoming editor state to the DOM
+
+
+    if (!isAttemptingToRecoverFromReconcilerError) {
+      resetEditor(editor, null, rootElement, pendingEditorState);
+      initMutationObserver(editor);
+      editor._dirtyType = FULL_RECONCILE;
+      isAttemptingToRecoverFromReconcilerError = true;
+      commitPendingUpdates(editor);
+      isAttemptingToRecoverFromReconcilerError = false;
+    }
+
+    return;
+  } finally {
+    editor._updating = previouslyUpdating;
+    activeEditorState = previousActiveEditorState;
+    isReadOnlyMode = previousReadOnlyMode;
+    activeEditor = previousActiveEditor;
+  }
+
+  pendingEditorState._readOnly = true;
+
+  {
+    handleDEVOnlyPendingUpdateGuarantees(pendingEditorState);
+  }
+
+  const dirtyLeaves = editor._dirtyLeaves;
+  const dirtyElements = editor._dirtyElements;
+  const normalizedNodes = editor._normalizedNodes;
+  const tags = editor._updateTags;
+
+  if (needsUpdate) {
+    editor._dirtyType = NO_DIRTY_NODES;
+
+    editor._cloneNotNeeded.clear();
+
+    editor._dirtyLeaves = new Set();
+    editor._dirtyElements = new Map();
+    editor._normalizedNodes = new Set();
+    editor._updateTags = new Set();
+  }
+
+  $garbageCollectDetachedDecorators(editor, pendingEditorState);
+  const pendingDecorators = editor._pendingDecorators;
+
+  if (pendingDecorators !== null) {
+    editor._decorators = pendingDecorators;
+    editor._pendingDecorators = null;
+    triggerListeners('decorator', editor, true, pendingDecorators);
+  }
+
+  triggerTextContentListeners(editor, currentEditorState, pendingEditorState);
+  triggerListeners('update', editor, true, {
+    dirtyElements,
+    dirtyLeaves,
+    editorState: pendingEditorState,
+    normalizedNodes,
+    prevEditorState: currentEditorState,
+    tags
+  });
+  triggerDeferredUpdateCallbacks(editor);
+  triggerEnqueuedUpdates(editor);
+}
+
+function triggerTextContentListeners(editor, currentEditorState, pendingEditorState) {
+  const currentTextContent = getEditorStateTextContent(currentEditorState);
+  const latestTextContent = getEditorStateTextContent(pendingEditorState);
+
+  if (currentTextContent !== latestTextContent) {
+    triggerListeners('textcontent', editor, true, latestTextContent);
+  }
+}
+
+function triggerMutationListeners(editor, currentEditorState, pendingEditorState, mutatedNodes) {
+  const listeners = editor._listeners.mutation;
+  listeners.forEach((klass, listener) => {
+    const mutatedNodesByType = mutatedNodes.get(klass);
+
+    if (mutatedNodesByType === undefined) {
+      return;
+    }
+
+    listener(mutatedNodesByType);
+  });
+}
+
+function triggerListeners(type, editor, isCurrentlyEnqueuingUpdates, // $FlowFixMe: needs refining
+...payload) {
+  const previouslyUpdating = editor._updating;
+  editor._updating = isCurrentlyEnqueuingUpdates;
+
+  try {
+    const listeners = Array.from(editor._listeners[type]);
+
+    for (let i = 0; i < listeners.length; i++) {
+      listeners[i](...payload);
+    }
+  } finally {
+    editor._updating = previouslyUpdating;
+  }
+}
+function triggerCommandListeners(editor, type, payload) {
+  if (editor._updating === false || activeEditor !== editor) {
+    let returnVal = false;
+    editor.update(() => {
+      returnVal = triggerCommandListeners(editor, type, payload);
+    });
+    return returnVal;
+  }
+
+  const editors = getEditorsToPropagate(editor);
+
+  for (let i = 4; i >= 0; i--) {
+    for (let e = 0; e < editors.length; e++) {
+      const currentEditor = editors[e];
+      const commandListeners = currentEditor._commands;
+      const listenerInPriorityOrder = commandListeners.get(type);
+
+      if (listenerInPriorityOrder !== undefined) {
+        const listeners = listenerInPriorityOrder[i];
+
+        if (listeners !== undefined) {
+          for (const listener of listeners) {
+            // $FlowFixMe[missing-type-arg]
+            if (listener(payload, editor) === true) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function triggerEnqueuedUpdates(editor) {
+  const queuedUpdates = editor._updates;
+
+  if (queuedUpdates.length !== 0) {
+    const [updateFn, options] = queuedUpdates.shift();
+    beginUpdate(editor, updateFn, options);
+  }
+}
+
+function triggerDeferredUpdateCallbacks(editor) {
+  const deferred = editor._deferred;
+  editor._deferred = [];
+
+  if (deferred.length !== 0) {
+    const previouslyUpdating = editor._updating;
+    editor._updating = true;
+
+    try {
+      for (let i = 0; i < deferred.length; i++) {
+        deferred[i]();
+      }
+    } finally {
+      editor._updating = previouslyUpdating;
+    }
+  }
+}
+
+function processNestedUpdates(editor, initialSkipTransforms) {
+  const queuedUpdates = editor._updates;
+  let skipTransforms = initialSkipTransforms || false; // Updates might grow as we process them, we so we'll need
+  // to handle each update as we go until the updates array is
+  // empty.
+
+  while (queuedUpdates.length !== 0) {
+    const [nextUpdateFn, options] = queuedUpdates.shift();
+    let onUpdate;
+    let tag;
+
+    if (options !== undefined) {
+      onUpdate = options.onUpdate;
+      tag = options.tag;
+
+      if (options.skipTransforms) {
+        skipTransforms = true;
+      }
+
+      if (onUpdate) {
+        editor._deferred.push(onUpdate);
+      }
+
+      if (tag) {
+        editor._updateTags.add(tag);
+      }
+    }
+
+    nextUpdateFn();
+  }
+
+  return skipTransforms;
+}
+
+function beginUpdate(editor, updateFn, options) {
+  const updateTags = editor._updateTags;
+  let onUpdate;
+  let tag;
+  let skipTransforms = false;
+
+  if (options !== undefined) {
+    onUpdate = options.onUpdate;
+    tag = options.tag;
+
+    if (tag != null) {
+      updateTags.add(tag);
+    }
+
+    skipTransforms = options.skipTransforms;
+  }
+
+  if (onUpdate) {
+    editor._deferred.push(onUpdate);
+  }
+
+  const currentEditorState = editor._editorState;
+  let pendingEditorState = editor._pendingEditorState;
+  let editorStateWasCloned = false;
+
+  if (pendingEditorState === null) {
+    pendingEditorState = editor._pendingEditorState = cloneEditorState(currentEditorState);
+    editorStateWasCloned = true;
+  }
+
+  const previousActiveEditorState = activeEditorState;
+  const previousReadOnlyMode = isReadOnlyMode;
+  const previousActiveEditor = activeEditor;
+  const previouslyUpdating = editor._updating;
+  activeEditorState = pendingEditorState;
+  isReadOnlyMode = false;
+  editor._updating = true;
+  activeEditor = editor;
+
+  try {
+    if (editorStateWasCloned && !editor._headless) {
+      pendingEditorState._selection = internalCreateSelection(editor);
+    }
+
+    const startingCompositionKey = editor._compositionKey;
+    updateFn();
+    skipTransforms = processNestedUpdates(editor, skipTransforms);
+    applySelectionTransforms(pendingEditorState, editor);
+
+    if (editor._dirtyType !== NO_DIRTY_NODES) {
+      if (skipTransforms) {
+        $normalizeAllDirtyTextNodes(pendingEditorState, editor);
+      } else {
+        $applyAllTransforms(pendingEditorState, editor);
+      }
+
+      processNestedUpdates(editor);
+      $garbageCollectDetachedNodes(currentEditorState, pendingEditorState, editor._dirtyLeaves, editor._dirtyElements);
+    }
+
+    const endingCompositionKey = editor._compositionKey;
+
+    if (startingCompositionKey !== endingCompositionKey) {
+      pendingEditorState._flushSync = true;
+    }
+
+    const pendingSelection = pendingEditorState._selection;
+
+    if ($isRangeSelection(pendingSelection)) {
+      const pendingNodeMap = pendingEditorState._nodeMap;
+      const anchorKey = pendingSelection.anchor.key;
+      const focusKey = pendingSelection.focus.key;
+
+      if (pendingNodeMap.get(anchorKey) === undefined || pendingNodeMap.get(focusKey) === undefined) {
+        {
+          throw Error(`updateEditor: selection has been lost because the previously selected nodes have been removed and selection wasn't moved to another node. Ensure selection changes after removing/replacing a selected node.`);
+        }
+      }
+    } else if ($isNodeSelection(pendingSelection)) {
+      // TODO: we should also validate node selection?
+      if (pendingSelection._nodes.size === 0) {
+        pendingEditorState._selection = null;
+      }
+    }
+  } catch (error) {
+    // Report errors
+    editor._onError(error); // Restore existing editor state to the DOM
+
+
+    editor._pendingEditorState = currentEditorState;
+    editor._dirtyType = FULL_RECONCILE;
+
+    editor._cloneNotNeeded.clear();
+
+    editor._dirtyLeaves = new Set();
+
+    editor._dirtyElements.clear();
+
+    commitPendingUpdates(editor);
+    return;
+  } finally {
+    activeEditorState = previousActiveEditorState;
+    isReadOnlyMode = previousReadOnlyMode;
+    activeEditor = previousActiveEditor;
+    editor._updating = previouslyUpdating;
+    infiniteTransformCount = 0;
+  }
+
+  const shouldUpdate = editor._dirtyType !== NO_DIRTY_NODES || editorStateHasDirtySelection(pendingEditorState, editor);
+
+  if (shouldUpdate) {
+    if (pendingEditorState._flushSync) {
+      pendingEditorState._flushSync = false;
+      commitPendingUpdates(editor);
+    } else if (editorStateWasCloned) {
+      scheduleMicroTask(() => {
+        commitPendingUpdates(editor);
+      });
+    }
+  } else {
+    pendingEditorState._flushSync = false;
+
+    if (editorStateWasCloned) {
+      updateTags.clear();
+      editor._deferred = [];
+      editor._pendingEditorState = null;
+    }
+  }
+}
+
+function updateEditor(editor, updateFn, options) {
+  if (editor._updating) {
+    editor._updates.push([updateFn, options]);
+  } else {
+    beginUpdate(editor, updateFn, options);
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+const TEXT_MUTATION_VARIANCE = 100;
+let isProcessingMutations = false;
+let lastTextEntryTimeStamp = 0;
+function getIsProcesssingMutations() {
+  return isProcessingMutations;
+}
+
+function updateTimeStamp(event) {
+  lastTextEntryTimeStamp = event.timeStamp;
+}
+
+function initTextEntryListener() {
+  if (lastTextEntryTimeStamp === 0) {
+    window.addEventListener('textInput', updateTimeStamp, true);
+  }
+}
+
+function isManagedLineBreak(dom, target, editor) {
+  return (// $FlowFixMe: internal field
+    target.__lexicalLineBreak === dom || // $FlowFixMe: internal field
+    dom['__lexicalKey_' + editor._key] !== undefined
+  );
+}
+
+function getLastSelection(editor) {
+  return editor.getEditorState().read(() => {
+    const selection = $getSelection();
+    return selection !== null ? selection.clone() : null;
+  });
+}
+
+function handleTextMutation(target, node, editor) {
+  const domSelection = getDOMSelection();
+  let anchorOffset = null;
+  let focusOffset = null;
+
+  if (domSelection !== null && domSelection.anchorNode === target) {
+    anchorOffset = domSelection.anchorOffset;
+    focusOffset = domSelection.focusOffset;
+  }
+
+  const text = target.nodeValue;
+  $updateTextNodeFromDOMContent(node, text, anchorOffset, focusOffset, false);
+}
+
+function $flushMutations(editor, mutations, observer) {
+  isProcessingMutations = true;
+  const shouldFlushTextMutations = performance.now() - lastTextEntryTimeStamp > TEXT_MUTATION_VARIANCE;
+
+  try {
+    updateEditor(editor, () => {
+      const badDOMTargets = new Map();
+      const rootElement = editor.getRootElement(); // We use the current edtior state, as that reflects what is
+      // actually "on screen".
+
+      const currentEditorState = editor._editorState;
+      let shouldRevertSelection = false;
+      let possibleTextForFirefoxPaste = '';
+
+      for (let i = 0; i < mutations.length; i++) {
+        const mutation = mutations[i];
+        const type = mutation.type;
+        const targetDOM = mutation.target;
+        let targetNode = $getNearestNodeFromDOMNode(targetDOM, currentEditorState);
+
+        if ($isDecoratorNode(targetNode)) {
+          continue;
+        }
+
+        if (type === 'characterData') {
+          // Text mutations are deferred and passed to mutation listeners to be
+          // processed outside of the Lexical engine.
+          if (shouldFlushTextMutations && targetDOM.nodeType === DOM_TEXT_TYPE && $isTextNode(targetNode) && targetNode.isAttached()) {
+            handleTextMutation( // $FlowFixMe: nodeType === DOM_TEXT_TYPE is a Text DOM node
+            targetDOM, targetNode);
+          }
+        } else if (type === 'childList') {
+          shouldRevertSelection = true; // We attempt to "undo" any changes that have occurred outside
+          // of Lexical. We want Lexical's editor state to be source of truth.
+          // To the user, these will look like no-ops.
+
+          const addedDOMs = mutation.addedNodes;
+
+          for (let s = 0; s < addedDOMs.length; s++) {
+            const addedDOM = addedDOMs[s];
+            const node = getNodeFromDOMNode(addedDOM);
+            const parentDOM = addedDOM.parentNode;
+
+            if (parentDOM != null && node === null && (addedDOM.nodeName !== 'BR' || !isManagedLineBreak(addedDOM, parentDOM, editor))) {
+              if (IS_FIREFOX) {
+                const possibleText = addedDOM.innerText || addedDOM.nodeValue;
+
+                if (possibleText) {
+                  possibleTextForFirefoxPaste += possibleText;
+                }
+              }
+
+              parentDOM.removeChild(addedDOM);
+            }
+          }
+
+          const removedDOMs = mutation.removedNodes;
+          const removedDOMsLength = removedDOMs.length;
+
+          if (removedDOMsLength > 0) {
+            let unremovedBRs = 0;
+
+            for (let s = 0; s < removedDOMsLength; s++) {
+              const removedDOM = removedDOMs[s];
+
+              if (removedDOM.nodeName === 'BR' && isManagedLineBreak(removedDOM, targetDOM, editor)) {
+                targetDOM.appendChild(removedDOM);
+                unremovedBRs++;
+              }
+            }
+
+            if (removedDOMsLength !== unremovedBRs) {
+              if (targetDOM === rootElement) {
+                targetNode = internalGetRoot(currentEditorState);
+              }
+
+              badDOMTargets.set(targetDOM, targetNode);
+            }
+          }
+        }
+      } // Now we process each of the unique target nodes, attempting
+      // to restore their contents back to the source of truth, which
+      // is Lexical's "current" editor state. This is basically like
+      // an internal revert on the DOM.
+
+
+      if (badDOMTargets.size > 0) {
+        for (const [targetDOM, targetNode] of badDOMTargets) {
+          if ($isElementNode(targetNode)) {
+            const childKeys = targetNode.__children;
+            let currentDOM = targetDOM.firstChild;
+
+            for (let s = 0; s < childKeys.length; s++) {
+              const key = childKeys[s];
+              const correctDOM = editor.getElementByKey(key);
+
+              if (correctDOM === null) {
+                continue;
+              }
+
+              if (currentDOM == null) {
+                targetDOM.appendChild(correctDOM);
+                currentDOM = correctDOM;
+              } else if (currentDOM !== correctDOM) {
+                targetDOM.replaceChild(correctDOM, currentDOM);
+              }
+
+              currentDOM = currentDOM.nextSibling;
+            }
+          } else if ($isTextNode(targetNode)) {
+            targetNode.markDirty();
+          }
+        }
+      } // Capture all the mutations made during this function. This
+      // also prevents us having to process them on the next cycle
+      // of onMutation, as these mutations were made by us.
+
+
+      const records = observer.takeRecords(); // Check for any random auto-added <br> elements, and remove them.
+      // These get added by the browser when we undo the above mutations
+      // and this can lead to a broken UI.
+
+      if (records.length > 0) {
+        for (let i = 0; i < records.length; i++) {
+          const record = records[i];
+          const addedNodes = record.addedNodes;
+          const target = record.target;
+
+          for (let s = 0; s < addedNodes.length; s++) {
+            const addedDOM = addedNodes[s];
+            const parentDOM = addedDOM.parentNode;
+
+            if (parentDOM != null && addedDOM.nodeName === 'BR' && !isManagedLineBreak(addedDOM, target, editor)) {
+              parentDOM.removeChild(addedDOM);
+            }
+          }
+        } // Clear any of those removal mutations
+
+
+        observer.takeRecords();
+      }
+
+      const selection = $getSelection() || getLastSelection(editor);
+
+      if (selection !== null) {
+        if (shouldRevertSelection) {
+          selection.dirty = true;
+          $setSelection(selection);
+        }
+
+        if (IS_FIREFOX && isFirefoxClipboardEvents()) {
+          selection.insertRawText(possibleTextForFirefoxPaste);
+        }
+      }
+    });
+  } finally {
+    isProcessingMutations = false;
+  }
+}
+function flushRootMutations(editor) {
+  const observer = editor._observer;
+
+  if (observer !== null) {
+    const mutations = observer.takeRecords();
+    $flushMutations(editor, mutations, observer);
+  }
+}
+function initMutationObserver(editor) {
+  initTextEntryListener();
+  editor._observer = new MutationObserver((mutations, observer) => {
+    $flushMutations(editor, mutations, observer);
+  });
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+class Point {
+  constructor(key, offset, type) {
+    // $FlowFixMe: is temporarily null
+    this._selection = null;
+    this.key = key;
+    this.offset = offset;
+    this.type = type;
+  }
+
+  is(point) {
+    return this.key === point.key && this.offset === point.offset && this.type === point.type;
+  }
+
+  isBefore(b) {
+    let aNode = this.getNode();
+    let bNode = b.getNode();
+    const aOffset = this.offset;
+    const bOffset = b.offset;
+
+    if ($isElementNode(aNode)) {
+      aNode = aNode.getDescendantByIndex(aOffset);
+    }
+
+    if ($isElementNode(bNode)) {
+      bNode = bNode.getDescendantByIndex(bOffset);
+    }
+
+    if (aNode === bNode) {
+      return aOffset < bOffset;
+    }
+
+    return aNode.isBefore(bNode);
+  }
+
+  getNode() {
+    const key = this.key;
+    const node = $getNodeByKey(key);
+
+    if (node === null) {
+      {
+        throw Error(`Point.getNode: node not found`);
+      }
+    }
+
+    return node;
+  }
+
+  set(key, offset, type) {
+    const selection = this._selection;
+    const oldKey = this.key;
+    this.key = key;
+    this.offset = offset;
+    this.type = type;
+
+    if (!isCurrentlyReadOnlyMode()) {
+      if ($getCompositionKey() === oldKey) {
+        $setCompositionKey(key);
+      }
+
+      if (selection !== null && (selection.anchor === this || selection.focus === this)) {
+        selection._cachedNodes = null;
+        selection.dirty = true;
+      }
+    }
+  }
+
+}
+
+function $createPoint(key, offset, type) {
+  // $FlowFixMe: intentionally cast as we use a class for perf reasons
+  return new Point(key, offset, type);
+}
+
+function selectPointOnNode(point, node) {
+  const key = node.__key;
+  let offset = point.offset;
+  let type = 'element';
+
+  if ($isTextNode(node)) {
+    type = 'text';
+    const textContentLength = node.getTextContentSize();
+
+    if (offset > textContentLength) {
+      offset = textContentLength;
+    }
+  }
+
+  point.set(key, offset, type);
+}
+
+function $moveSelectionPointToEnd(point, node) {
+  if ($isElementNode(node)) {
+    const lastNode = node.getLastDescendant();
+
+    if ($isElementNode(lastNode) || $isTextNode(lastNode)) {
+      selectPointOnNode(point, lastNode);
+    } else {
+      selectPointOnNode(point, node);
+    }
+  } else if ($isTextNode(node)) {
+    selectPointOnNode(point, node);
+  }
+}
+
+function $transferStartingElementPointToTextPoint(start, end, format) {
+  const element = start.getNode();
+  const placementNode = element.getChildAtIndex(start.offset);
+  const textNode = $createTextNode();
+  const target = $isRootNode(element) ? $createParagraphNode().append(textNode) : textNode;
+  textNode.setFormat(format);
+
+  if (placementNode === null) {
+    element.append(target);
+  } else {
+    placementNode.insertBefore(target);
+  } // Transfer the element point to a text point.
+
+
+  if (start.is(end)) {
+    end.set(textNode.__key, 0, 'text');
+  }
+
+  start.set(textNode.__key, 0, 'text');
+}
+
+function $setPointValues(point, key, offset, type) {
+  point.key = key; // $FlowFixMe: internal utility function
+
+  point.offset = offset; // $FlowFixMe: internal utility function
+
+  point.type = type;
+}
+
+class NodeSelection {
+  constructor(objects) {
+    this.dirty = false;
+    this._nodes = objects;
+    this._cachedNodes = null;
+  }
+
+  is(selection) {
+    if (!$isNodeSelection(selection)) {
+      return false;
+    }
+
+    const a = this._nodes;
+    const b = selection._nodes;
+    return a.size === b.size && Array.from(a).every(key => b.has(key));
+  }
+
+  add(key) {
+    this.dirty = true;
+
+    this._nodes.add(key);
+
+    this._cachedNodes = null;
+  }
+
+  delete(key) {
+    this.dirty = true;
+
+    this._nodes.delete(key);
+
+    this._cachedNodes = null;
+  }
+
+  clear() {
+    this.dirty = true;
+
+    this._nodes.clear();
+
+    this._cachedNodes = null;
+  }
+
+  has(key) {
+    return this._nodes.has(key);
+  }
+
+  clone() {
+    return new NodeSelection(new Set(this._nodes));
+  }
+
+  extract() {
+    return this.getNodes();
+  }
+
+  insertRawText(text) {// Do nothing?
+  }
+
+  insertText() {// Do nothing?
+  }
+
+  getNodes() {
+    const cachedNodes = this._cachedNodes;
+
+    if (cachedNodes !== null) {
+      return cachedNodes;
+    }
+
+    const objects = this._nodes;
+    const nodes = [];
+
+    for (const object of objects) {
+      const node = $getNodeByKey(object);
+
+      if (node !== null) {
+        nodes.push(node);
+      }
+    }
+
+    if (!isCurrentlyReadOnlyMode()) {
+      this._cachedNodes = nodes;
+    }
+
+    return nodes;
+  }
+
+  getTextContent() {
+    const nodes = this.getNodes();
+    let textContent = '';
+
+    for (let i = 0; i < nodes.length; i++) {
+      textContent += nodes[i].getTextContent();
+    }
+
+    return textContent;
+  }
+
+}
+function $isRangeSelection(x) {
+  return x instanceof RangeSelection;
+}
+class GridSelection {
+  constructor(gridKey, anchor, focus) {
+    this.gridKey = gridKey;
+    this.anchor = anchor;
+    this.focus = focus;
+    this.dirty = false;
+    this._cachedNodes = null;
+    anchor._selection = this;
+    focus._selection = this;
+  }
+
+  is(selection) {
+    if (!$isGridSelection(selection)) {
+      return false;
+    }
+
+    return this.gridKey === selection.gridKey && this.anchor.is(this.focus);
+  }
+
+  set(gridKey, anchorCellKey, focusCellKey) {
+    this.dirty = true;
+    this.gridKey = gridKey;
+    this.anchor.key = anchorCellKey;
+    this.focus.key = focusCellKey;
+    this._cachedNodes = null;
+  }
+
+  clone() {
+    return new GridSelection(this.gridKey, this.anchor, this.focus);
+  }
+
+  isCollapsed() {
+    return false;
+  }
+
+  isBackward() {
+    return this.focus.isBefore(this.anchor);
+  }
+
+  getCharacterOffsets() {
+    return getCharacterOffsets(this);
+  }
+
+  extract() {
+    return this.getNodes();
+  }
+
+  insertRawText(text) {// Do nothing?
+  }
+
+  insertText() {// Do nothing?
+  }
+
+  getShape() {
+    const anchorCellNode = $getNodeByKey(this.anchor.key);
+
+    if (!anchorCellNode) {
+      throw Error(`getNodes: expected to find AnchorNode`);
+    }
+
+    const anchorCellNodeIndex = anchorCellNode.getIndexWithinParent();
+    const anchorCelRoweIndex = anchorCellNode.getParentOrThrow().getIndexWithinParent();
+    const focusCellNode = $getNodeByKey(this.focus.key);
+
+    if (!focusCellNode) {
+      throw Error(`getNodes: expected to find FocusNode`);
+    }
+
+    const focusCellNodeIndex = focusCellNode.getIndexWithinParent();
+    const focusCellRowIndex = focusCellNode.getParentOrThrow().getIndexWithinParent();
+    const startX = Math.min(anchorCellNodeIndex, focusCellNodeIndex);
+    const stopX = Math.max(anchorCellNodeIndex, focusCellNodeIndex);
+    const startY = Math.min(anchorCelRoweIndex, focusCellRowIndex);
+    const stopY = Math.max(anchorCelRoweIndex, focusCellRowIndex);
+    return {
+      fromX: Math.min(startX, stopX),
+      fromY: Math.min(startY, stopY),
+      toX: Math.max(startX, stopX),
+      toY: Math.max(startY, stopY)
+    };
+  }
+
+  getNodes() {
+    const cachedNodes = this._cachedNodes;
+
+    if (cachedNodes !== null) {
+      return cachedNodes;
+    }
+
+    const nodesSet = new Set();
+    const {
+      fromX,
+      fromY,
+      toX,
+      toY
+    } = this.getShape();
+    const gridNode = $getNodeByKey(this.gridKey);
+
+    if (!$isGridNode(gridNode)) {
+      {
+        throw Error(`getNodes: expected to find GridNode`);
+      }
+    }
+
+    nodesSet.add(gridNode);
+    const gridRowNodes = gridNode.getChildren();
+
+    for (let r = fromY; r <= toY; r++) {
+      const gridRowNode = gridRowNodes[r];
+      nodesSet.add(gridRowNode);
+
+      if (!$isGridRowNode(gridRowNode)) {
+        {
+          throw Error(`getNodes: expected to find GridRowNode`);
+        }
+      }
+
+      const gridCellNodes = gridRowNode.getChildren();
+
+      for (let c = fromX; c <= toX; c++) {
+        const gridCellNode = gridCellNodes[c];
+
+        if (!$isGridCellNode(gridCellNode)) {
+          {
+            throw Error(`getNodes: expected to find GridCellNode`);
+          }
+        }
+
+        nodesSet.add(gridCellNode);
+        const children = gridCellNode.getChildren();
+
+        while (children.length > 0) {
+          const child = children.shift();
+          nodesSet.add(child);
+
+          if ($isElementNode(child)) {
+            children.unshift(...child.getChildren());
+          }
+        }
+      }
+    }
+
+    const nodes = Array.from(nodesSet);
+
+    if (!isCurrentlyReadOnlyMode()) {
+      this._cachedNodes = nodes;
+    }
+
+    return nodes;
+  }
+
+  getTextContent() {
+    const nodes = this.getNodes();
+    let textContent = '';
+
+    for (let i = 0; i < nodes.length; i++) {
+      textContent += nodes[i].getTextContent();
+    }
+
+    return textContent;
+  }
+
+}
+function $isGridSelection(x) {
+  return x instanceof GridSelection;
+}
+class RangeSelection {
+  constructor(anchor, focus, format) {
+    this.anchor = anchor;
+    this.focus = focus;
+    this.dirty = false;
+    this.format = format;
+    this._cachedNodes = null;
+    anchor._selection = this;
+    focus._selection = this;
+  }
+
+  is(selection) {
+    if (!$isRangeSelection(selection)) {
+      return false;
+    }
+
+    return this.anchor.is(selection.anchor) && this.focus.is(selection.focus) && this.format === selection.format;
+  }
+
+  isBackward() {
+    return this.focus.isBefore(this.anchor);
+  }
+
+  isCollapsed() {
+    return this.anchor.is(this.focus);
+  }
+
+  getNodes() {
+    const cachedNodes = this._cachedNodes;
+
+    if (cachedNodes !== null) {
+      return cachedNodes;
+    }
+
+    const anchor = this.anchor;
+    const focus = this.focus;
+    let firstNode = anchor.getNode();
+    let lastNode = focus.getNode();
+
+    if ($isElementNode(firstNode)) {
+      firstNode = firstNode.getDescendantByIndex(anchor.offset);
+    }
+
+    if ($isElementNode(lastNode)) {
+      lastNode = lastNode.getDescendantByIndex(focus.offset);
+    }
+
+    let nodes;
+
+    if (firstNode.is(lastNode)) {
+      if ($isElementNode(firstNode) && (firstNode.getChildrenSize() > 0 || firstNode.excludeFromCopy())) {
+        nodes = [];
+      } else {
+        nodes = [firstNode];
+      }
+    } else {
+      nodes = firstNode.getNodesBetween(lastNode);
+    }
+
+    if (!isCurrentlyReadOnlyMode()) {
+      this._cachedNodes = nodes;
+    }
+
+    return nodes;
+  }
+
+  setTextNodeRange(anchorNode, anchorOffset, focusNode, focusOffset) {
+    $setPointValues(this.anchor, anchorNode.__key, anchorOffset, 'text');
+    $setPointValues(this.focus, focusNode.__key, focusOffset, 'text');
+    this._cachedNodes = null;
+    this.dirty = true;
+  }
+
+  getTextContent() {
+    const nodes = this.getNodes();
+
+    if (nodes.length === 0) {
+      return '';
+    }
+
+    const firstNode = nodes[0];
+    const lastNode = nodes[nodes.length - 1];
+    const anchor = this.anchor;
+    const focus = this.focus;
+    const isBefore = anchor.isBefore(focus);
+    const [anchorOffset, focusOffset] = getCharacterOffsets(this);
+    let textContent = '';
+    let prevWasElement = true;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+
+      if ($isElementNode(node) && !node.isInline()) {
+        if (!prevWasElement) {
+          textContent += '\n';
+        }
+
+        if (node.isEmpty()) {
+          prevWasElement = false;
+        } else {
+          prevWasElement = true;
+        }
+      } else {
+        prevWasElement = false;
+
+        if ($isTextNode(node)) {
+          let text = node.getTextContent();
+
+          if (node === firstNode) {
+            if (node === lastNode) {
+              text = anchorOffset < focusOffset ? text.slice(anchorOffset, focusOffset) : text.slice(focusOffset, anchorOffset);
+            } else {
+              text = isBefore ? text.slice(anchorOffset) : text.slice(focusOffset);
+            }
+          } else if (node === lastNode) {
+            text = isBefore ? text.slice(0, focusOffset) : text.slice(0, anchorOffset);
+          }
+
+          textContent += text;
+        } else if (($isDecoratorNode(node) || $isLineBreakNode(node)) && (node !== lastNode || !this.isCollapsed())) {
+          textContent += node.getTextContent();
+        }
+      }
+    }
+
+    return textContent;
+  }
+
+  applyDOMRange(range) {
+    const editor = getActiveEditor();
+    const currentEditorState = editor.getEditorState();
+    const lastSelection = currentEditorState._selection;
+    const resolvedSelectionPoints = internalResolveSelectionPoints(range.startContainer, range.startOffset, range.endContainer, range.endOffset, editor, lastSelection);
+
+    if (resolvedSelectionPoints === null) {
+      return;
+    }
+
+    const [anchorPoint, focusPoint] = resolvedSelectionPoints;
+    $setPointValues(this.anchor, anchorPoint.key, anchorPoint.offset, anchorPoint.type);
+    $setPointValues(this.focus, focusPoint.key, focusPoint.offset, focusPoint.type);
+    this._cachedNodes = null;
+  }
+
+  clone() {
+    const anchor = this.anchor;
+    const focus = this.focus;
+    const selection = new RangeSelection($createPoint(anchor.key, anchor.offset, anchor.type), $createPoint(focus.key, focus.offset, focus.type), this.format);
+    return selection;
+  }
+
+  toggleFormat(format) {
+    this.format = toggleTextFormatType(this.format, format, null);
+    this.dirty = true;
+  }
+
+  hasFormat(type) {
+    const formatFlag = TEXT_TYPE_TO_FORMAT[type];
+    return (this.format & formatFlag) !== 0;
+  }
+
+  insertRawText(text) {
+    const parts = text.split(/\r?\n/);
+
+    if (parts.length === 1) {
+      this.insertText(text);
+    } else {
+      const nodes = [];
+      const length = parts.length;
+
+      for (let i = 0; i < length; i++) {
+        const part = parts[i];
+
+        if (part !== '') {
+          nodes.push($createTextNode(part));
+        }
+
+        if (i !== length - 1) {
+          nodes.push($createLineBreakNode());
+        }
+      }
+
+      this.insertNodes(nodes);
+    }
+  }
+
+  insertText(text) {
+    const anchor = this.anchor;
+    const focus = this.focus;
+    const isBefore = this.isCollapsed() || anchor.isBefore(focus);
+    const format = this.format;
+
+    if (isBefore && anchor.type === 'element') {
+      $transferStartingElementPointToTextPoint(anchor, focus, format);
+    } else if (!isBefore && focus.type === 'element') {
+      $transferStartingElementPointToTextPoint(focus, anchor, format);
+    }
+
+    const selectedNodes = this.getNodes();
+    const selectedNodesLength = selectedNodes.length;
+    const firstPoint = isBefore ? anchor : focus;
+    const endPoint = isBefore ? focus : anchor;
+    const startOffset = firstPoint.offset;
+    const endOffset = endPoint.offset;
+    let firstNode = selectedNodes[0];
+
+    if (!$isTextNode(firstNode)) {
+      {
+        throw Error(`insertText: first node is not a text node`);
+      }
+    }
+
+    const firstNodeText = firstNode.getTextContent();
+    const firstNodeTextLength = firstNodeText.length;
+    const firstNodeParent = firstNode.getParentOrThrow();
+    const lastIndex = selectedNodesLength - 1;
+    let lastNode = selectedNodes[lastIndex];
+
+    if (this.isCollapsed() && startOffset === firstNodeTextLength && (firstNode.isSegmented() || firstNode.isToken() || !firstNode.canInsertTextAfter() || !firstNodeParent.canInsertTextAfter())) {
+      let nextSibling = firstNode.getNextSibling();
+
+      if (!$isTextNode(nextSibling) || $isTokenOrInertOrSegmented(nextSibling)) {
+        nextSibling = $createTextNode();
+
+        if (!firstNodeParent.canInsertTextAfter()) {
+          firstNodeParent.insertAfter(nextSibling);
+        } else {
+          firstNode.insertAfter(nextSibling);
+        }
+      }
+
+      nextSibling.select(0, 0);
+      firstNode = nextSibling;
+
+      if (text !== '') {
+        this.insertText(text);
+        return;
+      }
+    } else if (this.isCollapsed() && startOffset === 0 && (firstNode.isSegmented() || firstNode.isToken() || !firstNode.canInsertTextBefore() || !firstNodeParent.canInsertTextBefore())) {
+      let prevSibling = firstNode.getPreviousSibling();
+
+      if (!$isTextNode(prevSibling) || $isTokenOrInertOrSegmented(prevSibling)) {
+        prevSibling = $createTextNode();
+
+        if (!firstNodeParent.canInsertTextBefore()) {
+          firstNodeParent.insertBefore(prevSibling);
+        } else {
+          firstNode.insertBefore(prevSibling);
+        }
+      }
+
+      prevSibling.select();
+      firstNode = prevSibling;
+
+      if (text !== '') {
+        this.insertText(text);
+        return;
+      }
+    } else if (firstNode.isSegmented() && startOffset !== firstNodeTextLength) {
+      const textNode = $createTextNode(firstNode.getTextContent());
+      firstNode.replace(textNode);
+      firstNode = textNode;
+    } else if (!this.isCollapsed() && text !== '') {
+      // When the firstNode or lastNode parents are elements that
+      // do not allow text to be inserted before or after, we first
+      // clear the content. Then we normalize selection, then insert
+      // the new content.
+      const lastNodeParent = lastNode.getParent();
+
+      if (!firstNodeParent.canInsertTextBefore() || !firstNodeParent.canInsertTextAfter() || $isElementNode(lastNodeParent) && (!lastNodeParent.canInsertTextBefore() || !lastNodeParent.canInsertTextAfter())) {
+        this.insertText('');
+        normalizeSelectionPointsForBoundaries(this.anchor, this.focus, null);
+        this.insertText(text);
+        return;
+      }
+    }
+
+    if (selectedNodesLength === 1) {
+      if ($isTokenOrInert(firstNode)) {
+        const textNode = $createTextNode(text);
+        textNode.select();
+        firstNode.replace(textNode);
+        return;
+      }
+
+      const firstNodeFormat = firstNode.getFormat();
+
+      if (startOffset === endOffset && firstNodeFormat !== format) {
+        if (firstNode.getTextContent() === '') {
+          firstNode.setFormat(format);
+        } else {
+          const textNode = $createTextNode(text);
+          textNode.setFormat(format);
+          textNode.select();
+
+          if (startOffset === 0) {
+            firstNode.insertBefore(textNode);
+          } else {
+            const [targetNode] = firstNode.splitText(startOffset);
+            targetNode.insertAfter(textNode);
+          } // When composing, we need to adjust the anchor offset so that
+          // we correctly replace that right range.
+
+
+          if (textNode.isComposing() && this.anchor.type === 'text') {
+            this.anchor.offset -= text.length;
+          }
+
+          return;
+        }
+      }
+
+      const delCount = endOffset - startOffset;
+      firstNode = firstNode.spliceText(startOffset, delCount, text, true);
+
+      if (firstNode.getTextContent() === '') {
+        firstNode.remove();
+      } else if (firstNode.isComposing() && this.anchor.type === 'text') {
+        // When composing, we need to adjust the anchor offset so that
+        // we correctly replace that right range.
+        this.anchor.offset -= text.length;
+      }
+    } else {
+      const markedNodeKeysForKeep = new Set([...firstNode.getParentKeys(), ...lastNode.getParentKeys()]); // We have to get the parent elements before the next section,
+      // as in that section we might mutate the lastNode.
+
+      const firstElement = $isElementNode(firstNode) ? firstNode : firstNode.getParentOrThrow();
+      let lastElement = $isElementNode(lastNode) ? lastNode : lastNode.getParentOrThrow();
+      let lastElementChild = lastNode; // If the last element is inline, we should instead look at getting
+      // the nodes of its parent, rather than itself. This behavior will
+      // then better match how text node insertions work. We will need to
+      // also update the last element's child accordingly as we do this.
+
+      if (!firstElement.is(lastElement) && lastElement.isInline()) {
+        // Keep traversing till we have a non-inline element parent.
+        do {
+          lastElementChild = lastElement;
+          lastElement = lastElement.getParentOrThrow();
+        } while (lastElement.isInline());
+      } // Handle mutations to the last node.
+
+
+      if (endPoint.type === 'text' && (endOffset !== 0 || lastNode.getTextContent() === '') || endPoint.type === 'element' && lastNode.getIndexWithinParent() < endOffset) {
+        if ($isTextNode(lastNode) && !$isTokenOrInert(lastNode) && endOffset !== lastNode.getTextContentSize()) {
+          if (lastNode.isSegmented()) {
+            const textNode = $createTextNode(lastNode.getTextContent());
+            lastNode.replace(textNode);
+            lastNode = textNode;
+          }
+
+          lastNode = lastNode.spliceText(0, endOffset, '');
+          markedNodeKeysForKeep.add(lastNode.__key);
+        } else {
+          const lastNodeParent = lastNode.getParentOrThrow();
+
+          if (!lastNodeParent.canBeEmpty() && lastNodeParent.getChildrenSize() === 1) {
+            lastNodeParent.remove();
+          } else {
+            lastNode.remove();
+          }
+        }
+      } else {
+        markedNodeKeysForKeep.add(lastNode.__key);
+      } // Either move the remaining nodes of the last parent to after
+      // the first child, or remove them entirely. If the last parent
+      // is the same as the first parent, this logic also works.
+
+
+      const lastNodeChildren = lastElement.getChildren();
+      const selectedNodesSet = new Set(selectedNodes);
+      const firstAndLastElementsAreEqual = firstElement.is(lastElement); // We choose a target to insert all nodes after. In the case of having
+      // and inline starting parent element with a starting node that has no
+      // siblings, we should insert after the starting parent element, otherwise
+      // we will incorrectly merge into the starting parent element.
+      // TODO: should we keep on traversing parents if we're inside another
+      // nested inline element?
+
+      const insertionTarget = firstElement.isInline() && firstNode.getNextSibling() === null ? firstElement : firstNode;
+
+      for (let i = lastNodeChildren.length - 1; i >= 0; i--) {
+        const lastNodeChild = lastNodeChildren[i];
+
+        if (lastNodeChild.is(firstNode) || $isElementNode(lastNodeChild) && lastNodeChild.isParentOf(firstNode)) {
+          break;
+        }
+
+        if (lastNodeChild.isAttached()) {
+          if (!selectedNodesSet.has(lastNodeChild) || lastNodeChild.is(lastElementChild)) {
+            if (!firstAndLastElementsAreEqual) {
+              insertionTarget.insertAfter(lastNodeChild);
+            }
+          } else {
+            lastNodeChild.remove();
+          }
+        }
+      }
+
+      if (!firstAndLastElementsAreEqual) {
+        // Check if we have already moved out all the nodes of the
+        // last parent, and if so, traverse the parent tree and mark
+        // them all as being able to deleted too.
+        let parent = lastElement;
+        let lastRemovedParent = null;
+
+        while (parent !== null) {
+          const children = parent.getChildren();
+          const childrenLength = children.length;
+
+          if (childrenLength === 0 || children[childrenLength - 1].is(lastRemovedParent)) {
+            markedNodeKeysForKeep.delete(parent.__key);
+            lastRemovedParent = parent;
+          }
+
+          parent = parent.getParent();
+        }
+      } // Ensure we do splicing after moving of nodes, as splicing
+      // can have side-effects (in the case of hashtags).
+
+
+      if (!$isTokenOrInert(firstNode)) {
+        firstNode = firstNode.spliceText(startOffset, firstNodeTextLength - startOffset, text, true);
+
+        if (firstNode.getTextContent() === '') {
+          firstNode.remove();
+        } else if (firstNode.isComposing() && this.anchor.type === 'text') {
+          // When composing, we need to adjust the anchor offset so that
+          // we correctly replace that right range.
+          this.anchor.offset -= text.length;
+        }
+      } else if (startOffset === firstNodeTextLength) {
+        firstNode.select();
+      } else {
+        const textNode = $createTextNode(text);
+        textNode.select();
+        firstNode.replace(textNode);
+      } // Remove all selected nodes that haven't already been removed.
+
+
+      for (let i = 1; i < selectedNodesLength; i++) {
+        const selectedNode = selectedNodes[i];
+        const key = selectedNode.__key;
+
+        if (!markedNodeKeysForKeep.has(key)) {
+          selectedNode.remove();
+        }
+      }
+    }
+  }
+
+  removeText() {
+    this.insertText('');
+  }
+
+  formatText(formatType) {
+    // TODO I wonder if this methods use selection.extract() instead?
+    const selectedNodes = this.getNodes();
+    const selectedNodesLength = selectedNodes.length;
+    const lastIndex = selectedNodesLength - 1;
+    let firstNode = selectedNodes[0];
+    let lastNode = selectedNodes[lastIndex];
+
+    if (this.isCollapsed()) {
+      this.toggleFormat(formatType); // When changing format, we should stop composition
+
+      $setCompositionKey(null);
+      return;
+    }
+
+    const anchor = this.anchor;
+    const focus = this.focus;
+    const focusOffset = focus.offset;
+    let firstNextFormat = 0;
+    let firstNodeTextLength = firstNode.getTextContent().length;
+
+    for (let i = 0; i < selectedNodes.length; i++) {
+      const selectedNode = selectedNodes[i];
+
+      if ($isTextNode(selectedNode)) {
+        firstNextFormat = selectedNode.getFormatFlags(formatType, null);
+        break;
+      }
+    }
+
+    let anchorOffset = anchor.offset;
+    let startOffset;
+    let endOffset;
+    const isBefore = anchor.isBefore(focus);
+    startOffset = isBefore ? anchorOffset : focusOffset;
+    endOffset = isBefore ? focusOffset : anchorOffset; // This is the case where the user only selected the very end of the
+    // first node so we don't want to include it in the formatting change.
+
+    if (startOffset === firstNode.getTextContentSize()) {
+      let nextSibling = firstNode.getNextSibling();
+
+      if ($isElementNode(nextSibling) && nextSibling.isInline()) {
+        nextSibling = nextSibling.getFirstChild();
+      }
+
+      if ($isTextNode(nextSibling)) {
+        // we basically make the second node the firstNode, changing offsets accordingly
+        anchorOffset = 0;
+        startOffset = 0;
+        firstNode = nextSibling;
+        firstNodeTextLength = nextSibling.getTextContent().length;
+        firstNextFormat = firstNode.getFormatFlags(formatType, null);
+      }
+    } // This is the case where we only selected a single node
+
+
+    if (firstNode.is(lastNode)) {
+      if ($isTextNode(firstNode)) {
+        if (anchor.type === 'element' && focus.type === 'element') {
+          firstNode.setFormat(firstNextFormat);
+          firstNode.select(startOffset, endOffset);
+          this.format = firstNextFormat;
+          return;
+        }
+
+        startOffset = anchorOffset > focusOffset ? focusOffset : anchorOffset;
+        endOffset = anchorOffset > focusOffset ? anchorOffset : focusOffset; // No actual text is selected, so do nothing.
+
+        if (startOffset === endOffset) {
+          return;
+        } // The entire node is selected, so just format it
+
+
+        if (startOffset === 0 && endOffset === firstNodeTextLength) {
+          firstNode.setFormat(firstNextFormat);
+          firstNode.select(startOffset, endOffset);
+        } else {
+          // ndoe is partially selected, so split it into two nodes
+          // adnd style the selected one.
+          const splitNodes = firstNode.splitText(startOffset, endOffset);
+          const replacement = startOffset === 0 ? splitNodes[0] : splitNodes[1];
+          replacement.setFormat(firstNextFormat);
+          replacement.select(0, endOffset - startOffset);
+        }
+
+        this.format = firstNextFormat;
+      } // multiple nodes selected.
+
+    } else {
+      if ($isTextNode(firstNode)) {
+        if (startOffset !== 0) {
+          // the entire first node isn't selected, so split it
+          [, firstNode] = firstNode.splitText(startOffset);
+          startOffset = 0;
+        }
+
+        firstNode.setFormat(firstNextFormat);
+      }
+
+      let lastNextFormat = firstNextFormat;
+
+      if ($isTextNode(lastNode)) {
+        lastNextFormat = lastNode.getFormatFlags(formatType, firstNextFormat);
+        const lastNodeText = lastNode.getTextContent();
+        const lastNodeTextLength = lastNodeText.length; // if the offset is 0, it means no actual characters are selected,
+        // so we skip formatting the last node altogether.
+
+        if (endOffset !== 0) {
+          // if the entire last node isn't selected, split it
+          if (endOffset !== lastNodeTextLength) {
+            [lastNode] = lastNode.splitText(endOffset);
+          }
+
+          lastNode.setFormat(lastNextFormat);
+        }
+      } // deal with all the nodes in between
+
+
+      for (let i = 1; i < lastIndex; i++) {
+        const selectedNode = selectedNodes[i];
+        const selectedNodeKey = selectedNode.__key;
+
+        if ($isTextNode(selectedNode) && selectedNodeKey !== firstNode.__key && selectedNodeKey !== lastNode.__key && !selectedNode.isToken()) {
+          const selectedNextFormat = selectedNode.getFormatFlags(formatType, lastNextFormat);
+          selectedNode.setFormat(selectedNextFormat);
+        }
+      }
+    }
+  }
+
+  insertNodes(nodes, selectStart) {
+    // If there is a range selected remove the text in it
+    if (!this.isCollapsed()) {
+      this.removeText();
+    }
+
+    const anchor = this.anchor;
+    const anchorOffset = anchor.offset;
+    const anchorNode = anchor.getNode();
+    let target = anchorNode;
+
+    if (anchor.type === 'element') {
+      const element = anchor.getNode();
+      const placementNode = element.getChildAtIndex(anchorOffset - 1);
+
+      if (placementNode === null) {
+        target = element;
+      } else {
+        target = placementNode;
+      }
+    }
+
+    const siblings = []; // Get all remaining text node siblings in this element so we can
+    // append them after the last node we're inserting.
+
+    const nextSiblings = anchorNode.getNextSiblings();
+    const topLevelElement = $isRootNode(anchorNode) ? null : anchorNode.getTopLevelElementOrThrow();
+
+    if ($isTextNode(anchorNode)) {
+      const textContent = anchorNode.getTextContent();
+      const textContentLength = textContent.length;
+
+      if (anchorOffset === 0 && textContentLength !== 0) {
+        const prevSibling = anchorNode.getPreviousSibling();
+
+        if (prevSibling !== null) {
+          target = prevSibling;
+        } else {
+          target = anchorNode.getParentOrThrow();
+        }
+
+        siblings.push(anchorNode);
+      } else if (anchorOffset === textContentLength) {
+        target = anchorNode;
+      } else if ($isTokenOrInert(anchorNode)) {
+        // Do nothing if we're inside an immutable/inert node
+        return false;
+      } else {
+        // If we started with a range selected grab the danglingText after the
+        // end of the selection and put it on our siblings array so we can
+        // append it after the last node we're inserting
+        let danglingText;
+        [target, danglingText] = anchorNode.splitText(anchorOffset);
+        siblings.push(danglingText);
+      }
+    }
+
+    const startingNode = target;
+    siblings.push(...nextSiblings);
+    const firstNode = nodes[0];
+    let didReplaceOrMerge = false;
+    let lastNodeInserted = null; // Time to insert the nodes!
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+
+      if ($isElementNode(node) && !node.isInline()) {
+        // -----
+        // Heuristics for the replacment or merging of elements
+        // -----
+        // If we have an incoming element node as the first node, then we'll need
+        // see if we can merge any descendant leaf nodes into our existing target.
+        // We can do this by finding the first descendant in our node and then we can
+        // pluck it and its parent (siblings included) out and insert them directly
+        // into our target. We only do this for the first node, as we are only
+        // interested in merging with the anchor, which is our target.
+        //
+        // If we apply either the replacement or merging heuristics, we need to be
+        // careful that we're not trying to insert a non-element node into a root node,
+        // so we check if the target's parent after this logic is the root node and if
+        // so we trigger an invariant to ensure this problem is caught in development
+        // and fixed accordingly.
+        if (node.is(firstNode)) {
+          if ($isElementNode(target) && target.isEmpty() && target.canReplaceWith(node)) {
+            target.replace(node);
+            target = node;
+            didReplaceOrMerge = true;
+            continue;
+          } // We may have a node tree where there are many levels, for example with
+          // lists and tables. So let's find the first descendant to try and merge
+          // with. So if we have the target:
+          //
+          // Paragraph (1)
+          //   Text (2)
+          //
+          // and we are trying to insert:
+          //
+          // ListNode (3)
+          //   ListItemNode (4)
+          //     Text (5)
+          //   ListItemNode (6)
+          //
+          // The result would be:
+          //
+          // Paragraph (1)
+          //   Text (2)
+          //   Text (5)
+          //
+
+
+          const firstDescendant = node.getFirstDescendant();
+
+          if ($isLeafNode(firstDescendant)) {
+            let element = firstDescendant.getParentOrThrow();
+
+            while (element.isInline()) {
+              element = element.getParentOrThrow();
+            }
+
+            const children = element.getChildren();
+            const childrenLength = children.length;
+
+            if ($isElementNode(target)) {
+              for (let s = 0; s < childrenLength; s++) {
+                lastNodeInserted = children[s];
+                target.append(lastNodeInserted);
+              }
+            } else {
+              for (let s = childrenLength - 1; s >= 0; s--) {
+                lastNodeInserted = children[s];
+                target.insertAfter(lastNodeInserted);
+              }
+
+              target = target.getParentOrThrow();
+            }
+
+            element.remove();
+            didReplaceOrMerge = true;
+
+            if (element.is(node)) {
+              continue;
+            }
+          }
+        }
+
+        if ($isTextNode(target)) {
+          if (topLevelElement === null) {
+            {
+              throw Error(`insertNode: topLevelElement is root node`);
+            }
+          }
+
+          target = topLevelElement;
+        }
+      } else if (didReplaceOrMerge && !$isDecoratorNode(node) && $isRootNode(target.getParent())) {
+        {
+          throw Error(`insertNodes: cannot insert a non-element into a root node`);
+        }
+      }
+
+      didReplaceOrMerge = false;
+
+      if ($isElementNode(target) && !target.isInline()) {
+        lastNodeInserted = node;
+
+        if ($isDecoratorNode(node) && node.isTopLevel()) {
+          target = target.insertAfter(node);
+        } else if (!$isElementNode(node)) {
+          const firstChild = target.getFirstChild();
+
+          if (firstChild !== null) {
+            firstChild.insertBefore(node);
+          } else {
+            target.append(node);
+          }
+
+          target = node;
+        } else {
+          if (!node.canBeEmpty() && node.isEmpty()) {
+            continue;
+          }
+
+          if ($isRootNode(target)) {
+            const placementNode = target.getChildAtIndex(anchorOffset);
+
+            if (placementNode !== null) {
+              placementNode.insertBefore(node);
+            } else {
+              target.append(node);
+            }
+
+            target = node;
+          } else {
+            target = target.insertAfter(node);
+          }
+        }
+      } else if (!$isElementNode(node) || $isElementNode(node) && node.isInline() || $isDecoratorNode(target) && target.isTopLevel()) {
+        lastNodeInserted = node;
+        target = target.insertAfter(node);
+      } else {
+        target = node.getParentOrThrow(); // Re-try again with the target being the parent
+
+        i--;
+        continue;
+      }
+    }
+
+    if (selectStart) {
+      // Handle moving selection to start for all nodes
+      if ($isTextNode(startingNode)) {
+        startingNode.select();
+      } else {
+        const prevSibling = target.getPreviousSibling();
+
+        if ($isTextNode(prevSibling)) {
+          prevSibling.select();
+        } else {
+          const index = target.getIndexWithinParent();
+          target.getParentOrThrow().select(index, index);
+        }
+      }
+    }
+
+    if ($isElementNode(target)) {
+      // If the last node to be inserted was a text node,
+      // then we should attempt to move selection to that.
+      const lastChild = $isTextNode(lastNodeInserted) ? lastNodeInserted : target.getLastDescendant();
+
+      if (!selectStart) {
+        // Handle moving selection to end for elements
+        if (lastChild === null) {
+          target.select();
+        } else if ($isTextNode(lastChild)) {
+          lastChild.select();
+        } else {
+          lastChild.selectNext();
+        }
+      }
+
+      if (siblings.length !== 0) {
+        for (let i = siblings.length - 1; i >= 0; i--) {
+          const sibling = siblings[i];
+          const prevParent = sibling.getParentOrThrow();
+
+          if ($isElementNode(target) && !$isElementNode(sibling)) {
+            target.append(sibling);
+            target = sibling;
+          } else if (!$isElementNode(target) && !$isElementNode(sibling)) {
+            target.insertBefore(sibling);
+            target = sibling;
+          } else {
+            if ($isElementNode(sibling) && !sibling.canInsertAfter(target)) {
+              const prevParentClone = prevParent.constructor.clone(prevParent);
+
+              if (!$isElementNode(prevParentClone)) {
+                {
+                  throw Error(`insertNodes: cloned parent clone is not an element`);
+                }
+              }
+
+              prevParentClone.append(sibling);
+              target.insertAfter(prevParentClone);
+            } else {
+              target.insertAfter(sibling);
+            }
+          } // Check if the prev parent is empty, as it might need
+          // removing.
+
+
+          if (prevParent.isEmpty() && !prevParent.canBeEmpty()) {
+            prevParent.remove();
+          }
+        }
+      }
+    } else if (!selectStart) {
+      // Handle moving selection to end for other nodes
+      if ($isTextNode(target)) {
+        target.select();
+      } else {
+        const element = target.getParentOrThrow();
+        const index = target.getIndexWithinParent() + 1;
+        element.select(index, index);
+      }
+    }
+
+    return true;
+  }
+
+  insertParagraph() {
+    if (!this.isCollapsed()) {
+      this.removeText();
+    }
+
+    const anchor = this.anchor;
+    const anchorOffset = anchor.offset;
+    let currentElement;
+    let nodesToMove = [];
+    let siblingsToMove = [];
+
+    if (anchor.type === 'text') {
+      const anchorNode = anchor.getNode();
+      nodesToMove = anchorNode.getNextSiblings().reverse();
+      currentElement = anchorNode.getParentOrThrow();
+      const isInline = currentElement.isInline();
+      const textContentLength = isInline ? currentElement.getTextContentSize() : anchorNode.getTextContentSize();
+
+      if (anchorOffset === 0) {
+        nodesToMove.push(anchorNode);
+      } else {
+        if (isInline) {
+          // For inline nodes, we want to move all the siblings to the new paragraph
+          // if selection is at the end, we just move the siblings. Otherwise, we also
+          // split the text node and add that and it's siblings below.
+          siblingsToMove = currentElement.getNextSiblings();
+        }
+
+        if (anchorOffset !== textContentLength) {
+          if (!isInline || anchorOffset !== anchorNode.getTextContentSize()) {
+            const [, splitNode] = anchorNode.splitText(anchorOffset);
+            nodesToMove.push(splitNode);
+          }
+        }
+      }
+    } else {
+      currentElement = anchor.getNode();
+
+      if ($isRootNode(currentElement)) {
+        const paragraph = $createParagraphNode();
+        const child = currentElement.getChildAtIndex(anchorOffset);
+        paragraph.select();
+
+        if (child !== null) {
+          child.insertBefore(paragraph);
+        } else {
+          currentElement.append(paragraph);
+        }
+
+        return;
+      }
+
+      nodesToMove = currentElement.getChildren().slice(anchorOffset).reverse();
+    }
+
+    const nodesToMoveLength = nodesToMove.length;
+
+    if (anchorOffset === 0 && nodesToMoveLength > 0 && currentElement.isInline()) {
+      const parent = currentElement.getParentOrThrow();
+      const newElement = parent.insertNewAfter(this);
+
+      if ($isElementNode(newElement)) {
+        const children = parent.getChildren();
+
+        for (let i = 0; i < children.length; i++) {
+          newElement.append(children[i]);
+        }
+      }
+
+      return;
+    }
+
+    const newElement = currentElement.insertNewAfter(this);
+
+    if (newElement === null) {
+      // Handle as a line break insertion
+      this.insertLineBreak();
+    } else if ($isElementNode(newElement)) {
+      // If we're at the beginning of the current element, move the new element to be before the current element
+      const currentElementFirstChild = currentElement.getFirstChild();
+      const isBeginning = anchorOffset === 0 && (currentElement.is(anchor.getNode()) || currentElementFirstChild && currentElementFirstChild.is(anchor.getNode()));
+
+      if (isBeginning && nodesToMoveLength > 0) {
+        currentElement.insertBefore(newElement);
+        return;
+      }
+
+      let firstChild = null;
+      const siblingsToMoveLength = siblingsToMove.length;
+      const parent = newElement.getParentOrThrow(); // For inline elements, we append the siblings to the parent.
+
+      if (siblingsToMoveLength > 0) {
+        for (let i = 0; i < siblingsToMoveLength; i++) {
+          const siblingToMove = siblingsToMove[i];
+          parent.append(siblingToMove);
+        }
+      }
+
+      if (nodesToMoveLength !== 0) {
+        for (let i = 0; i < nodesToMoveLength; i++) {
+          const nodeToMove = nodesToMove[i];
+
+          if (firstChild === null) {
+            newElement.append(nodeToMove);
+          } else {
+            firstChild.insertBefore(nodeToMove);
+          }
+
+          firstChild = nodeToMove;
+        }
+      }
+
+      if (!newElement.canBeEmpty() && newElement.getChildrenSize() === 0) {
+        newElement.selectPrevious();
+        newElement.remove();
+      } else {
+        newElement.selectStart();
+      }
+    }
+  }
+
+  insertLineBreak(selectStart) {
+    const lineBreakNode = $createLineBreakNode();
+    const anchor = this.anchor;
+
+    if (anchor.type === 'element') {
+      const element = anchor.getNode();
+
+      if ($isRootNode(element)) {
+        this.insertParagraph();
+      }
+    }
+
+    if (selectStart) {
+      this.insertNodes([lineBreakNode], true);
+    } else {
+      if (this.insertNodes([lineBreakNode])) {
+        lineBreakNode.selectNext(0, 0);
+      }
+    }
+  }
+
+  getCharacterOffsets() {
+    return getCharacterOffsets(this);
+  }
+
+  extract() {
+    const selectedNodes = this.getNodes();
+    const selectedNodesLength = selectedNodes.length;
+    const lastIndex = selectedNodesLength - 1;
+    const anchor = this.anchor;
+    const focus = this.focus;
+    let firstNode = selectedNodes[0];
+    let lastNode = selectedNodes[lastIndex];
+    const [anchorOffset, focusOffset] = getCharacterOffsets(this);
+
+    if (selectedNodesLength === 0) {
+      return [];
+    } else if (selectedNodesLength === 1) {
+      if ($isTextNode(firstNode)) {
+        const startOffset = anchorOffset > focusOffset ? focusOffset : anchorOffset;
+        const endOffset = anchorOffset > focusOffset ? anchorOffset : focusOffset;
+        const splitNodes = firstNode.splitText(startOffset, endOffset);
+        const node = startOffset === 0 ? splitNodes[0] : splitNodes[1];
+        return node != null ? [node] : [];
+      }
+
+      return [firstNode];
+    }
+
+    const isBefore = anchor.isBefore(focus);
+
+    if ($isTextNode(firstNode)) {
+      const startOffset = isBefore ? anchorOffset : focusOffset;
+
+      if (startOffset === firstNode.getTextContentSize()) {
+        selectedNodes.shift();
+      } else if (startOffset !== 0) {
+        [, firstNode] = firstNode.splitText(startOffset);
+        selectedNodes[0] = firstNode;
+      }
+    }
+
+    if ($isTextNode(lastNode)) {
+      const lastNodeText = lastNode.getTextContent();
+      const lastNodeTextLength = lastNodeText.length;
+      const endOffset = isBefore ? focusOffset : anchorOffset;
+
+      if (endOffset === 0) {
+        selectedNodes.pop();
+      } else if (endOffset !== lastNodeTextLength) {
+        [lastNode] = lastNode.splitText(endOffset);
+        selectedNodes[lastIndex] = lastNode;
+      }
+    }
+
+    return selectedNodes;
+  }
+
+  modify(alter, isBackward, granularity) {
+    const focus = this.focus;
+    const anchor = this.anchor;
+    const collapse = alter === 'move'; // Handle the selection movement around decorators.
+
+    const possibleNode = $getDecoratorNode(focus, isBackward);
+
+    if ($isDecoratorNode(possibleNode) && !possibleNode.isIsolated()) {
+      const sibling = isBackward ? possibleNode.getPreviousSibling() : possibleNode.getNextSibling();
+
+      if (!$isTextNode(sibling)) {
+        const parent = possibleNode.getParentOrThrow();
+        let offset;
+        let elementKey;
+
+        if ($isElementNode(sibling)) {
+          elementKey = sibling.__key;
+          offset = isBackward ? sibling.getChildrenSize() : 0;
+        } else {
+          offset = possibleNode.getIndexWithinParent();
+          elementKey = parent.__key;
+
+          if (!isBackward) {
+            offset++;
+          }
+        }
+
+        focus.set(elementKey, offset, 'element');
+
+        if (collapse) {
+          anchor.set(elementKey, offset, 'element');
+        }
+
+        return;
+      } else {
+        const siblingKey = sibling.__key;
+        const offset = isBackward ? sibling.getTextContent().length : 0;
+        focus.set(siblingKey, offset, 'text');
+
+        if (collapse) {
+          anchor.set(siblingKey, offset, 'text');
+        }
+
+        return;
+      }
+    }
+
+    const domSelection = getDOMSelection(); // We use the DOM selection.modify API here to "tell" us what the selection
+    // will be. We then use it to update the Lexical selection accordingly. This
+    // is much more reliable than waiting for a beforeinput and using the ranges
+    // from getTargetRanges(), and is also better than trying to do it ourselves
+    // using Intl.Segmenter or other workarounds that struggle with word segments
+    // and line segments (especially with word wrapping and non-Roman languages).
+
+    $moveNativeSelection(domSelection, alter, isBackward ? 'backward' : 'forward', granularity); // Guard against no ranges
+
+    if (domSelection.rangeCount > 0) {
+      const range = domSelection.getRangeAt(0); // Apply the DOM selection to our Lexical selection.
+      // $FlowFixMe[incompatible-call]
+
+      this.applyDOMRange(range);
+      this.dirty = true; // Because a range works on start and end, we might need to flip
+      // the anchor and focus points to match what the DOM has, not what
+      // the range has specifically.
+
+      if (!collapse && (domSelection.anchorNode !== range.startContainer || domSelection.anchorOffset !== range.startOffset)) {
+        $swapPoints(this);
+      }
+    }
+  }
+
+  deleteCharacter(isBackward) {
+    if (this.isCollapsed()) {
+      const anchor = this.anchor;
+      const focus = this.focus;
+      let anchorNode = anchor.getNode();
+
+      if (!isBackward && ( // Delete forward handle case
+      anchor.type === 'element' && // $FlowFixMe: always an element node
+      anchor.offset === anchorNode.getChildrenSize() || anchor.type === 'text' && anchor.offset === anchorNode.getTextContentSize())) {
+        const nextSibling = anchorNode.getNextSibling() || anchorNode.getParentOrThrow().getNextSibling();
+
+        if ($isElementNode(nextSibling) && !nextSibling.canExtractContents()) {
+          return;
+        }
+      }
+
+      this.modify('extend', isBackward, 'character');
+
+      if (!this.isCollapsed()) {
+        const focusNode = focus.type === 'text' ? focus.getNode() : null;
+        anchorNode = anchor.type === 'text' ? anchor.getNode() : null;
+
+        if (focusNode !== null && focusNode.isSegmented()) {
+          const offset = focus.offset;
+          const textContentSize = focusNode.getTextContentSize();
+
+          if (focusNode.is(anchorNode) || isBackward && offset !== textContentSize || !isBackward && offset !== 0) {
+            $removeSegment(focusNode, isBackward, offset);
+            return;
+          }
+        } else if (anchorNode !== null && anchorNode.isSegmented()) {
+          const offset = anchor.offset;
+          const textContentSize = anchorNode.getTextContentSize();
+
+          if (anchorNode.is(focusNode) || isBackward && offset !== 0 || !isBackward && offset !== textContentSize) {
+            $removeSegment(anchorNode, isBackward, offset);
+            return;
+          }
+        }
+
+        $updateCaretSelectionForUnicodeCharacter(this, isBackward);
+      } else if (isBackward && anchor.offset === 0) {
+        // Special handling around rich text nodes
+        const element = anchor.type === 'element' ? anchor.getNode() : anchor.getNode().getParentOrThrow();
+
+        if (element.collapseAtStart(this)) {
+          return;
+        }
+      }
+    }
+
+    this.removeText();
+  }
+
+  deleteLine(isBackward) {
+    if (this.isCollapsed()) {
+      this.modify('extend', isBackward, 'lineboundary');
+    }
+
+    this.removeText();
+  }
+
+  deleteWord(isBackward) {
+    if (this.isCollapsed()) {
+      this.modify('extend', isBackward, 'word');
+    }
+
+    this.removeText();
+  }
+
+}
+function $isNodeSelection(x) {
+  return x instanceof NodeSelection;
+}
+
+function getCharacterOffset(point) {
+  const offset = point.offset;
+
+  if (point.type === 'text') {
+    return offset;
+  } // $FlowFixMe: cast
+
+
+  const parent = point.getNode();
+  return offset === parent.getChildrenSize() ? parent.getTextContent().length : 0;
+}
+
+function getCharacterOffsets(selection) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+
+  if (anchor.type === 'element' && focus.type === 'element' && anchor.key === focus.key && anchor.offset === focus.offset) {
+    return [0, 0];
+  }
+
+  return [getCharacterOffset(anchor), getCharacterOffset(focus)];
+}
+
+function $swapPoints(selection) {
+  const focus = selection.focus;
+  const anchor = selection.anchor;
+  const anchorKey = anchor.key;
+  const anchorOffset = anchor.offset;
+  const anchorType = anchor.type;
+  $setPointValues(anchor, focus.key, focus.offset, focus.type);
+  $setPointValues(focus, anchorKey, anchorOffset, anchorType);
+  selection._cachedNodes = null;
+}
+
+function $moveNativeSelection(domSelection, alter, direction, granularity) {
+  // $FlowFixMe[prop-missing]
+  domSelection.modify(alter, direction, granularity);
+}
+
+function $updateCaretSelectionForUnicodeCharacter(selection, isBackward) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const anchorNode = anchor.getNode();
+  const focusNode = focus.getNode();
+
+  if (anchorNode === focusNode && anchor.type === 'text' && focus.type === 'text') {
+    // Handling of multibyte characters
+    const anchorOffset = anchor.offset;
+    const focusOffset = focus.offset;
+    const isBefore = anchorOffset < focusOffset;
+    const startOffset = isBefore ? anchorOffset : focusOffset;
+    const endOffset = isBefore ? focusOffset : anchorOffset;
+    const characterOffset = endOffset - 1;
+
+    if (startOffset !== characterOffset) {
+      const text = anchorNode.getTextContent().slice(startOffset, endOffset);
+
+      if (!doesContainGrapheme(text)) {
+        if (isBackward) {
+          focus.offset = characterOffset;
+        } else {
+          anchor.offset = characterOffset;
+        }
+      }
+    }
+  }
+}
+
+function $removeSegment(node, isBackward, offset) {
+  const textNode = node;
+  const textContent = textNode.getTextContent();
+  const split = textContent.split(/(?=\s)/g);
+  const splitLength = split.length;
+  let segmentOffset = 0;
+  let restoreOffset = 0;
+
+  for (let i = 0; i < splitLength; i++) {
+    const text = split[i];
+    const isLast = i === splitLength - 1;
+    restoreOffset = segmentOffset;
+    segmentOffset += text.length;
+
+    if (isBackward && segmentOffset === offset || segmentOffset > offset || isLast) {
+      split.splice(i, 1);
+
+      if (isLast) {
+        restoreOffset = undefined;
+      }
+
+      break;
+    }
+  }
+
+  const nextTextContent = split.join('').trim();
+
+  if (nextTextContent === '') {
+    textNode.remove();
+  } else {
+    textNode.setTextContent(nextTextContent);
+    textNode.select(restoreOffset, restoreOffset);
+  }
+}
+
+function shouldResolveAncestor(resolvedElement, resolvedOffset, lastPoint) {
+  const parent = resolvedElement.getParent();
+  return lastPoint === null || parent === null || !parent.canBeEmpty() || parent !== lastPoint.getNode();
+}
+
+function internalResolveSelectionPoint(dom, offset, lastPoint) {
+  let resolvedOffset = offset;
+  let resolvedNode; // If we have selection on an element, we will
+  // need to figure out (using the offset) what text
+  // node should be selected.
+
+  if (dom.nodeType === DOM_ELEMENT_TYPE) {
+    // Resolve element to a ElementNode, or TextNode, or null
+    let moveSelectionToEnd = false; // Given we're moving selection to another node, selection is
+    // definitely dirty.
+    // We use the anchor to find which child node to select
+
+    const childNodes = dom.childNodes;
+    const childNodesLength = childNodes.length; // If the anchor is the same as length, then this means we
+    // need to select the very last text node.
+
+    if (resolvedOffset === childNodesLength) {
+      moveSelectionToEnd = true;
+      resolvedOffset = childNodesLength - 1;
+    }
+
+    const childDOM = childNodes[resolvedOffset];
+    resolvedNode = getNodeFromDOM(childDOM);
+
+    if ($isTextNode(resolvedNode)) {
+      resolvedOffset = getTextNodeOffset(resolvedNode, moveSelectionToEnd);
+    } else {
+      let resolvedElement = getNodeFromDOM(dom); // Ensure resolvedElement is actually a element.
+
+      if (resolvedElement === null) {
+        return null;
+      }
+
+      if ($isElementNode(resolvedElement)) {
+        let child = resolvedElement.getChildAtIndex(resolvedOffset);
+
+        if ($isElementNode(child) && shouldResolveAncestor(child, resolvedOffset, lastPoint)) {
+          const descendant = moveSelectionToEnd ? child.getLastDescendant() : child.getFirstDescendant();
+
+          if (descendant === null) {
+            resolvedElement = child;
+            resolvedOffset = 0;
+          } else {
+            child = descendant;
+            resolvedElement = child.getParentOrThrow();
+          }
+        }
+
+        if ($isTextNode(child)) {
+          resolvedNode = child;
+          resolvedElement = null;
+          resolvedOffset = getTextNodeOffset(resolvedNode, moveSelectionToEnd);
+        } else if (child !== resolvedElement && moveSelectionToEnd) {
+          resolvedOffset++;
+        }
+      } else {
+        const index = resolvedElement.getIndexWithinParent(); // When selecting decorators, there can be some selection issues when using resolvedOffset,
+        // and instead we should be checking if we're using the offset
+
+        if (offset === 0 && $isDecoratorNode(resolvedElement) && getNodeFromDOM(dom) === resolvedElement) {
+          resolvedOffset = index;
+        } else {
+          resolvedOffset = index + 1;
+        }
+
+        resolvedElement = resolvedElement.getParentOrThrow();
+      }
+
+      if ($isElementNode(resolvedElement)) {
+        return $createPoint(resolvedElement.__key, resolvedOffset, 'element');
+      }
+    }
+  } else {
+    // TextNode or null
+    resolvedNode = getNodeFromDOM(dom);
+  }
+
+  if (!$isTextNode(resolvedNode)) {
+    return null;
+  }
+
+  return $createPoint(resolvedNode.__key, resolvedOffset, 'text');
+}
+
+function resolveSelectionPointOnBoundary(point, isBackward, isCollapsed) {
+  const offset = point.offset;
+  const node = point.getNode();
+
+  if (offset === 0) {
+    const prevSibling = node.getPreviousSibling();
+    const parent = node.getParent();
+
+    if (!isBackward) {
+      if ($isElementNode(prevSibling) && !isCollapsed && prevSibling.isInline()) {
+        point.key = prevSibling.__key;
+        point.offset = prevSibling.getChildrenSize(); // $FlowFixMe: intentional
+
+        point.type = 'element';
+      } else if ($isTextNode(prevSibling) && !prevSibling.isInert()) {
+        point.key = prevSibling.__key;
+        point.offset = prevSibling.getTextContent().length;
+      }
+    } else if ((isCollapsed || !isBackward) && prevSibling === null && $isElementNode(parent) && parent.isInline()) {
+      const parentSibling = parent.getPreviousSibling();
+
+      if ($isTextNode(parentSibling)) {
+        point.key = parentSibling.__key;
+        point.offset = parentSibling.getTextContent().length;
+      }
+    }
+  } else if (offset === node.getTextContent().length) {
+    const nextSibling = node.getNextSibling();
+    const parent = node.getParent();
+
+    if (isBackward && $isElementNode(nextSibling) && nextSibling.isInline()) {
+      point.key = nextSibling.__key;
+      point.offset = 0; // $FlowFixMe: intentional
+
+      point.type = 'element';
+    } else if ((isCollapsed || isBackward) && nextSibling === null && $isElementNode(parent) && parent.isInline() && !parent.canInsertTextAfter()) {
+      const parentSibling = parent.getNextSibling();
+
+      if ($isTextNode(parentSibling)) {
+        point.key = parentSibling.__key;
+        point.offset = 0;
+      }
+    }
+  }
+}
+
+function normalizeSelectionPointsForBoundaries(anchor, focus, lastSelection) {
+  if (anchor.type === 'text' && focus.type === 'text') {
+    const isBackward = anchor.isBefore(focus);
+    const isCollapsed = anchor.is(focus); // Attempt to normalize the offset to the previous sibling if we're at the
+    // start of a text node and the sibling is a text node or inline element.
+
+    resolveSelectionPointOnBoundary(anchor, isBackward, isCollapsed);
+    resolveSelectionPointOnBoundary(focus, !isBackward, isCollapsed);
+
+    if (isCollapsed) {
+      focus.key = anchor.key;
+      focus.offset = anchor.offset;
+      focus.type = anchor.type;
+    }
+
+    const editor = getActiveEditor();
+
+    if (editor.isComposing() && editor._compositionKey !== anchor.key && $isRangeSelection(lastSelection)) {
+      const lastAnchor = lastSelection.anchor;
+      const lastFocus = lastSelection.focus;
+      $setPointValues(anchor, lastAnchor.key, lastAnchor.offset, lastAnchor.type);
+      $setPointValues(focus, lastFocus.key, lastFocus.offset, lastFocus.type);
+    }
+  }
+}
+
+function internalResolveSelectionPoints(anchorDOM, anchorOffset, focusDOM, focusOffset, editor, lastSelection) {
+  if (anchorDOM === null || focusDOM === null || !isSelectionWithinEditor(editor, anchorDOM, focusDOM)) {
+    return null;
+  }
+
+  const resolvedAnchorPoint = internalResolveSelectionPoint(anchorDOM, anchorOffset, $isRangeSelection(lastSelection) ? lastSelection.anchor : null);
+
+  if (resolvedAnchorPoint === null) {
+    return null;
+  }
+
+  const resolvedFocusPoint = internalResolveSelectionPoint(focusDOM, focusOffset, $isRangeSelection(lastSelection) ? lastSelection.focus : null);
+
+  if (resolvedFocusPoint === null) {
+    return null;
+  }
+
+  if (resolvedAnchorPoint.type === 'element' && resolvedFocusPoint.type === 'element') {
+    const anchorNode = getNodeFromDOM(anchorDOM);
+    const focusNode = getNodeFromDOM(focusDOM); // Ensure if we're selecting the content of a decorator that we
+    // return null for this point, as it's not in the controlled scope
+    // of Lexical.
+
+    if ($isDecoratorNode(anchorNode) && $isDecoratorNode(focusNode)) {
+      return null;
+    }
+  } // Handle normalization of selection when it is at the boundaries.
+
+
+  normalizeSelectionPointsForBoundaries(resolvedAnchorPoint, resolvedFocusPoint, lastSelection);
+  return [resolvedAnchorPoint, resolvedFocusPoint];
+} // This is used to make a selection when the existing
+// selection is null, i.e. forcing selection on the editor
+// when it current exists outside the editor.
+
+
+function internalMakeRangeSelection(anchorKey, anchorOffset, focusKey, focusOffset, anchorType, focusType) {
+  const editorState = getActiveEditorState();
+  const selection = new RangeSelection($createPoint(anchorKey, anchorOffset, anchorType), $createPoint(focusKey, focusOffset, focusType), 0);
+  selection.dirty = true;
+  editorState._selection = selection;
+  return selection;
+}
+function $createEmptyRangeSelection() {
+  const anchor = $createPoint('root', 0, 'element');
+  const focus = $createPoint('root', 0, 'element');
+  return new RangeSelection(anchor, focus, 0);
+}
+function $createEmptyObjectSelection() {
+  return new NodeSelection(new Set());
+}
+function $createEmptyGridSelection() {
+  const anchor = $createPoint('root', 0, 'element');
+  const focus = $createPoint('root', 0, 'element');
+  return new GridSelection('root', anchor, focus);
+}
+
+function getActiveEventType() {
+  const event = window.event;
+  return event && event.type;
+}
+
+function internalCreateSelection(editor) {
+  const currentEditorState = editor.getEditorState();
+  const lastSelection = currentEditorState._selection;
+  const domSelection = getDOMSelection();
+
+  if ($isNodeSelection(lastSelection) || $isGridSelection(lastSelection)) {
+    return lastSelection.clone();
+  }
+
+  return internalCreateRangeSelection(lastSelection, domSelection, editor);
+}
+
+function internalCreateRangeSelection(lastSelection, domSelection, editor) {
+  // When we create a selection, we try to use the previous
+  // selection where possible, unless an actual user selection
+  // change has occurred. When we do need to create a new selection
+  // we validate we can have text nodes for both anchor and focus
+  // nodes. If that holds true, we then return that selection
+  // as a mutable object that we use for the editor state for this
+  // update cycle. If a selection gets changed, and requires a
+  // update to native DOM selection, it gets marked as "dirty".
+  // If the selection changes, but matches with the existing
+  // DOM selection, then we only need to sync it. Otherwise,
+  // we generally bail out of doing an update to selection during
+  // reconciliation unless there are dirty nodes that need
+  // reconciling.
+  const eventType = getActiveEventType();
+  const isSelectionChange = eventType === 'selectionchange';
+  const useDOMSelection = !getIsProcesssingMutations() && (isSelectionChange || eventType === 'beforeinput' || eventType === 'compositionstart' || eventType === 'compositionend' || eventType === 'click' && window.event.detail === 3 || eventType === undefined);
+  let anchorDOM, focusDOM, anchorOffset, focusOffset;
+
+  if (!$isRangeSelection(lastSelection) || useDOMSelection) {
+    if (domSelection === null) {
+      return null;
+    }
+
+    anchorDOM = domSelection.anchorNode;
+    focusDOM = domSelection.focusNode;
+    anchorOffset = domSelection.anchorOffset;
+    focusOffset = domSelection.focusOffset;
+  } else {
+    return lastSelection.clone();
+  } // Let's resolve the text nodes from the offsets and DOM nodes we have from
+  // native selection.
+
+
+  const resolvedSelectionPoints = internalResolveSelectionPoints(anchorDOM, anchorOffset, focusDOM, focusOffset, editor, lastSelection);
+
+  if (resolvedSelectionPoints === null) {
+    return null;
+  }
+
+  const [resolvedAnchorPoint, resolvedFocusPoint] = resolvedSelectionPoints;
+  return new RangeSelection(resolvedAnchorPoint, resolvedFocusPoint, !$isRangeSelection(lastSelection) ? 0 : lastSelection.format);
+}
+
+function $getSelection() {
+  const editorState = getActiveEditorState();
+  return editorState._selection;
+}
+function $getPreviousSelection() {
+  const editor = getActiveEditor();
+  return editor._editorState._selection;
+}
+function internalCreateSelectionFromParse(parsedSelection) {
+  if (parsedSelection !== null) {
+    if (parsedSelection.type === 'range') {
+      return new RangeSelection($createPoint(parsedSelection.anchor.key, parsedSelection.anchor.offset, parsedSelection.anchor.type), $createPoint(parsedSelection.focus.key, parsedSelection.focus.offset, parsedSelection.focus.type), 0);
+    } else if (parsedSelection.type === 'node') {
+      return new NodeSelection(new Set(parsedSelection.nodes));
+    } else if (parsedSelection.type === 'grid') {
+      return new GridSelection(parsedSelection.gridKey, $createPoint(parsedSelection.anchor.key, parsedSelection.anchor.offset, parsedSelection.anchor.type), $createPoint(parsedSelection.focus.key, parsedSelection.focus.offset, parsedSelection.focus.type));
+    }
+  }
+
+  return null;
+}
+function $updateElementSelectionOnCreateDeleteNode(selection, parentNode, nodeOffset, times = 1) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const anchorNode = anchor.getNode();
+  const focusNode = focus.getNode();
+
+  if (!parentNode.is(anchorNode) && !parentNode.is(focusNode)) {
+    return;
+  }
+
+  const parentKey = parentNode.__key; // Single node. We shift selection but never redimension it
+
+  if (selection.isCollapsed()) {
+    const selectionOffset = anchor.offset;
+
+    if (nodeOffset <= selectionOffset) {
+      const newSelectionOffset = Math.max(0, selectionOffset + times);
+      anchor.set(parentKey, newSelectionOffset, 'element');
+      focus.set(parentKey, newSelectionOffset, 'element'); // The new selection might point to text nodes, try to resolve them
+
+      $updateSelectionResolveTextNodes(selection);
+    }
+
+    return;
+  } // Multiple nodes selected. We shift or redimension selection
+
+
+  const isBackward = selection.isBackward();
+  const firstPoint = isBackward ? focus : anchor;
+  const firstPointNode = firstPoint.getNode();
+  const lastPoint = isBackward ? anchor : focus;
+  const lastPointNode = lastPoint.getNode();
+
+  if (parentNode.is(firstPointNode)) {
+    const firstPointOffset = firstPoint.offset;
+
+    if (nodeOffset <= firstPointOffset) {
+      firstPoint.set(parentKey, Math.max(0, firstPointOffset + times), 'element');
+    }
+  }
+
+  if (parentNode.is(lastPointNode)) {
+    const lastPointOffset = lastPoint.offset;
+
+    if (nodeOffset <= lastPointOffset) {
+      lastPoint.set(parentKey, Math.max(0, lastPointOffset + times), 'element');
+    }
+  } // The new selection might point to text nodes, try to resolve them
+
+
+  $updateSelectionResolveTextNodes(selection);
+}
+
+function $updateSelectionResolveTextNodes(selection) {
+  const anchor = selection.anchor;
+  const anchorOffset = anchor.offset;
+  const focus = selection.focus;
+  const focusOffset = focus.offset;
+  const anchorNode = anchor.getNode();
+  const focusNode = focus.getNode();
+
+  if (selection.isCollapsed()) {
+    if (!$isElementNode(anchorNode)) {
+      return;
+    }
+
+    const childSize = anchorNode.getChildrenSize();
+    const anchorOffsetAtEnd = anchorOffset >= childSize;
+    const child = anchorOffsetAtEnd ? anchorNode.getChildAtIndex(childSize - 1) : anchorNode.getChildAtIndex(anchorOffset);
+
+    if ($isTextNode(child)) {
+      let newOffset = 0;
+
+      if (anchorOffsetAtEnd) {
+        newOffset = child.getTextContentSize();
+      }
+
+      anchor.set(child.__key, newOffset, 'text');
+      focus.set(child.__key, newOffset, 'text');
+    }
+
+    return;
+  }
+
+  if ($isElementNode(anchorNode)) {
+    const childSize = anchorNode.getChildrenSize();
+    const anchorOffsetAtEnd = anchorOffset >= childSize;
+    const child = anchorOffsetAtEnd ? anchorNode.getChildAtIndex(childSize - 1) : anchorNode.getChildAtIndex(anchorOffset);
+
+    if ($isTextNode(child)) {
+      let newOffset = 0;
+
+      if (anchorOffsetAtEnd) {
+        newOffset = child.getTextContentSize();
+      }
+
+      anchor.set(child.__key, newOffset, 'text');
+    }
+  }
+
+  if ($isElementNode(focusNode)) {
+    const childSize = focusNode.getChildrenSize();
+    const focusOffsetAtEnd = focusOffset >= childSize;
+    const child = focusOffsetAtEnd ? focusNode.getChildAtIndex(childSize - 1) : focusNode.getChildAtIndex(focusOffset);
+
+    if ($isTextNode(child)) {
+      let newOffset = 0;
+
+      if (focusOffsetAtEnd) {
+        newOffset = child.getTextContentSize();
+      }
+
+      focus.set(child.__key, newOffset, 'text');
+    }
+  }
+}
+
+function applySelectionTransforms(nextEditorState, editor) {
+  const prevEditorState = editor.getEditorState();
+  const prevSelection = prevEditorState._selection;
+  const nextSelection = nextEditorState._selection;
+
+  if ($isRangeSelection(nextSelection)) {
+    const anchor = nextSelection.anchor;
+    const focus = nextSelection.focus;
+    let anchorNode;
+
+    if (anchor.type === 'text') {
+      anchorNode = anchor.getNode();
+      anchorNode.selectionTransform(prevSelection, nextSelection);
+    }
+
+    if (focus.type === 'text') {
+      const focusNode = focus.getNode();
+
+      if (anchorNode !== focusNode) {
+        focusNode.selectionTransform(prevSelection, nextSelection);
+      }
+    }
+  }
+}
+function moveSelectionPointToSibling(point, node, parent, prevSibling, nextSibling) {
+  let siblingKey = null;
+  let offset = 0;
+  let type = null;
+
+  if (prevSibling !== null) {
+    siblingKey = prevSibling.__key;
+
+    if ($isTextNode(prevSibling)) {
+      offset = prevSibling.getTextContentSize();
+      type = 'text';
+    } else if ($isElementNode(prevSibling)) {
+      offset = prevSibling.getChildrenSize();
+      type = 'element';
+    }
+  } else {
+    if (nextSibling !== null) {
+      siblingKey = nextSibling.__key;
+
+      if ($isTextNode(nextSibling)) {
+        type = 'text';
+      } else if ($isElementNode(nextSibling)) {
+        type = 'element';
+      }
+    }
+  }
+
+  if (siblingKey !== null && type !== null) {
+    point.set(siblingKey, offset, type);
+  } else {
+    offset = node.getIndexWithinParent();
+
+    if (offset === -1) {
+      // Move selection to end of parent
+      offset = parent.getChildrenSize();
+    }
+
+    point.set(parent.__key, offset, 'element');
+  }
+}
+function adjustPointOffsetForMergedSibling(point, isBefore, key, target, textLength) {
+  if (point.type === 'text') {
+    point.key = key;
+
+    if (!isBefore) {
+      point.offset += textLength;
+    }
+  } else if (point.offset > target.getIndexWithinParent()) {
+    point.offset -= 1;
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function removeNode(nodeToRemove, restoreSelection, preserveEmptyParent) {
+  errorOnReadOnly();
+  const key = nodeToRemove.__key;
+  const parent = nodeToRemove.getParent();
+
+  if (parent === null) {
+    return;
+  }
+
+  const selection = $getSelection();
+  let selectionMoved = false;
+
+  if ($isRangeSelection(selection) && restoreSelection) {
+    const anchor = selection.anchor;
+    const focus = selection.focus;
+
+    if (anchor.key === key) {
+      moveSelectionPointToSibling(anchor, nodeToRemove, parent, nodeToRemove.getPreviousSibling(), nodeToRemove.getNextSibling());
+      selectionMoved = true;
+    }
+
+    if (focus.key === key) {
+      moveSelectionPointToSibling(focus, nodeToRemove, parent, nodeToRemove.getPreviousSibling(), nodeToRemove.getNextSibling());
+      selectionMoved = true;
+    }
+  }
+
+  const writableParent = parent.getWritable();
+  const parentChildren = writableParent.__children;
+  const index = parentChildren.indexOf(key);
+
+  if (index === -1) {
+    {
+      throw Error(`Node is not a child of its parent`);
+    }
+  }
+
+  internalMarkSiblingsAsDirty(nodeToRemove);
+  parentChildren.splice(index, 1);
+  const writableNodeToRemove = nodeToRemove.getWritable();
+  writableNodeToRemove.__parent = null;
+
+  if ($isRangeSelection(selection) && restoreSelection && !selectionMoved) {
+    $updateElementSelectionOnCreateDeleteNode(selection, parent, index, -1);
+  }
+
+  if (!preserveEmptyParent && parent !== null && !$isRootNode(parent) && !parent.canBeEmpty() && parent.isEmpty()) {
+    removeNode(parent, restoreSelection);
+  }
+
+  if (parent !== null && $isRootNode(parent) && parent.isEmpty()) {
+    parent.selectEnd();
+  }
+}
+function $getNodeByKeyOrThrow(key) {
+  const node = $getNodeByKey(key);
+
+  if (node === null) {
+    {
+      throw Error(`Expected node with key ${key} to exist but it's not in the nodeMap.`);
+    }
+  }
+
+  return node;
+}
+class LexicalNode {
+  // Flow doesn't support abstract classes unfortunately, so we can't _force_
+  // subclasses of Node to implement statics. All subclasses of Node should have
+  // a static getType and clone method though. We define getType and clone here so we can call it
+  // on any  Node, and we throw this error by default since the subclass should provide
+  // their own implementation.
+  static getType() {
+    {
+      throw Error(`LexicalNode: Node ${this.name} does not implement .getType().`);
+    }
+  }
+
+  static clone(data) {
+    {
+      throw Error(`LexicalNode: Node ${this.name} does not implement .clone().`);
+    }
+  }
+
+  constructor(key) {
+    this.__type = this.constructor.getType();
+    this.__parent = null;
+    $setNodeKey(this, key); // Ensure custom nodes implement required methods.
+
+    {
+      const proto = Object.getPrototypeOf(this);
+      ['getType', 'clone'].forEach(method => {
+        if (!proto.constructor.hasOwnProperty(method)) {
+          console.warn(`${this.constructor.name} must implement static "${method}" method`);
+        }
+      });
+
+      if (this.__type !== 'root') {
+        errorOnReadOnly();
+        errorOnTypeKlassMismatch(this.__type, this.constructor);
+      }
+    }
+  } // Getters and Traversers
+
+
+  getType() {
+    return this.__type;
+  }
+
+  isAttached() {
+    let nodeKey = this.__key;
+
+    while (nodeKey !== null) {
+      if (nodeKey === 'root') {
+        return true;
+      }
+
+      const node = $getNodeByKey(nodeKey);
+
+      if (node === null) {
+        break;
+      }
+
+      nodeKey = node.__parent;
+    }
+
+    return false;
+  }
+
+  isSelected() {
+    const selection = $getSelection();
+
+    if (selection == null) {
+      return false;
+    }
+
+    const isSelected = selection.getNodes().some(n => n.__key === this.__key);
+
+    if ($isTextNode(this)) {
+      return isSelected;
+    } // For inline images inside of element nodes.
+    // Without this change the image will be selected if the cursor is before or after it.
+
+
+    if ($isRangeSelection(selection) && selection.anchor.type === 'element' && selection.focus.type === 'element' && selection.anchor.key === selection.focus.key && selection.anchor.offset === selection.focus.offset) {
+      return false;
+    }
+
+    return isSelected;
+  }
+
+  getKey() {
+    // Key is stable between copies
+    return this.__key;
+  }
+
+  getIndexWithinParent() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      return -1;
+    }
+
+    const children = parent.__children;
+    return children.indexOf(this.__key);
+  }
+
+  getParent() {
+    const parent = this.getLatest().__parent;
+
+    if (parent === null) {
+      return null;
+    }
+
+    return $getNodeByKey(parent);
+  }
+
+  getParentOrThrow() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      {
+        throw Error(`Expected node ${this.__key} to have a parent.`);
+      }
+    }
+
+    return parent;
+  }
+
+  getTopLevelElement() {
+    let node = this;
+
+    while (node !== null) {
+      const parent = node.getParent();
+
+      if ($isRootNode(parent) && $isElementNode(node)) {
+        return node;
+      }
+
+      node = parent;
+    }
+
+    return null;
+  }
+
+  getTopLevelElementOrThrow() {
+    const parent = this.getTopLevelElement();
+
+    if (parent === null) {
+      {
+        throw Error(`Expected node ${this.__key} to have a top parent element.`);
+      }
+    }
+
+    return parent;
+  }
+
+  getParents() {
+    const parents = [];
+    let node = this.getParent();
+
+    while (node !== null) {
+      parents.push(node);
+      node = node.getParent();
+    }
+
+    return parents;
+  }
+
+  getParentKeys() {
+    const parents = [];
+    let node = this.getParent();
+
+    while (node !== null) {
+      parents.push(node.__key);
+      node = node.getParent();
+    }
+
+    return parents;
+  }
+
+  getPreviousSibling() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      return null;
+    }
+
+    const children = parent.__children;
+    const index = children.indexOf(this.__key);
+
+    if (index <= 0) {
+      return null;
+    }
+
+    return $getNodeByKey(children[index - 1]);
+  }
+
+  getPreviousSiblings() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      return [];
+    }
+
+    const children = parent.__children;
+    const index = children.indexOf(this.__key);
+    return children.slice(0, index).map(childKey => $getNodeByKeyOrThrow(childKey));
+  }
+
+  getNextSibling() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      return null;
+    }
+
+    const children = parent.__children;
+    const childrenLength = children.length;
+    const index = children.indexOf(this.__key);
+
+    if (index >= childrenLength - 1) {
+      return null;
+    }
+
+    return $getNodeByKey(children[index + 1]);
+  }
+
+  getNextSiblings() {
+    const parent = this.getParent();
+
+    if (parent === null) {
+      return [];
+    }
+
+    const children = parent.__children;
+    const index = children.indexOf(this.__key);
+    return children.slice(index + 1).map(childKey => $getNodeByKeyOrThrow(childKey));
+  }
+
+  getCommonAncestor(node) {
+    const a = this.getParents();
+    const b = node.getParents();
+
+    if ($isElementNode(this)) {
+      a.unshift(this);
+    }
+
+    if ($isElementNode(node)) {
+      b.unshift(node);
+    }
+
+    const aLength = a.length;
+    const bLength = b.length;
+
+    if (aLength === 0 || bLength === 0 || a[aLength - 1] !== b[bLength - 1]) {
+      return null;
+    }
+
+    const bSet = new Set(b);
+
+    for (let i = 0; i < aLength; i++) {
+      const ancestor = a[i];
+
+      if (bSet.has(ancestor)) {
+        return ancestor;
+      }
+    }
+
+    return null;
+  }
+
+  is(object) {
+    if (object == null) {
+      return false;
+    }
+
+    return this.__key === object.__key;
+  }
+
+  isBefore(targetNode) {
+    if (targetNode.isParentOf(this)) {
+      return true;
+    }
+
+    if (this.isParentOf(targetNode)) {
+      return false;
+    }
+
+    const commonAncestor = this.getCommonAncestor(targetNode);
+    let indexA = 0;
+    let indexB = 0;
+    let node = this;
+
+    while (true) {
+      const parent = node.getParentOrThrow();
+
+      if (parent === commonAncestor) {
+        indexA = parent.__children.indexOf(node.__key);
+        break;
+      }
+
+      node = parent;
+    }
+
+    node = targetNode;
+
+    while (true) {
+      const parent = node.getParentOrThrow();
+
+      if (parent === commonAncestor) {
+        indexB = parent.__children.indexOf(node.__key);
+        break;
+      }
+
+      node = parent;
+    }
+
+    return indexA < indexB;
+  }
+
+  isParentOf(targetNode) {
+    const key = this.__key;
+
+    if (key === targetNode.__key) {
+      return false;
+    }
+
+    let node = targetNode;
+
+    while (node !== null) {
+      if (node.__key === key) {
+        return true;
+      }
+
+      node = node.getParent();
+    }
+
+    return false;
+  }
+
+  getNodesBetween(targetNode) {
+    const isBefore = this.isBefore(targetNode);
+    const nodes = [];
+    const visited = new Set();
+    let node = this;
+    let dfsAncestor = null;
+
+    while (true) {
+      const key = node.__key;
+
+      if (!visited.has(key)) {
+        visited.add(key);
+        nodes.push(node);
+      }
+
+      if (node === targetNode) {
+        break;
+      }
+
+      const child = $isElementNode(node) ? isBefore ? node.getFirstChild() : node.getLastChild() : null;
+
+      if (child !== null) {
+        if (dfsAncestor === null) {
+          dfsAncestor = node;
+        }
+
+        node = child;
+        continue;
+      }
+
+      const nextSibling = isBefore ? node.getNextSibling() : node.getPreviousSibling();
+
+      if (nextSibling !== null) {
+        node = nextSibling;
+        continue;
+      }
+
+      const parent = node.getParentOrThrow();
+
+      if (!visited.has(parent.__key)) {
+        nodes.push(parent);
+      }
+
+      if (parent === targetNode) {
+        break;
+      }
+
+      let parentSibling = null;
+      let ancestor = parent;
+
+      if (parent.is(dfsAncestor)) {
+        dfsAncestor = null;
+      }
+
+      do {
+        if (ancestor === null) {
+          {
+            throw Error(`getNodesBetween: ancestor is null`);
+          }
+        }
+
+        parentSibling = isBefore ? ancestor.getNextSibling() : ancestor.getPreviousSibling();
+        ancestor = ancestor.getParent();
+
+        if (ancestor !== null) {
+          if (ancestor.is(dfsAncestor)) {
+            dfsAncestor = null;
+          }
+
+          if (parentSibling === null && !visited.has(ancestor.__key)) {
+            nodes.push(ancestor);
+          }
+        }
+      } while (parentSibling === null);
+
+      node = parentSibling;
+    }
+
+    if (!isBefore) {
+      nodes.reverse();
+    }
+
+    return nodes;
+  }
+
+  isDirty() {
+    const editor = getActiveEditor();
+    const dirtyLeaves = editor._dirtyLeaves;
+    return dirtyLeaves !== null && dirtyLeaves.has(this.__key);
+  }
+
+  getLatest() {
+    const latest = $getNodeByKey(this.__key);
+
+    if (latest === null) {
+      {
+        throw Error(`getLatest: node not found`);
+      }
+    }
+
+    return latest;
+  } // $FlowFixMe this is LexicalNode
+
+
+  getWritable() {
+    errorOnReadOnly();
+    const editorState = getActiveEditorState();
+    const editor = getActiveEditor();
+    const nodeMap = editorState._nodeMap;
+    const key = this.__key; // Ensure we get the latest node from pending state
+
+    const latestNode = this.getLatest();
+    const parent = latestNode.__parent;
+    const cloneNotNeeded = editor._cloneNotNeeded;
+    const selection = $getSelection();
+
+    if (selection !== null) {
+      selection._cachedNodes = null;
+    }
+
+    if (cloneNotNeeded.has(key)) {
+      // Transforms clear the dirty node set on each iteration to keep track on newly dirty nodes
+      internalMarkNodeAsDirty(latestNode);
+      return latestNode;
+    }
+
+    const constructor = latestNode.constructor;
+    const mutableNode = constructor.clone(latestNode);
+    mutableNode.__parent = parent;
+
+    if ($isElementNode(latestNode) && $isElementNode(mutableNode)) {
+      mutableNode.__children = Array.from(latestNode.__children);
+      mutableNode.__indent = latestNode.__indent;
+      mutableNode.__format = latestNode.__format;
+      mutableNode.__dir = latestNode.__dir;
+    } else if ($isTextNode(latestNode) && $isTextNode(mutableNode)) {
+      mutableNode.__format = latestNode.__format;
+      mutableNode.__style = latestNode.__style;
+      mutableNode.__mode = latestNode.__mode;
+      mutableNode.__detail = latestNode.__detail;
+    }
+
+    cloneNotNeeded.add(key);
+    mutableNode.__key = key;
+    internalMarkNodeAsDirty(mutableNode); // Update reference in node map
+
+    nodeMap.set(key, mutableNode); // $FlowFixMe this is LexicalNode
+
+    return mutableNode;
+  }
+
+  getTextContent(includeInert, includeDirectionless) {
+    return '';
+  }
+
+  getTextContentSize(includeInert, includeDirectionless) {
+    return this.getTextContent(includeInert, includeDirectionless).length;
+  } // View
+
+
+  createDOM(config, editor) {
+    {
+      throw Error(`createDOM: base method not extended`);
+    }
+  }
+
+  updateDOM( // $FlowFixMe: TODO
+  prevNode, dom, config) {
+    {
+      throw Error(`updateDOM: base method not extended`);
+    }
+  }
+
+  exportDOM(editor) {
+    if ($isDecoratorNode(this)) {
+      const element = editor.getElementByKey(this.getKey());
+      return {
+        element: element ? element.cloneNode() : null
+      };
+    }
+
+    const element = this.createDOM(editor._config, editor);
+    return {
+      element
+    };
+  }
+
+  static importDOM() {
+    return null;
+  } // Setters and mutators
+
+
+  remove(preserveEmptyParent) {
+    errorOnReadOnly();
+    removeNode(this, true, preserveEmptyParent);
+  }
+
+  replace(replaceWith) {
+    errorOnReadOnly();
+    const toReplaceKey = this.__key;
+    const writableReplaceWith = replaceWith.getWritable();
+    removeFromParent(writableReplaceWith);
+    const newParent = this.getParentOrThrow();
+    const writableParent = newParent.getWritable();
+    const children = writableParent.__children;
+    const index = children.indexOf(this.__key);
+    const newKey = writableReplaceWith.__key;
+
+    if (index === -1) {
+      {
+        throw Error(`Node is not a child of its parent`);
+      }
+    }
+
+    children.splice(index, 0, newKey);
+    writableReplaceWith.__parent = newParent.__key;
+    removeNode(this, false);
+    internalMarkSiblingsAsDirty(writableReplaceWith);
+    const selection = $getSelection();
+
+    if ($isRangeSelection(selection)) {
+      const anchor = selection.anchor;
+      const focus = selection.focus;
+
+      if (anchor.key === toReplaceKey) {
+        $moveSelectionPointToEnd(anchor, writableReplaceWith);
+      }
+
+      if (focus.key === toReplaceKey) {
+        $moveSelectionPointToEnd(focus, writableReplaceWith);
+      }
+    }
+
+    if ($getCompositionKey() === toReplaceKey) {
+      $setCompositionKey(newKey);
+    }
+
+    return writableReplaceWith;
+  }
+
+  insertAfter(nodeToInsert) {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    const writableNodeToInsert = nodeToInsert.getWritable();
+    const oldParent = writableNodeToInsert.getParent();
+    const selection = $getSelection();
+    const oldIndex = nodeToInsert.getIndexWithinParent();
+    let elementAnchorSelectionOnNode = false;
+    let elementFocusSelectionOnNode = false;
+
+    if (oldParent !== null) {
+      removeFromParent(writableNodeToInsert);
+
+      if ($isRangeSelection(selection)) {
+        const oldParentKey = oldParent.__key;
+        const anchor = selection.anchor;
+        const focus = selection.focus;
+        elementAnchorSelectionOnNode = anchor.type === 'element' && anchor.key === oldParentKey && anchor.offset === oldIndex + 1;
+        elementFocusSelectionOnNode = focus.type === 'element' && focus.key === oldParentKey && focus.offset === oldIndex + 1;
+      }
+    }
+
+    const writableParent = this.getParentOrThrow().getWritable();
+    const insertKey = writableNodeToInsert.__key;
+    writableNodeToInsert.__parent = writableSelf.__parent;
+    const children = writableParent.__children;
+    const index = children.indexOf(writableSelf.__key);
+
+    if (index === -1) {
+      {
+        throw Error(`Node is not a child of its parent`);
+      }
+    }
+
+    children.splice(index + 1, 0, insertKey);
+    internalMarkSiblingsAsDirty(writableNodeToInsert);
+
+    if ($isRangeSelection(selection)) {
+      $updateElementSelectionOnCreateDeleteNode(selection, writableParent, index + 1);
+      const writableParentKey = writableParent.__key;
+
+      if (elementAnchorSelectionOnNode) {
+        selection.anchor.set(writableParentKey, index + 2, 'element');
+      }
+
+      if (elementFocusSelectionOnNode) {
+        selection.focus.set(writableParentKey, index + 2, 'element');
+      }
+    }
+
+    return nodeToInsert;
+  }
+
+  insertBefore(nodeToInsert) {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    const writableNodeToInsert = nodeToInsert.getWritable();
+    removeFromParent(writableNodeToInsert);
+    const writableParent = this.getParentOrThrow().getWritable();
+    const insertKey = writableNodeToInsert.__key;
+    writableNodeToInsert.__parent = writableSelf.__parent;
+    const children = writableParent.__children;
+    const index = children.indexOf(writableSelf.__key);
+
+    if (index === -1) {
+      {
+        throw Error(`Node is not a child of its parent`);
+      }
+    }
+
+    children.splice(index, 0, insertKey);
+    internalMarkSiblingsAsDirty(writableNodeToInsert);
+    const selection = $getSelection();
+
+    if ($isRangeSelection(selection)) {
+      $updateElementSelectionOnCreateDeleteNode(selection, writableParent, index);
+    }
+
+    return nodeToInsert;
+  }
+
+  selectPrevious(anchorOffset, focusOffset) {
+    errorOnReadOnly();
+    const prevSibling = this.getPreviousSibling();
+    const parent = this.getParentOrThrow();
+
+    if (prevSibling === null) {
+      return parent.select(0, 0);
+    }
+
+    if ($isElementNode(prevSibling)) {
+      return prevSibling.select();
+    } else if (!$isTextNode(prevSibling)) {
+      const index = prevSibling.getIndexWithinParent() + 1;
+      return parent.select(index, index);
+    }
+
+    return prevSibling.select(anchorOffset, focusOffset);
+  }
+
+  selectNext(anchorOffset, focusOffset) {
+    errorOnReadOnly();
+    const nextSibling = this.getNextSibling();
+    const parent = this.getParentOrThrow();
+
+    if (nextSibling === null) {
+      return parent.select();
+    }
+
+    if ($isElementNode(nextSibling)) {
+      return nextSibling.select(0, 0);
+    } else if (!$isTextNode(nextSibling)) {
+      const index = nextSibling.getIndexWithinParent();
+      return parent.select(index, index);
+    }
+
+    return nextSibling.select(anchorOffset, focusOffset);
+  } // Proxy to mark something as dirty
+
+
+  markDirty() {
+    this.getWritable();
+  }
+
+}
+
+function errorOnTypeKlassMismatch(type, klass) {
+  const registeredNode = getActiveEditor()._nodes.get(type); // Common error - split in its own invariant
+
+
+  if (registeredNode === undefined) {
+    {
+      throw Error(`Create node: Attempted to create node ${klass.name} that was not previously registered on the editor. You can use register your custom nodes.`);
+    }
+  }
+
+  const editorKlass = registeredNode.klass;
+
+  if (editorKlass !== klass) {
+    {
+      throw Error(`Create node: Type ${type} in node ${klass.name} does not match registered node ${editorKlass.name} with the same type`);
+    }
+  }
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class DecoratorNode extends LexicalNode {
+  constructor(key) {
+    super(key); // ensure custom nodes implement required methods
+
+    {
+      const proto = Object.getPrototypeOf(this);
+      ['decorate'].forEach(method => {
+        if (!proto.hasOwnProperty(method)) {
+          console.warn(`${this.constructor.name} must implement "${method}" method`);
+        }
+      });
+    }
+  }
+
+  decorate(editor) {
+    {
+      throw Error(`decorate: base method not extended`);
+    }
+  }
+
+  isIsolated() {
+    return false;
+  }
+
+  isTopLevel() {
+    return false;
+  }
+
+}
+function $isDecoratorNode(node) {
+  return node instanceof DecoratorNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class ElementNode extends LexicalNode {
+  constructor(key) {
+    super(key);
+    this.__children = [];
+    this.__format = 0;
+    this.__indent = 0;
+    this.__dir = null;
+  }
+
+  getFormat() {
+    const self = this.getLatest();
+    return self.__format;
+  }
+
+  getIndent() {
+    const self = this.getLatest();
+    return self.__indent;
+  }
+
+  getChildren() {
+    const self = this.getLatest();
+    const children = self.__children;
+    const childrenNodes = [];
+
+    for (let i = 0; i < children.length; i++) {
+      const childNode = $getNodeByKey(children[i]);
+
+      if (childNode !== null) {
+        childrenNodes.push(childNode);
+      }
+    }
+
+    return childrenNodes;
+  }
+
+  getChildrenKeys() {
+    return this.getLatest().__children;
+  }
+
+  getChildrenSize() {
+    const self = this.getLatest();
+    return self.__children.length;
+  }
+
+  isEmpty() {
+    return this.getChildrenSize() === 0;
+  }
+
+  isDirty() {
+    const editor = getActiveEditor();
+    const dirtyElements = editor._dirtyElements;
+    return dirtyElements !== null && dirtyElements.has(this.__key);
+  }
+
+  isLastChild() {
+    const self = this.getLatest();
+    const parent = self.getParentOrThrow();
+    return parent.getLastChild() === self;
+  }
+
+  getAllTextNodes(includeInert) {
+    const textNodes = [];
+    const self = this.getLatest();
+    const children = self.__children;
+
+    for (let i = 0; i < children.length; i++) {
+      const childNode = $getNodeByKey(children[i]);
+
+      if ($isTextNode(childNode) && (includeInert || !childNode.isInert())) {
+        textNodes.push(childNode);
+      } else if ($isElementNode(childNode)) {
+        const subChildrenNodes = childNode.getAllTextNodes(includeInert);
+        textNodes.push(...subChildrenNodes);
+      }
+    }
+
+    return textNodes;
+  }
+
+  getFirstDescendant() {
+    let node = this.getFirstChild();
+
+    while (node !== null) {
+      if ($isElementNode(node)) {
+        const child = node.getFirstChild();
+
+        if (child !== null) {
+          node = child;
+          continue;
+        }
+      }
+
+      break;
+    }
+
+    return node;
+  }
+
+  getLastDescendant() {
+    let node = this.getLastChild();
+
+    while (node !== null) {
+      if ($isElementNode(node)) {
+        const child = node.getLastChild();
+
+        if (child !== null) {
+          node = child;
+          continue;
+        }
+      }
+
+      break;
+    }
+
+    return node;
+  }
+
+  getDescendantByIndex(index) {
+    const children = this.getChildren();
+    const childrenLength = children.length;
+
+    if (childrenLength === 0) {
+      return this;
+    } // For non-empty element nodes, we resolve its descendant
+    // (either a leaf node or the bottom-most element)
+
+
+    if (index >= childrenLength) {
+      const resolvedNode = children[childrenLength - 1];
+      return $isElementNode(resolvedNode) && resolvedNode.getLastDescendant() || resolvedNode;
+    }
+
+    const resolvedNode = children[index];
+    return $isElementNode(resolvedNode) && resolvedNode.getFirstDescendant() || resolvedNode;
+  }
+
+  getFirstChild() {
+    const self = this.getLatest();
+    const children = self.__children;
+    const childrenLength = children.length;
+
+    if (childrenLength === 0) {
+      return null;
+    }
+
+    return $getNodeByKey(children[0]);
+  }
+
+  getFirstChildOrThrow() {
+    const firstChild = this.getFirstChild();
+
+    if (firstChild === null) {
+      {
+        throw Error(`Expected node ${this.__key} to have a first child.`);
+      }
+    }
+
+    return firstChild;
+  }
+
+  getLastChild() {
+    const self = this.getLatest();
+    const children = self.__children;
+    const childrenLength = children.length;
+
+    if (childrenLength === 0) {
+      return null;
+    }
+
+    return $getNodeByKey(children[childrenLength - 1]);
+  }
+
+  getChildAtIndex(index) {
+    const self = this.getLatest();
+    const children = self.__children;
+    const key = children[index];
+
+    if (key === undefined) {
+      return null;
+    }
+
+    return $getNodeByKey(key);
+  }
+
+  getTextContent(includeInert, includeDirectionless) {
+    let textContent = '';
+    const children = this.getChildren();
+    const childrenLength = children.length;
+
+    for (let i = 0; i < childrenLength; i++) {
+      const child = children[i];
+      textContent += child.getTextContent(includeInert, includeDirectionless);
+
+      if ($isElementNode(child) && i !== childrenLength - 1 && !child.isInline()) {
+        textContent += DOUBLE_LINE_BREAK;
+      }
+    }
+
+    return textContent;
+  }
+
+  getDirection() {
+    const self = this.getLatest();
+    return self.__dir;
+  }
+
+  hasFormat(type) {
+    const formatFlag = ELEMENT_TYPE_TO_FORMAT[type];
+    return (this.getFormat() & formatFlag) !== 0;
+  } // Mutators
+
+
+  select(_anchorOffset, _focusOffset) {
+    errorOnReadOnly();
+    const selection = $getSelection();
+    let anchorOffset = _anchorOffset;
+    let focusOffset = _focusOffset;
+    const childrenCount = this.getChildrenSize();
+
+    if (anchorOffset === undefined) {
+      anchorOffset = childrenCount;
+    }
+
+    if (focusOffset === undefined) {
+      focusOffset = childrenCount;
+    }
+
+    const key = this.__key;
+
+    if (!$isRangeSelection(selection)) {
+      return internalMakeRangeSelection(key, anchorOffset, key, focusOffset, 'element', 'element');
+    } else {
+      selection.anchor.set(key, anchorOffset, 'element');
+      selection.focus.set(key, focusOffset, 'element');
+      selection.dirty = true;
+    }
+
+    return selection;
+  }
+
+  selectStart() {
+    const firstNode = this.getFirstDescendant();
+
+    if ($isElementNode(firstNode) || $isTextNode(firstNode)) {
+      return firstNode.select(0, 0);
+    } // Decorator or LineBreak
+
+
+    if (firstNode !== null) {
+      return firstNode.selectPrevious();
+    }
+
+    return this.select(0, 0);
+  }
+
+  selectEnd() {
+    const lastNode = this.getLastDescendant();
+
+    if ($isElementNode(lastNode) || $isTextNode(lastNode)) {
+      return lastNode.select();
+    } // Decorator or LineBreak
+
+
+    if (lastNode !== null) {
+      return lastNode.selectNext();
+    }
+
+    return this.select();
+  }
+
+  clear() {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    const children = this.getChildren();
+    children.forEach(child => child.remove());
+    return writableSelf;
+  }
+
+  append(...nodesToAppend) {
+    errorOnReadOnly();
+    return this.splice(this.getChildrenSize(), 0, nodesToAppend);
+  }
+
+  setDirection(direction) {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__dir = direction;
+    return self;
+  }
+
+  setFormat(type) {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__format = ELEMENT_TYPE_TO_FORMAT[type];
+    return this;
+  }
+
+  setIndent(indentLevel) {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__indent = indentLevel;
+    return this;
+  }
+
+  splice(start, deleteCount, nodesToInsert) {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    const writableSelfKey = writableSelf.__key;
+    const writableSelfChildren = writableSelf.__children;
+    const nodesToInsertLength = nodesToInsert.length;
+    const nodesToInsertKeys = []; // Remove nodes to insert from their previous parent
+
+    for (let i = 0; i < nodesToInsertLength; i++) {
+      const nodeToInsert = nodesToInsert[i];
+      const writableNodeToInsert = nodeToInsert.getWritable();
+
+      if (nodeToInsert.__key === writableSelfKey) {
+        {
+          throw Error(`append: attemtping to append self`);
+        }
+      }
+
+      removeFromParent(writableNodeToInsert); // Set child parent to self
+
+      writableNodeToInsert.__parent = writableSelfKey;
+      const newKey = writableNodeToInsert.__key;
+      nodesToInsertKeys.push(newKey);
+    } // Mark range edges siblings as dirty
+
+
+    const nodeBeforeRange = this.getChildAtIndex(start - 1);
+
+    if (nodeBeforeRange) {
+      internalMarkNodeAsDirty(nodeBeforeRange);
+    }
+
+    const nodeAfterRange = this.getChildAtIndex(start + deleteCount);
+
+    if (nodeAfterRange) {
+      internalMarkNodeAsDirty(nodeAfterRange);
+    } // Remove defined range of children
+
+
+    let nodesToRemoveKeys; // Using faster push when only appending nodes
+
+    if (start === writableSelfChildren.length) {
+      writableSelfChildren.push(...nodesToInsertKeys);
+      nodesToRemoveKeys = [];
+    } else {
+      nodesToRemoveKeys = writableSelfChildren.splice(start, deleteCount, ...nodesToInsertKeys);
+    } // In case of deletion we need to adjust selection, unlink removed nodes
+    // and clean up node itself if it becomes empty. None of these needed
+    // for insertion-only cases
+
+
+    if (nodesToRemoveKeys.length) {
+      // Adjusting selection, in case node that was anchor/focus will be deleted
+      const selection = $getSelection();
+
+      if ($isRangeSelection(selection)) {
+        const nodesToRemoveKeySet = new Set(nodesToRemoveKeys);
+        const nodesToInsertKeySet = new Set(nodesToInsertKeys);
+
+        const isPointRemoved = point => {
+          let node = point.getNode();
+
+          while (node) {
+            const nodeKey = node.__key;
+
+            if (nodesToRemoveKeySet.has(nodeKey) && !nodesToInsertKeySet.has(nodeKey)) {
+              return true;
+            }
+
+            node = node.getParent();
+          }
+
+          return false;
+        };
+
+        const {
+          anchor,
+          focus
+        } = selection;
+
+        if (isPointRemoved(anchor)) {
+          moveSelectionPointToSibling(anchor, anchor.getNode(), this, nodeBeforeRange, nodeAfterRange);
+        }
+
+        if (isPointRemoved(focus)) {
+          moveSelectionPointToSibling(focus, focus.getNode(), this, nodeBeforeRange, nodeAfterRange);
+        } // Unlink removed nodes from current parent
+
+
+        const nodesToRemoveKeysLength = nodesToRemoveKeys.length;
+
+        for (let i = 0; i < nodesToRemoveKeysLength; i++) {
+          const nodeToRemove = $getNodeByKey(nodesToRemoveKeys[i]);
+
+          if (nodeToRemove != null) {
+            const writableNodeToRemove = nodeToRemove.getWritable();
+            writableNodeToRemove.__parent = null;
+          }
+        } // Cleanup if node can't be empty
+
+
+        if (writableSelfChildren.length === 0 && !this.canBeEmpty() && !$isRootNode(this)) {
+          this.remove();
+        }
+      }
+    }
+
+    return writableSelf;
+  } // These are intended to be extends for specific element heuristics.
+
+
+  insertNewAfter(selection) {
+    return null;
+  }
+
+  canInsertTab() {
+    return false;
+  }
+
+  canIndent() {
+    return true;
+  }
+
+  collapseAtStart(selection) {
+    return false;
+  }
+
+  excludeFromCopy() {
+    return false;
+  }
+
+  canExtractContents() {
+    return true;
+  }
+
+  canReplaceWith(replacement) {
+    return true;
+  }
+
+  canInsertAfter(node) {
+    return true;
+  }
+
+  canBeEmpty() {
+    return true;
+  }
+
+  canInsertTextBefore() {
+    return true;
+  }
+
+  canInsertTextAfter() {
+    return true;
+  }
+
+  isInline() {
+    return false;
+  }
+
+  canMergeWith(node) {
+    return false;
+  }
+
+  extractWithChild(child, selection, destination) {
+    return false;
+  }
+
+}
+function $isElementNode(node) {
+  return node instanceof ElementNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class RootNode extends ElementNode {
+  static getType() {
+    return 'root';
+  }
+
+  static clone() {
+    return new RootNode();
+  }
+
+  constructor() {
+    super('root');
+    this.__cachedText = null;
+  }
+
+  getTopLevelElementOrThrow() {
+    {
+      throw Error(`getTopLevelElementOrThrow: root nodes are not top level elements`);
+    }
+  }
+
+  getTextContent(includeInert, includeDirectionless) {
+    const cachedText = this.__cachedText;
+
+    if (isCurrentlyReadOnlyMode() || getActiveEditor()._dirtyType === NO_DIRTY_NODES) {
+      if (cachedText !== null && (!includeInert || includeDirectionless !== false)) {
+        return cachedText;
+      }
+    }
+
+    return super.getTextContent(includeInert, includeDirectionless);
+  }
+
+  remove() {
+    {
+      throw Error(`remove: cannot be called on root nodes`);
+    }
+  }
+
+  replace(node) {
+    {
+      throw Error(`replace: cannot be called on root nodes`);
+    }
+  }
+
+  insertBefore(nodeToInsert) {
+    {
+      throw Error(`insertBefore: cannot be called on root nodes`);
+    }
+  }
+
+  insertAfter(node) {
+    {
+      throw Error(`insertAfter: cannot be called on root nodes`);
+    }
+  } // View
+
+
+  updateDOM(prevNode, dom) {
+    return false;
+  } // Mutate
+
+
+  append(...nodesToAppend) {
+    for (let i = 0; i < nodesToAppend.length; i++) {
+      const node = nodesToAppend[i];
+
+      if (!$isElementNode(node) && !$isDecoratorNode(node)) {
+        {
+          throw Error(`rootNode.append: Only element or decorator nodes can be appended to the root node`);
+        }
+      }
+    }
+
+    return super.append(...nodesToAppend);
+  }
+
+  toJSON() {
+    return {
+      __children: this.__children,
+      __dir: this.__dir,
+      __format: this.__format,
+      __indent: this.__indent,
+      __key: 'root',
+      __parent: null,
+      __type: 'root'
+    };
+  }
+
+}
+function $createRootNode() {
+  return new RootNode();
+}
+function $isRootNode(node) {
+  return node instanceof RootNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+function editorStateHasDirtySelection(editorState, editor) {
+  const currentSelection = editor.getEditorState()._selection;
+
+  const pendingSelection = editorState._selection; // Check if we need to update because of changes in selection
+
+  if (pendingSelection !== null) {
+    if (pendingSelection.dirty || !pendingSelection.is(currentSelection)) {
+      return true;
+    }
+  } else if (currentSelection !== null) {
+    return true;
+  }
+
+  return false;
+}
+function cloneEditorState(current) {
+  return new EditorState(new Map(current._nodeMap));
+}
+function createEmptyEditorState() {
+  return new EditorState(new Map([['root', $createRootNode()]]));
+}
+class EditorState {
+  constructor(nodeMap, selection) {
+    this._nodeMap = nodeMap;
+    this._selection = selection || null;
+    this._flushSync = false;
+    this._readOnly = false;
+  }
+
+  isEmpty() {
+    return this._nodeMap.size === 1 && this._selection === null;
+  }
+
+  read(callbackFn) {
+    return readEditorState(this, callbackFn);
+  }
+
+  clone(selection) {
+    const editorState = new EditorState(this._nodeMap, selection === undefined ? this._selection : selection);
+    editorState._readOnly = true;
+    return editorState;
+  }
+
+  toJSON(space) {
+    const selection = this._selection;
+    return {
+      _nodeMap: Array.from(this._nodeMap.entries()),
+      _selection: $isRangeSelection(selection) ? {
+        anchor: {
+          key: selection.anchor.key,
+          offset: selection.anchor.offset,
+          type: selection.anchor.type
+        },
+        focus: {
+          key: selection.focus.key,
+          offset: selection.focus.offset,
+          type: selection.focus.type
+        },
+        type: 'range'
+      } : $isNodeSelection(selection) ? {
+        nodes: Array.from(selection._nodes),
+        type: 'node'
+      } : $isGridSelection(selection) ? {
+        anchor: {
+          key: selection.anchor.key,
+          offset: selection.anchor.offset,
+          type: selection.anchor.type
+        },
+        focus: {
+          key: selection.focus.key,
+          offset: selection.focus.offset,
+          type: selection.focus.type
+        },
+        gridKey: selection.gridKey,
+        type: 'grid'
+      } : null
+    };
+  }
+
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class LineBreakNode extends LexicalNode {
+  static getType() {
+    return 'linebreak';
+  }
+
+  static clone(node) {
+    return new LineBreakNode(node.__key);
+  }
+
+  constructor(key) {
+    super(key);
+  }
+
+  getTextContent() {
+    return '\n';
+  }
+
+  createDOM() {
+    return document.createElement('br');
+  }
+
+  updateDOM() {
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      br: node => ({
+        conversion: convertLineBreakElement,
+        priority: 0
+      })
+    };
+  }
+
+}
+
+function convertLineBreakElement(node) {
+  return {
+    node: $createLineBreakNode()
+  };
+}
+
+function $createLineBreakNode() {
+  return new LineBreakNode();
+}
+function $isLineBreakNode(node) {
+  return node instanceof LineBreakNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+function getElementOuterTag(node, format) {
+  if (format & IS_CODE) {
+    return 'code';
+  }
+
+  if (format & IS_SUBSCRIPT) {
+    return 'sub';
+  }
+
+  if (format & IS_SUPERSCRIPT) {
+    return 'sup';
+  }
+
+  return null;
+}
+
+function getElementInnerTag(node, format) {
+  if (format & IS_BOLD) {
+    return 'strong';
+  }
+
+  if (format & IS_ITALIC) {
+    return 'em';
+  }
+
+  return 'span';
+}
+
+function setTextThemeClassNames(tag, prevFormat, nextFormat, dom, textClassNames) {
+  const domClassList = dom.classList; // Firstly we handle the base theme.
+
+  let classNames = getCachedClassNameArray(textClassNames, 'base');
+
+  if (classNames !== undefined) {
+    domClassList.add(...classNames);
+  } // Secondly we handle the special case: underline + strikethrough.
+  // We have to do this as we need a way to compose the fact that
+  // the same CSS property will need to be used: text-decoration.
+  // In an ideal world we shouldn't have to do this, but there's no
+  // easy workaround for many atomic CSS systems today.
+
+
+  classNames = getCachedClassNameArray(textClassNames, 'underlineStrikethrough');
+  let hasUnderlineStrikethrough = false;
+  const prevUnderlineStrikethrough = prevFormat & IS_UNDERLINE && prevFormat & IS_STRIKETHROUGH;
+  const nextUnderlineStrikethrough = nextFormat & IS_UNDERLINE && nextFormat & IS_STRIKETHROUGH;
+
+  if (classNames !== undefined) {
+    if (nextUnderlineStrikethrough) {
+      hasUnderlineStrikethrough = true;
+
+      if (!prevUnderlineStrikethrough) {
+        domClassList.add(...classNames);
+      }
+    } else if (prevUnderlineStrikethrough) {
+      domClassList.remove(...classNames);
+    }
+  }
+
+  for (const key in TEXT_TYPE_TO_FORMAT) {
+    // $FlowFixMe: expected cast here
+    const format = key;
+    const flag = TEXT_TYPE_TO_FORMAT[format];
+    classNames = getCachedClassNameArray(textClassNames, key);
+
+    if (classNames !== undefined) {
+      if (nextFormat & flag) {
+        if (hasUnderlineStrikethrough && (key === 'underline' || key === 'strikethrough')) {
+          if (prevFormat & flag) {
+            domClassList.remove(...classNames);
+          }
+
+          continue;
+        }
+
+        if ((prevFormat & flag) === 0 || prevUnderlineStrikethrough && key === 'underline' || key === 'strikethrough') {
+          domClassList.add(...classNames);
+        }
+      } else if (prevFormat & flag) {
+        domClassList.remove(...classNames);
+      }
+    }
+  }
+}
+
+function diffComposedText(a, b) {
+  const aLength = a.length;
+  const bLength = b.length;
+  let left = 0;
+  let right = 0;
+
+  while (left < aLength && left < bLength && a[left] === b[left]) {
+    left++;
+  }
+
+  while (right + left < aLength && right + left < bLength && a[aLength - right - 1] === b[bLength - right - 1]) {
+    right++;
+  }
+
+  return [left, aLength - left - right, b.slice(left, bLength - right)];
+}
+
+function setTextContent(nextText, dom, node) {
+  // $FlowFixMe: first node is always text
+  const firstChild = dom.firstChild;
+  const isComposing = node.isComposing(); // Always add a suffix if we're composing a node
+
+  const suffix = isComposing ? ZERO_WIDTH_CHAR : '';
+  const text = nextText + suffix;
+
+  if (firstChild == null) {
+    dom.textContent = text;
+  } else {
+    const nodeValue = firstChild.nodeValue;
+    if (nodeValue !== text) if (isComposing) {
+      const [index, remove, insert] = diffComposedText(nodeValue, text);
+
+      if (remove !== 0) {
+        firstChild.deleteData(index, remove);
+      }
+
+      firstChild.insertData(index, insert);
+    } else {
+      firstChild.nodeValue = text;
+    }
+  }
+}
+
+function createTextInnerDOM(innerDOM, node, innerTag, format, text, config) {
+  setTextContent(text, innerDOM, node);
+  const theme = config.theme; // Apply theme class names
+
+  const textClassNames = theme.text;
+
+  if (textClassNames !== undefined) {
+    setTextThemeClassNames(innerTag, 0, format, innerDOM, textClassNames);
+  }
+}
+
+class TextNode extends LexicalNode {
+  static getType() {
+    return 'text';
+  }
+
+  static clone(node) {
+    return new TextNode(node.__text, node.__key);
+  }
+
+  constructor(text, key) {
+    super(key);
+    this.__text = text;
+    this.__format = 0;
+    this.__style = '';
+    this.__mode = 0;
+    this.__detail = 0;
+  }
+
+  getFormat() {
+    const self = this.getLatest();
+    return self.__format;
+  }
+
+  getStyle() {
+    const self = this.getLatest();
+    return self.__style;
+  }
+
+  isToken() {
+    const self = this.getLatest();
+    return self.__mode === IS_TOKEN;
+  }
+
+  isComposing() {
+    return this.__key === $getCompositionKey();
+  }
+
+  isSegmented() {
+    const self = this.getLatest();
+    return self.__mode === IS_SEGMENTED;
+  }
+
+  isInert() {
+    const self = this.getLatest();
+    return self.__mode === IS_INERT;
+  }
+
+  isDirectionless() {
+    const self = this.getLatest();
+    return (self.__detail & IS_DIRECTIONLESS) !== 0;
+  }
+
+  isUnmergeable() {
+    const self = this.getLatest();
+    return (self.__detail & IS_UNMERGEABLE) !== 0;
+  }
+
+  hasFormat(type) {
+    const formatFlag = TEXT_TYPE_TO_FORMAT[type];
+    return (this.getFormat() & formatFlag) !== 0;
+  }
+
+  isSimpleText() {
+    return this.__type === 'text' && this.__mode === 0;
+  }
+
+  getTextContent(includeInert, includeDirectionless) {
+    if (!includeInert && this.isInert() || includeDirectionless === false && this.isDirectionless()) {
+      return '';
+    }
+
+    const self = this.getLatest();
+    return self.__text;
+  }
+
+  getFormatFlags(type, alignWithFormat) {
+    const self = this.getLatest();
+    const format = self.__format;
+    return toggleTextFormatType(format, type, alignWithFormat);
+  } // View
+
+
+  createDOM(config) {
+    const format = this.__format;
+    const outerTag = getElementOuterTag(this, format);
+    const innerTag = getElementInnerTag(this, format);
+    const tag = outerTag === null ? innerTag : outerTag;
+    const dom = document.createElement(tag);
+    let innerDOM = dom;
+
+    if (outerTag !== null) {
+      innerDOM = document.createElement(innerTag);
+      dom.appendChild(innerDOM);
+    }
+
+    const text = this.__text;
+    createTextInnerDOM(innerDOM, this, innerTag, format, text, config);
+    const style = this.__style;
+
+    if (style !== '') {
+      dom.style.cssText = style;
+    }
+
+    return dom;
+  }
+
+  updateDOM(prevNode, dom, config) {
+    const nextText = this.__text;
+    const prevFormat = prevNode.__format;
+    const nextFormat = this.__format;
+    const prevOuterTag = getElementOuterTag(this, prevFormat);
+    const nextOuterTag = getElementOuterTag(this, nextFormat);
+    const prevInnerTag = getElementInnerTag(this, prevFormat);
+    const nextInnerTag = getElementInnerTag(this, nextFormat);
+    const prevTag = prevOuterTag === null ? prevInnerTag : prevOuterTag;
+    const nextTag = nextOuterTag === null ? nextInnerTag : nextOuterTag;
+
+    if (prevTag !== nextTag) {
+      return true;
+    }
+
+    if (prevOuterTag === nextOuterTag && prevInnerTag !== nextInnerTag) {
+      // $FlowFixMe: should always be an element
+      const prevInnerDOM = dom.firstChild;
+
+      if (prevInnerDOM == null) {
+        {
+          throw Error(`updateDOM: prevInnerDOM is null or undefined`);
+        }
+      }
+
+      const nextInnerDOM = document.createElement(nextInnerTag);
+      createTextInnerDOM(nextInnerDOM, this, nextInnerTag, nextFormat, nextText, config);
+      dom.replaceChild(nextInnerDOM, prevInnerDOM);
+      return false;
+    }
+
+    let innerDOM = dom;
+
+    if (nextOuterTag !== null) {
+      if (prevOuterTag !== null) {
+        // $FlowFixMe: should always be an element
+        innerDOM = dom.firstChild;
+
+        if (innerDOM == null) {
+          {
+            throw Error(`updateDOM: innerDOM is null or undefined`);
+          }
+        }
+      }
+    }
+
+    setTextContent(nextText, innerDOM, this);
+    const theme = config.theme; // Apply theme class names
+
+    const textClassNames = theme.text;
+
+    if (textClassNames !== undefined && prevFormat !== nextFormat) {
+      setTextThemeClassNames(nextInnerTag, prevFormat, nextFormat, innerDOM, textClassNames);
+    }
+
+    const prevStyle = prevNode.__style;
+    const nextStyle = this.__style;
+
+    if (prevStyle !== nextStyle) {
+      dom.style.cssText = nextStyle;
+    }
+
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      '#text': node => ({
+        conversion: convertTextDOMNode,
+        priority: 0
+      }),
+      b: node => ({
+        conversion: convertBringAttentionToElement,
+        priority: 0
+      }),
+      em: node => ({
+        conversion: convertTextFormatElement,
+        priority: 0
+      }),
+      i: node => ({
+        conversion: convertTextFormatElement,
+        priority: 0
+      }),
+      span: node => ({
+        conversion: convertSpanElement,
+        priority: 0
+      }),
+      strong: node => ({
+        conversion: convertTextFormatElement,
+        priority: 0
+      }),
+      u: node => ({
+        conversion: convertTextFormatElement,
+        priority: 0
+      })
+    };
+  } // Mutators
+
+
+  selectionTransform(prevSelection, nextSelection) {}
+
+  setFormat(format) {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__format = format;
+    return self;
+  }
+
+  setStyle(style) {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__style = style;
+    return self;
+  }
+
+  toggleFormat(type) {
+    const formatFlag = TEXT_TYPE_TO_FORMAT[type];
+    return this.setFormat(this.getFormat() ^ formatFlag);
+  }
+
+  toggleDirectionless() {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__detail ^= IS_DIRECTIONLESS;
+    return self;
+  }
+
+  toggleUnmergeable() {
+    errorOnReadOnly();
+    const self = this.getWritable();
+    self.__detail ^= IS_UNMERGEABLE;
+    return self;
+  }
+
+  setMode(type) {
+    errorOnReadOnly();
+    const mode = TEXT_MODE_TO_TYPE[type];
+    const self = this.getWritable();
+    self.__mode = mode;
+    return self;
+  }
+
+  setTextContent(text) {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    writableSelf.__text = text;
+    return writableSelf;
+  }
+
+  select(_anchorOffset, _focusOffset) {
+    errorOnReadOnly();
+    let anchorOffset = _anchorOffset;
+    let focusOffset = _focusOffset;
+    const selection = $getSelection();
+    const text = this.getTextContent();
+    const key = this.__key;
+
+    if (typeof text === 'string') {
+      const lastOffset = text.length;
+
+      if (anchorOffset === undefined) {
+        anchorOffset = lastOffset;
+      }
+
+      if (focusOffset === undefined) {
+        focusOffset = lastOffset;
+      }
+    } else {
+      anchorOffset = 0;
+      focusOffset = 0;
+    }
+
+    if (!$isRangeSelection(selection)) {
+      return internalMakeRangeSelection(key, anchorOffset, key, focusOffset, 'text', 'text');
+    } else {
+      const compositionKey = $getCompositionKey();
+
+      if (compositionKey === selection.anchor.key || compositionKey === selection.focus.key) {
+        $setCompositionKey(key);
+      }
+
+      selection.setTextNodeRange(this, anchorOffset, this, focusOffset);
+    }
+
+    return selection;
+  }
+
+  spliceText(offset, delCount, newText, moveSelection) {
+    errorOnReadOnly();
+    const writableSelf = this.getWritable();
+    const text = writableSelf.__text;
+    const handledTextLength = newText.length;
+    let index = offset;
+
+    if (index < 0) {
+      index = handledTextLength + index;
+
+      if (index < 0) {
+        index = 0;
+      }
+    }
+
+    const selection = $getSelection();
+
+    if (moveSelection && $isRangeSelection(selection)) {
+      const newOffset = offset + handledTextLength;
+      selection.setTextNodeRange(writableSelf, newOffset, writableSelf, newOffset);
+    }
+
+    const updatedText = text.slice(0, index) + newText + text.slice(index + delCount);
+    writableSelf.__text = updatedText;
+    return writableSelf;
+  }
+
+  canInsertTextBefore() {
+    return true;
+  }
+
+  canInsertTextAfter() {
+    return true;
+  }
+
+  splitText(...splitOffsets) {
+    errorOnReadOnly();
+    const self = this.getLatest();
+    const textContent = self.getTextContent();
+    const key = self.__key;
+    const compositionKey = $getCompositionKey();
+    const offsetsSet = new Set(splitOffsets);
+    const parts = [];
+    const textLength = textContent.length;
+    let string = '';
+
+    for (let i = 0; i < textLength; i++) {
+      if (string !== '' && offsetsSet.has(i)) {
+        parts.push(string);
+        string = '';
+      }
+
+      string += textContent[i];
+    }
+
+    if (string !== '') {
+      parts.push(string);
+    }
+
+    const partsLength = parts.length;
+
+    if (partsLength === 0) {
+      return [];
+    } else if (parts[0] === textContent) {
+      return [self];
+    }
+
+    const firstPart = parts[0];
+    const parent = self.getParentOrThrow();
+    const parentKey = parent.__key;
+    let writableNode;
+    const format = self.getFormat();
+    const style = self.getStyle();
+    const detail = self.__detail;
+    let hasReplacedSelf = false;
+
+    if (self.isSegmented()) {
+      // Create a new TextNode
+      writableNode = $createTextNode(firstPart);
+      writableNode.__parent = parentKey;
+      writableNode.__format = format;
+      writableNode.__style = style;
+      writableNode.__detail = detail;
+      hasReplacedSelf = true;
+    } else {
+      // For the first part, update the existing node
+      writableNode = self.getWritable();
+      writableNode.__text = firstPart;
+    } // Handle selection
+
+
+    const selection = $getSelection(); // Then handle all other parts
+
+    const splitNodes = [writableNode];
+    let textSize = firstPart.length;
+
+    for (let i = 1; i < partsLength; i++) {
+      const part = parts[i];
+      const partSize = part.length;
+      const sibling = $createTextNode(part).getWritable();
+      sibling.__format = format;
+      sibling.__style = style;
+      sibling.__detail = detail;
+      const siblingKey = sibling.__key;
+      const nextTextSize = textSize + partSize;
+
+      if ($isRangeSelection(selection)) {
+        const anchor = selection.anchor;
+        const focus = selection.focus;
+
+        if (anchor.key === key && anchor.type === 'text' && anchor.offset > textSize && anchor.offset <= nextTextSize) {
+          anchor.key = siblingKey;
+          anchor.offset -= textSize;
+          selection.dirty = true;
+        }
+
+        if (focus.key === key && focus.type === 'text' && focus.offset > textSize && focus.offset <= nextTextSize) {
+          focus.key = siblingKey;
+          focus.offset -= textSize;
+          selection.dirty = true;
+        }
+      }
+
+      if (compositionKey === key) {
+        $setCompositionKey(siblingKey);
+      }
+
+      textSize = nextTextSize;
+      sibling.__parent = parentKey;
+      splitNodes.push(sibling);
+    } // Insert the nodes into the parent's children
+
+
+    internalMarkSiblingsAsDirty(this);
+    const writableParent = parent.getWritable();
+    const writableParentChildren = writableParent.__children;
+    const insertionIndex = writableParentChildren.indexOf(key);
+    const splitNodesKeys = splitNodes.map(splitNode => splitNode.__key);
+
+    if (hasReplacedSelf) {
+      writableParentChildren.splice(insertionIndex, 0, ...splitNodesKeys);
+      this.remove();
+    } else {
+      writableParentChildren.splice(insertionIndex, 1, ...splitNodesKeys);
+    }
+
+    if ($isRangeSelection(selection)) {
+      $updateElementSelectionOnCreateDeleteNode(selection, parent, insertionIndex, partsLength - 1);
+    }
+
+    return splitNodes;
+  }
+
+  mergeWithSibling(target) {
+    const isBefore = target === this.getPreviousSibling();
+
+    if (!isBefore && target !== this.getNextSibling()) {
+      {
+        throw Error(`mergeWithSibling: sibling must be a previous or next sibling`);
+      }
+    }
+
+    const key = this.__key;
+    const targetKey = target.__key;
+    const text = this.__text;
+    const textLength = text.length;
+    const compositionKey = $getCompositionKey();
+
+    if (compositionKey === targetKey) {
+      $setCompositionKey(key);
+    }
+
+    const selection = $getSelection();
+
+    if ($isRangeSelection(selection)) {
+      const anchor = selection.anchor;
+      const focus = selection.focus;
+
+      if (anchor !== null && anchor.key === targetKey) {
+        adjustPointOffsetForMergedSibling(anchor, isBefore, key, target, textLength);
+        selection.dirty = true;
+      }
+
+      if (focus !== null && focus.key === targetKey) {
+        adjustPointOffsetForMergedSibling(focus, isBefore, key, target, textLength);
+        selection.dirty = true;
+      }
+    }
+
+    const targetText = target.__text;
+    const newText = isBefore ? targetText + text : text + targetText;
+    this.setTextContent(newText);
+    const writableSelf = this.getWritable();
+    target.remove();
+    return writableSelf;
+  }
+
+  isTextEntity() {
+    return false;
+  }
+
+}
+
+function convertSpanElement(domNode) {
+  // $FlowFixMe[incompatible-type] domNode is a <span> since we matched it by nodeName
+  const span = domNode; // Google Docs uses span tags + font-weight for bold text
+
+  const hasBoldFontWeight = span.style.fontWeight === '700';
+  return {
+    forChild: lexicalNode => {
+      if ($isTextNode(lexicalNode) && hasBoldFontWeight) {
+        lexicalNode.toggleFormat('bold');
+      }
+
+      return lexicalNode;
+    },
+    node: null
+  };
+}
+
+function convertBringAttentionToElement(domNode) {
+  // $FlowFixMe[incompatible-type] domNode is a <b> since we matched it by nodeName
+  const b = domNode; // Google Docs wraps all copied HTML in a <b> with font-weight normal
+
+  const hasNormalFontWeight = b.style.fontWeight === 'normal';
+  return {
+    forChild: lexicalNode => {
+      if ($isTextNode(lexicalNode) && !hasNormalFontWeight) {
+        lexicalNode.toggleFormat('bold');
+      }
+
+      return lexicalNode;
+    },
+    node: null
+  };
+}
+
+function convertTextDOMNode(domNode) {
+  return {
+    node: $createTextNode(domNode.textContent)
+  };
+}
+
+const nodeNameToTextFormat = {
+  em: 'italic',
+  i: 'italic',
+  strong: 'bold',
+  u: 'underline'
+};
+
+function convertTextFormatElement(domNode) {
+  const format = nodeNameToTextFormat[domNode.nodeName.toLowerCase()];
+
+  if (format === undefined) {
+    return {
+      node: null
+    };
+  }
+
+  return {
+    forChild: lexicalNode => {
+      if ($isTextNode(lexicalNode)) {
+        lexicalNode.toggleFormat(format);
+      }
+
+      return lexicalNode;
+    },
+    node: null
+  };
+}
+
+function $createTextNode(text = '') {
+  return new TextNode(text);
+}
+function $isTextNode(node) {
+  return node instanceof TextNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class ParagraphNode extends ElementNode {
+  static getType() {
+    return 'paragraph';
+  }
+
+  static clone(node) {
+    return new ParagraphNode(node.__key);
+  } // View
+
+
+  createDOM(config) {
+    const dom = document.createElement('p');
+    const classNames = getCachedClassNameArray(config.theme, 'paragraph');
+
+    if (classNames !== undefined) {
+      const domClassList = dom.classList;
+      domClassList.add(...classNames);
+    }
+
+    return dom;
+  }
+
+  updateDOM(prevNode, dom) {
+    return false;
+  }
+
+  static importDOM() {
+    return {
+      p: node => ({
+        conversion: convertParagraphElement,
+        priority: 0
+      })
+    };
+  }
+
+  exportDOM(editor) {
+    const {
+      element
+    } = super.exportDOM(editor);
+
+    if (element) {
+      if (this.getTextContentSize() === 0) {
+        element.append(document.createElement('br'));
+      }
+    }
+
+    return {
+      element
+    };
+  } // Mutation
+
+
+  insertNewAfter() {
+    const newElement = $createParagraphNode();
+    const direction = this.getDirection();
+    newElement.setDirection(direction);
+    this.insertAfter(newElement);
+    return newElement;
+  }
+
+  collapseAtStart() {
+    const children = this.getChildren(); // If we have an empty (trimmed) first paragraph and try and remove it,
+    // delete the paragraph as long as we have another sibling to go to
+
+    if (children.length === 0 || $isTextNode(children[0]) && children[0].getTextContent().trim() === '') {
+      const nextSibling = this.getNextSibling();
+
+      if (nextSibling !== null) {
+        this.selectNext();
+        this.remove();
+        return true;
+      }
+
+      const prevSibling = this.getPreviousSibling();
+
+      if (prevSibling !== null) {
+        this.selectPrevious();
+        this.remove();
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+}
+
+function convertParagraphElement() {
+  return {
+    node: $createParagraphNode()
+  };
+}
+
+function $createParagraphNode() {
+  return new ParagraphNode();
+}
+function $isParagraphNode(node) {
+  return node instanceof ParagraphNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const COMMAND_PRIORITY_EDITOR = 0;
+const COMMAND_PRIORITY_LOW = 1;
+const COMMAND_PRIORITY_NORMAL = 2;
+const COMMAND_PRIORITY_HIGH = 3;
+const COMMAND_PRIORITY_CRITICAL = 4; // eslint-disable-next-line no-unused-vars
+
+function resetEditor(editor, prevRootElement, nextRootElement, pendingEditorState) {
+  const keyNodeMap = editor._keyToDOMMap;
+  keyNodeMap.clear();
+  editor._editorState = createEmptyEditorState();
+  editor._pendingEditorState = pendingEditorState;
+  editor._compositionKey = null;
+  editor._dirtyType = NO_DIRTY_NODES;
+
+  editor._cloneNotNeeded.clear();
+
+  editor._dirtyLeaves = new Set();
+
+  editor._dirtyElements.clear();
+
+  editor._normalizedNodes = new Set();
+  editor._updateTags = new Set();
+  editor._updates = [];
+  const observer = editor._observer;
+
+  if (observer !== null) {
+    observer.disconnect();
+    editor._observer = null;
+  } // Remove all the DOM nodes from the root element
+
+
+  if (prevRootElement !== null) {
+    prevRootElement.textContent = '';
+  }
+
+  if (nextRootElement !== null) {
+    nextRootElement.textContent = '';
+    keyNodeMap.set('root', nextRootElement);
+  }
+}
+
+function initializeConversionCache(nodes) {
+  const conversionCache = new Map();
+  const handledConversions = new Set();
+  nodes.forEach(node => {
+    const importDOM = node.klass.importDOM;
+
+    if (handledConversions.has(importDOM)) {
+      return;
+    }
+
+    handledConversions.add(importDOM);
+    const map = importDOM();
+
+    if (map !== null) {
+      Object.keys(map).forEach(key => {
+        let currentCache = conversionCache.get(key);
+
+        if (currentCache === undefined) {
+          currentCache = [];
+          conversionCache.set(key, currentCache);
+        }
+
+        currentCache.push(map[key]);
+      });
+    }
+  });
+  return conversionCache;
+}
+
+function createEditor(editorConfig) {
+  const config = editorConfig || {};
+  const namespace = config.namespace || createUID();
+  const theme = config.theme || {};
+  const parentEditor = config.parentEditor || null;
+  const disableEvents = config.disableEvents || false;
+  const editorState = createEmptyEditorState();
+  const initialEditorState = config.editorState;
+  const nodes = [RootNode, TextNode, LineBreakNode, ParagraphNode, ...(config.nodes || [])];
+  const onError = config.onError;
+  const isReadOnly = config.readOnly || false;
+  const registeredNodes = new Map();
+
+  for (let i = 0; i < nodes.length; i++) {
+    const klass = nodes[i];
+    const type = klass.getType();
+    registeredNodes.set(type, {
+      klass,
+      transforms: new Set()
+    });
+  } // klass: Array<Class<LexicalNode>>
+  // $FlowFixMe: use our declared type instead
+
+
+  const editor = new LexicalEditor(editorState, parentEditor, registeredNodes, {
+    disableEvents,
+    namespace,
+    theme
+  }, onError, initializeConversionCache(registeredNodes), isReadOnly);
+
+  if (initialEditorState !== undefined) {
+    editor._pendingEditorState = initialEditorState;
+    editor._dirtyType = FULL_RECONCILE;
+  }
+
+  return editor;
+}
+class LexicalEditor {
+  constructor(editorState, parentEditor, nodes, config, onError, htmlConversions, readOnly) {
+    this._parentEditor = parentEditor; // The root element associated with this editor
+
+    this._rootElement = null; // The current editor state
+
+    this._editorState = editorState; // Handling of drafts and updates
+
+    this._pendingEditorState = null; // Used to help co-ordinate selection and events
+
+    this._compositionKey = null;
+    this._deferred = []; // Used during reconciliation
+
+    this._keyToDOMMap = new Map();
+    this._updates = [];
+    this._updating = false; // Listeners
+
+    this._listeners = {
+      decorator: new Set(),
+      mutation: new Map(),
+      readonly: new Set(),
+      root: new Set(),
+      textcontent: new Set(),
+      update: new Set()
+    }; // Commands
+
+    this._commands = new Map(); // Editor configuration for theme/context.
+
+    this._config = config; // Mapping of types to their nodes
+
+    this._nodes = nodes; // React node decorators for portals
+
+    this._decorators = {};
+    this._pendingDecorators = null; // Used to optimize reconcilation
+
+    this._dirtyType = NO_DIRTY_NODES;
+    this._cloneNotNeeded = new Set();
+    this._dirtyLeaves = new Set();
+    this._dirtyElements = new Map();
+    this._normalizedNodes = new Set();
+    this._updateTags = new Set(); // Handling of DOM mutations
+
+    this._observer = null; // Used for identifying owning editors
+
+    this._key = generateRandomKey();
+    this._onError = onError;
+    this._htmlConversions = htmlConversions;
+    this._readOnly = false;
+    this._headless = false;
+  }
+
+  isComposing() {
+    return this._compositionKey != null;
+  }
+
+  registerUpdateListener(listener) {
+    const listenerSetOrMap = this._listeners.update;
+    listenerSetOrMap.add(listener);
+    return () => {
+      listenerSetOrMap.delete(listener);
+    };
+  }
+
+  registerReadOnlyListener(listener) {
+    const listenerSetOrMap = this._listeners.readonly;
+    listenerSetOrMap.add(listener);
+    return () => {
+      listenerSetOrMap.delete(listener);
+    };
+  }
+
+  registerDecoratorListener(listener) {
+    const listenerSetOrMap = this._listeners.decorator;
+    listenerSetOrMap.add(listener);
+    return () => {
+      listenerSetOrMap.delete(listener);
+    };
+  }
+
+  registerTextContentListener(listener) {
+    const listenerSetOrMap = this._listeners.textcontent;
+    listenerSetOrMap.add(listener);
+    return () => {
+      listenerSetOrMap.delete(listener);
+    };
+  }
+
+  registerRootListener(listener) {
+    const listenerSetOrMap = this._listeners.root;
+    listener(this._rootElement, null);
+    listenerSetOrMap.add(listener);
+    return () => {
+      listener(null, this._rootElement);
+      listenerSetOrMap.delete(listener);
+    };
+  }
+
+  registerCommand(command, listener, priority) {
+    if (priority === undefined) {
+      {
+        throw Error(`Listener for type "command" requires a "priority".`);
+      }
+    }
+
+    const commandsMap = this._commands;
+
+    if (!commandsMap.has(command)) {
+      commandsMap.set(command, [new Set(), new Set(), new Set(), new Set(), new Set()]);
+    }
+
+    const listenersInPriorityOrder = commandsMap.get(command);
+
+    if (listenersInPriorityOrder === undefined) {
+      {
+        throw Error(`registerCommand: Command ${command} not found in command map`);
+      }
+    }
+
+    const listeners = listenersInPriorityOrder[priority];
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+
+      if (listenersInPriorityOrder.every(listenersSet => listenersSet.size === 0)) {
+        commandsMap.delete(command);
+      }
+    };
+  }
+
+  registerMutationListener(klass, listener) {
+    const registeredNode = this._nodes.get(klass.getType());
+
+    if (registeredNode === undefined) {
+      {
+        throw Error(`Node ${klass.name} has not been registered. Ensure node has been passed to createEditor.`);
+      }
+    }
+
+    const mutations = this._listeners.mutation;
+    mutations.set(listener, klass);
+    return () => {
+      mutations.delete(listener);
+    };
+  }
+
+  registerNodeTransform( // There's no Flow-safe way to preserve the T in Transform<T>, but <T: LexicalNode> in the
+  // declaration below guarantees these are LexicalNodes.
+  klass, listener) {
+    const type = klass.getType();
+
+    const registeredNode = this._nodes.get(type);
+
+    if (registeredNode === undefined) {
+      {
+        throw Error(`Node ${klass.name} has not been registered. Ensure node has been passed to createEditor.`);
+      }
+    }
+
+    const transforms = registeredNode.transforms;
+    transforms.add(listener);
+    markAllNodesAsDirty(this, type);
+    return () => {
+      transforms.delete(listener);
+    };
+  }
+
+  hasNodes(nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const klass = nodes[i];
+      const type = klass.getType();
+
+      if (!this._nodes.has(type)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  dispatchCommand(type, payload) {
+    return dispatchCommand(this, type, payload);
+  }
+
+  getDecorators() {
+    return this._decorators;
+  }
+
+  getRootElement() {
+    return this._rootElement;
+  }
+
+  getKey() {
+    return this._key;
+  }
+
+  setRootElement(nextRootElement) {
+    const prevRootElement = this._rootElement;
+
+    if (nextRootElement !== prevRootElement) {
+      const pendingEditorState = this._pendingEditorState || this._editorState;
+      this._rootElement = nextRootElement;
+      resetEditor(this, prevRootElement, nextRootElement, pendingEditorState);
+
+      if (prevRootElement !== null) {
+        // TODO: remove this flag once we no longer use UEv2 internally
+        if (!this._config.disableEvents) {
+          removeRootElementEvents(prevRootElement);
+        }
+      }
+
+      if (nextRootElement !== null) {
+        const style = nextRootElement.style;
+        style.userSelect = 'text';
+        style.whiteSpace = 'pre-wrap';
+        style.wordBreak = 'break-word';
+        nextRootElement.setAttribute('data-lexical-editor', 'true');
+        this._dirtyType = FULL_RECONCILE;
+        initMutationObserver(this);
+
+        this._updateTags.add('history-merge');
+
+        commitPendingUpdates(this); // TODO: remove this flag once we no longer use UEv2 internally
+
+        if (!this._config.disableEvents) {
+          addRootElementEvents(nextRootElement, this);
+        }
+      }
+
+      triggerListeners('root', this, false, nextRootElement, prevRootElement);
+    }
+  }
+
+  getElementByKey(key) {
+    return this._keyToDOMMap.get(key) || null;
+  }
+
+  getEditorState() {
+    return this._editorState;
+  }
+
+  setEditorState(editorState, options) {
+    if (editorState.isEmpty()) {
+      {
+        throw Error(`setEditorState: the editor state is empty. Ensure the editor state's root node never becomes empty.`);
+      }
+    }
+
+    flushRootMutations(this);
+    const pendingEditorState = this._pendingEditorState;
+    const tags = this._updateTags;
+    const tag = options !== undefined ? options.tag : null;
+
+    if (pendingEditorState !== null && !pendingEditorState.isEmpty()) {
+      if (tag != null) {
+        tags.add(tag);
+      }
+
+      commitPendingUpdates(this);
+    }
+
+    this._pendingEditorState = editorState;
+    this._dirtyType = FULL_RECONCILE;
+    this._compositionKey = null;
+
+    if (tag != null) {
+      tags.add(tag);
+    }
+
+    commitPendingUpdates(this);
+  }
+
+  parseEditorState(maybeStringifiedEditorState) {
+    const parsedEditorState = typeof maybeStringifiedEditorState === 'string' ? JSON.parse(maybeStringifiedEditorState) : maybeStringifiedEditorState;
+    return parseEditorState(parsedEditorState, this);
+  }
+
+  update(updateFn, options) {
+    updateEditor(this, updateFn, options);
+  }
+
+  focus(callbackFn) {
+    const rootElement = this._rootElement;
+
+    if (rootElement !== null) {
+      // This ensures that iOS does not trigger caps lock upon focus
+      rootElement.setAttribute('autocapitalize', 'off');
+      updateEditor(this, () => {
+        const selection = $getSelection();
+        const root = $getRoot();
+
+        if (selection !== null) {
+          // Marking the selection dirty will force the selection back to it
+          selection.dirty = true;
+        } else if (root.getChildrenSize() !== 0) {
+          root.selectEnd();
+        }
+      }, {
+        onUpdate: () => {
+          rootElement.removeAttribute('autocapitalize');
+
+          if (callbackFn) {
+            callbackFn();
+          }
+        }
+      });
+    }
+  }
+
+  blur() {
+    const rootElement = this._rootElement;
+
+    if (rootElement !== null) {
+      rootElement.blur();
+    }
+
+    const domSelection = getDOMSelection();
+
+    if (domSelection !== null) {
+      domSelection.removeAllRanges();
+    }
+  }
+
+  isReadOnly() {
+    return this._readOnly;
+  }
+
+  setReadOnly(readOnly) {
+    this._readOnly = readOnly;
+    triggerListeners('readonly', this, true, readOnly);
+  }
+
+  toJSON() {
+    return {
+      editorState: this._editorState
+    };
+  }
+
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+const VERSION = '0.2.9';
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class GridCellNode extends ElementNode {
+  constructor(colSpan, key) {
+    super(key);
+  }
+
+}
+function $isGridCellNode(node) {
+  return node instanceof GridCellNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class GridNode extends ElementNode {}
+function $isGridNode(node) {
+  return node instanceof GridNode;
+}
+
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+class GridRowNode extends ElementNode {}
+function $isGridRowNode(node) {
+  return node instanceof GridRowNode;
+}
+
+exports.$createGridSelection = $createEmptyGridSelection;
+exports.$createLineBreakNode = $createLineBreakNode;
+exports.$createNodeFromParse = $createNodeFromParse;
+exports.$createNodeSelection = $createEmptyObjectSelection;
+exports.$createParagraphNode = $createParagraphNode;
+exports.$createRangeSelection = $createEmptyRangeSelection;
+exports.$createTextNode = $createTextNode;
+exports.$getDecoratorNode = $getDecoratorNode;
+exports.$getNearestNodeFromDOMNode = $getNearestNodeFromDOMNode;
+exports.$getNodeByKey = $getNodeByKey;
+exports.$getPreviousSelection = $getPreviousSelection;
+exports.$getRoot = $getRoot;
+exports.$getSelection = $getSelection;
+exports.$isDecoratorNode = $isDecoratorNode;
+exports.$isElementNode = $isElementNode;
+exports.$isGridCellNode = $isGridCellNode;
+exports.$isGridNode = $isGridNode;
+exports.$isGridRowNode = $isGridRowNode;
+exports.$isGridSelection = $isGridSelection;
+exports.$isLeafNode = $isLeafNode;
+exports.$isLineBreakNode = $isLineBreakNode;
+exports.$isNodeSelection = $isNodeSelection;
+exports.$isParagraphNode = $isParagraphNode;
+exports.$isRangeSelection = $isRangeSelection;
+exports.$isRootNode = $isRootNode;
+exports.$isTextNode = $isTextNode;
+exports.$nodesOfType = $nodesOfType;
+exports.$setCompositionKey = $setCompositionKey;
+exports.$setSelection = $setSelection;
+exports.BLUR_COMMAND = BLUR_COMMAND;
+exports.CAN_REDO_COMMAND = CAN_REDO_COMMAND;
+exports.CAN_UNDO_COMMAND = CAN_UNDO_COMMAND;
+exports.CLEAR_EDITOR_COMMAND = CLEAR_EDITOR_COMMAND;
+exports.CLEAR_HISTORY_COMMAND = CLEAR_HISTORY_COMMAND;
+exports.CLICK_COMMAND = CLICK_COMMAND;
+exports.COMMAND_PRIORITY_CRITICAL = COMMAND_PRIORITY_CRITICAL;
+exports.COMMAND_PRIORITY_EDITOR = COMMAND_PRIORITY_EDITOR;
+exports.COMMAND_PRIORITY_HIGH = COMMAND_PRIORITY_HIGH;
+exports.COMMAND_PRIORITY_LOW = COMMAND_PRIORITY_LOW;
+exports.COMMAND_PRIORITY_NORMAL = COMMAND_PRIORITY_NORMAL;
+exports.COPY_COMMAND = COPY_COMMAND;
+exports.CUT_COMMAND = CUT_COMMAND;
+exports.DELETE_CHARACTER_COMMAND = DELETE_CHARACTER_COMMAND;
+exports.DELETE_LINE_COMMAND = DELETE_LINE_COMMAND;
+exports.DELETE_WORD_COMMAND = DELETE_WORD_COMMAND;
+exports.DRAGEND_COMMAND = DRAGEND_COMMAND;
+exports.DRAGSTART_COMMAND = DRAGSTART_COMMAND;
+exports.DROP_COMMAND = DROP_COMMAND;
+exports.DecoratorNode = DecoratorNode;
+exports.ElementNode = ElementNode;
+exports.FOCUS_COMMAND = FOCUS_COMMAND;
+exports.FORMAT_ELEMENT_COMMAND = FORMAT_ELEMENT_COMMAND;
+exports.FORMAT_TEXT_COMMAND = FORMAT_TEXT_COMMAND;
+exports.GridCellNode = GridCellNode;
+exports.GridNode = GridNode;
+exports.GridRowNode = GridRowNode;
+exports.INDENT_CONTENT_COMMAND = INDENT_CONTENT_COMMAND;
+exports.INSERT_LINE_BREAK_COMMAND = INSERT_LINE_BREAK_COMMAND;
+exports.INSERT_PARAGRAPH_COMMAND = INSERT_PARAGRAPH_COMMAND;
+exports.INSERT_TEXT_COMMAND = INSERT_TEXT_COMMAND;
+exports.KEY_ARROW_DOWN_COMMAND = KEY_ARROW_DOWN_COMMAND;
+exports.KEY_ARROW_LEFT_COMMAND = KEY_ARROW_LEFT_COMMAND;
+exports.KEY_ARROW_RIGHT_COMMAND = KEY_ARROW_RIGHT_COMMAND;
+exports.KEY_ARROW_UP_COMMAND = KEY_ARROW_UP_COMMAND;
+exports.KEY_BACKSPACE_COMMAND = KEY_BACKSPACE_COMMAND;
+exports.KEY_DELETE_COMMAND = KEY_DELETE_COMMAND;
+exports.KEY_ENTER_COMMAND = KEY_ENTER_COMMAND;
+exports.KEY_ESCAPE_COMMAND = KEY_ESCAPE_COMMAND;
+exports.KEY_MODIFIER_COMMAND = KEY_MODIFIER_COMMAND;
+exports.KEY_SPACE_COMMAND = KEY_SPACE_COMMAND;
+exports.KEY_TAB_COMMAND = KEY_TAB_COMMAND;
+exports.LineBreakNode = LineBreakNode;
+exports.OUTDENT_CONTENT_COMMAND = OUTDENT_CONTENT_COMMAND;
+exports.PASTE_COMMAND = PASTE_COMMAND;
+exports.ParagraphNode = ParagraphNode;
+exports.REDO_COMMAND = REDO_COMMAND;
+exports.REMOVE_TEXT_COMMAND = REMOVE_TEXT_COMMAND;
+exports.SELECTION_CHANGE_COMMAND = SELECTION_CHANGE_COMMAND;
+exports.TextNode = TextNode;
+exports.UNDO_COMMAND = UNDO_COMMAND;
+exports.VERSION = VERSION;
+exports.createCommand = createCommand;
+exports.createEditor = createEditor;
+
+
+/***/ }),
+
+/***/ "./node_modules/lexical/Lexical.js":
+/*!*****************************************!*\
+  !*** ./node_modules/lexical/Lexical.js ***!
+  \*****************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+const Lexical =  true ? __webpack_require__(/*! ./Lexical.dev.js */ "./node_modules/lexical/Lexical.dev.js") : 0
+module.exports = Lexical;
 
 /***/ }),
 
@@ -48293,6 +66114,34 @@ if (false) {}
 
 /***/ }),
 
+/***/ "./resources/js/Components/Editor.vue":
+/*!********************************************!*\
+  !*** ./resources/js/Components/Editor.vue ***!
+  \********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _Editor_vue_vue_type_template_id_eac6be10__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Editor.vue?vue&type=template&id=eac6be10 */ "./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10");
+/* harmony import */ var _Editor_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Editor.vue?vue&type=script&setup=true&lang=js */ "./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js");
+/* harmony import */ var _home_lucas_Documentos_easy_essay_editor_e3_editor_node_modules_vue_loader_dist_exportHelper_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./node_modules/vue-loader/dist/exportHelper.js */ "./node_modules/vue-loader/dist/exportHelper.js");
+
+
+
+
+;
+const __exports__ = /*#__PURE__*/(0,_home_lucas_Documentos_easy_essay_editor_e3_editor_node_modules_vue_loader_dist_exportHelper_js__WEBPACK_IMPORTED_MODULE_2__["default"])(_Editor_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_1__["default"], [['render',_Editor_vue_vue_type_template_id_eac6be10__WEBPACK_IMPORTED_MODULE_0__.render],['__file',"resources/js/Components/Editor.vue"]])
+/* hot reload */
+if (false) {}
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (__exports__);
+
+/***/ }),
+
 /***/ "./resources/js/Components/Input.vue":
 /*!*******************************************!*\
   !*** ./resources/js/Components/Input.vue ***!
@@ -48780,6 +66629,22 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js":
+/*!*******************************************************************************!*\
+  !*** ./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js ***!
+  \*******************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_Editor_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_0__["default"])
+/* harmony export */ });
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_Editor_vue_vue_type_script_setup_true_lang_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./Editor.vue?vue&type=script&setup=true&lang=js */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=script&setup=true&lang=js");
+ 
+
+/***/ }),
+
 /***/ "./resources/js/Components/Input.vue?vue&type=script&setup=true&lang=js":
 /*!******************************************************************************!*\
   !*** ./resources/js/Components/Input.vue?vue&type=script&setup=true&lang=js ***!
@@ -49096,6 +66961,22 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "render": () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_DropdownLink_vue_vue_type_template_id_6e0ef414__WEBPACK_IMPORTED_MODULE_0__.render)
 /* harmony export */ });
 /* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_DropdownLink_vue_vue_type_template_id_6e0ef414__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!../../../node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./DropdownLink.vue?vue&type=template&id=6e0ef414 */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/DropdownLink.vue?vue&type=template&id=6e0ef414");
+
+
+/***/ }),
+
+/***/ "./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10":
+/*!**************************************************************************!*\
+  !*** ./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10 ***!
+  \**************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "render": () => (/* reexport safe */ _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_Editor_vue_vue_type_template_id_eac6be10__WEBPACK_IMPORTED_MODULE_0__.render)
+/* harmony export */ });
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_clonedRuleSet_5_use_0_node_modules_vue_loader_dist_templateLoader_js_ruleSet_1_rules_2_node_modules_vue_loader_dist_index_js_ruleSet_0_use_0_Editor_vue_vue_type_template_id_eac6be10__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!../../../node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!../../../node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./Editor.vue?vue&type=template&id=eac6be10 */ "./node_modules/babel-loader/lib/index.js??clonedRuleSet-5.use[0]!./node_modules/vue-loader/dist/templateLoader.js??ruleSet[1].rules[2]!./node_modules/vue-loader/dist/index.js??ruleSet[0].use[0]!./resources/js/Components/Editor.vue?vue&type=template&id=eac6be10");
 
 
 /***/ }),
