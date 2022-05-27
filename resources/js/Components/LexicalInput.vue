@@ -1,4 +1,5 @@
 <template>
+
   <LexicalComposer :initial-config="config">
     <LexicalPlainTextPlugin>
       <template #contentEditable>

@@ -1,9 +1,17 @@
 <script setup>
-import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
-import TextEditor from '@/Components/Editor.vue';
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';;
 import { Head } from '@inertiajs/inertia-vue3';
-import { ref } from 'vue'
+import { ref } from 'vue';
+import Editor from '@/Components/RichTextEditor.vue';
 
+</script>
+
+<script>
+    export default {
+    components: {
+        Editor,
+    },
+}
 </script>
 
 <template>
@@ -20,14 +28,15 @@ import { ref } from 'vue'
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <TextEditor></TextEditor>
-                    </div>
-                    <div class="p-6 bg-white border-b border-gray-200">
-
+                        <editor />
                     </div>
                 </div>
             </div>
         </div>
+
     </BreezeAuthenticatedLayout>
 
 </template>
+
+
+

@@ -1,3 +1,55 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
+
+.button {
+    @apply border-2;
+    @apply border-gray-300;
+    @apply rounded-lg;
+    @apply px-3 py-1;
+    @apply mb-3 mr-3;
+}
+
+.button:hover {
+    @apply border-green-300;
+}
+
+.wysiwyg-output h1 {
+    @apply text-3xl;
+    @apply font-bold;
+    @apply pb-5;
+}
+
+.wysiwyg-output h2 {
+    @apply text-2xl;
+    @apply font-bold;
+    @apply pb-4;
+}
+
+.wysiwyg-output h3 {
+    @apply text-lg;
+    @apply font-bold;
+    @apply pb-3;
+}
+
+.wysiwyg-output p {
+    @apply pb-4
+}
+
+.wysiwyg-output p {
+    @apply pb-4;
+}
+
+.wysiwyg-output ul {
+    @apply ml-6;
+    @apply list-disc;
+}
+
+.wysiwyg-output ol {
+    @apply ml-6;
+    @apply list-decimal;
+}
+
+.wysiwyg-output {
+    width: 600px;
+}
