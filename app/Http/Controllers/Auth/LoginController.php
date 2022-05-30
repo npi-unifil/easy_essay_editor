@@ -16,7 +16,7 @@ class LoginController{
         try {
             $user = Socialite::driver('google')->stateless()->user();
         } catch (\Exception $e) {
-            return redirect('/login');
+            return redirect('/');
         }
         if(explode("@", $user->email)[1] !== 'edu.unifil.br'){
             if(explode("@", $user->email)[1] !== 'unifil.br' ){
