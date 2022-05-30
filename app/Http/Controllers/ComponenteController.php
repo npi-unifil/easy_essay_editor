@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreComponenteRequest;
+use Illuminate\Http\Request;
 use App\Http\Requests\UpdateComponenteRequest;
 use App\Models\Componente;
 
@@ -34,9 +34,17 @@ class ComponenteController extends Controller
      * @param  \App\Http\Requests\StoreComponenteRequest  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(StoreComponenteRequest $request)
+    public function store(Request $request, $data)
     {
-        //
+        $value = explode(">", $request->value)[0];
+        $nome = $value.">";
+        $conteudo = $request->value;
+        $document_id = $data->document_id;
+        Componente::create([
+            'name'=>$nome,
+            'conteudo'=>$conteudo,
+            'document_id'=>$document_id
+        ]);
     }
 
     /**

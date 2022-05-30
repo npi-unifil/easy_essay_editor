@@ -13,6 +13,12 @@ class Componente extends Model
 
     protected $primaryKey = 'component_id';
 
+    protected $fillable = [
+        'name',
+        'conteudo',
+        'document_id'
+    ];
+
     public function documento():BelongsTo
     {
         return $this->belongsTo(Documento::class);

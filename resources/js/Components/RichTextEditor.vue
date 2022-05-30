@@ -1,7 +1,7 @@
 <template>
     <form @submit.prevent="submit">
         <input placeholder="Document Title" id="nome" v-model="form.nome">
-        <QuillEditor v-model:content="value" contentType="html" :modules="modules" toolbar="full" theme="snow" />
+        <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow" />
         <QuillEditor v-model:content="value" contentType="html" readOnly=true theme="snow" />
         <button id="button" type="submit">Salvar</button>
 
@@ -34,7 +34,8 @@ export default {
     },
     setup: () => {
         const form = reactive({
-            nome: null
+            nome: null,
+            value: null
         })
 
         const modules = {
@@ -49,12 +50,7 @@ export default {
         }
         return { form, submit, modules }
     },
-    methods: {
-        save(){
-            console.log({data: this.nome})
-            Inertia.post('/documento', {nome: this.nome});
-        }
-    }
+
 
 }
 
@@ -65,7 +61,7 @@ export default {
         background-color: blue;
     }
 
-    #doc-title {
+    #nome {
         text-align: center;
         border: 0;
         margin-bottom: 20px;

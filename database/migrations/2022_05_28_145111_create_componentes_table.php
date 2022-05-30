@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('componentes', function (Blueprint $table) {
             $table->id('component_id');
             $table->string('name');
-            $table->string('conteudo');
+            $table->longText('conteudo');
             $table->timestamps();
             $table->unsignedBigInteger('document_id');
             $table->foreign('document_id')->references('document_id')->on('documents');
