@@ -36,7 +36,7 @@ class LoginController{
 
             auth()->login($newUser, true);
         }
-        return redirect()->to('/dashboard');
+        return redirect()->to('/documents');
     }
 }
 

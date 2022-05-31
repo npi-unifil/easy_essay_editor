@@ -35,6 +35,10 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('/documents', [DocumentoController::class, 'index'],  function () {
+    return Inertia::render('Documents');
+})->middleware(['auth', 'verified'])->name('documents');
+
 Route::post('/documento', [DocumentoController::class, 'store']);
 require __DIR__.'/auth.php';
 
