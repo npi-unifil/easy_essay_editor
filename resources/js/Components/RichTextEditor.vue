@@ -7,7 +7,6 @@
 
     </form>
 
-    <div>{{ nome }}{{value}}</div>
 </template>
 
 <script>

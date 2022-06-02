@@ -2,15 +2,21 @@
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';;
 import { Head } from '@inertiajs/inertia-vue3';
 import { ref } from 'vue';
-
+import { Inertia } from '@inertiajs/inertia';
+import { reactive } from 'vue';
+import { Link } from '@inertiajs/inertia-vue3'
 </script>
 
 <script>
-    export default {
-        props: ['documents'],
-        components: {
+export default {
+    props: ['documents'],
 
-        },
+    methods: {
+        edit(id){
+            Inertia.get('/documents/' + id)
+        }
+    }
+
 }
 </script>
 
@@ -30,16 +36,22 @@ import { ref } from 'vue';
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="card-group">
                             <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
-                                <div class="col-sm-6">
-                                        <div class="card" style="width: 15rem;">
-                                            <img class="card-img-top" src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000" alt="Card image cap">
-                                            <div class="card-body">
-                                                <h5 class="card-title">{{ doc.nome }}</h5>
-                                                <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-                                                <a href="#" class="btn btn-primary">Go somewhere</a>
+
+                                    <div class="col-sm-6">
+                                            <div class="card" style="width: 15rem;">
+                                                <form @submit.prevent="submit">
+                                                    <img class="card-img-top" src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000" alt="Card image cap">
+                                                    <div class="card-body">
+                                                            <h5 class="card-title">{{ doc.nome }}</h5>
+                                                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+
+                                                            <button class="btn btn-primary" @click="edit(doc.document_id)">Go somewhere</button>
+                                                    </div>
+                                                </form>
                                             </div>
-                                        </div>
-                                </div>
+
+                                    </div>
+
                             </div>
                         </div>
                     </div>
@@ -53,7 +65,3 @@ import { ref } from 'vue';
 
 </template>
 
-<style>
-
-
-</style>

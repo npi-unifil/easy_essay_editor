@@ -12,14 +12,22 @@ class DocumentoController extends Controller
 {
 
     public function index(){
-        $documents = Documento::all('nome');
+        $documents = Documento::all('document_id', 'nome');
         return Inertia::render('Documents',[
             'documents' => $documents
         ]);
     }
 
+    public function getById($id){
+        $documents = Documento::findOrFail($id)->join('componentes', 'componentes.document_id', '=', 'documents.document_id')->findOrFail($id);
+        //dd($documents);
+        return Inertia::render('EditAcademicWork', [
+            'edit' => $documents
+        ]);
+    }
+
     public function store(Request $request){
-        $nome = $request;
+        $nome = $request->nome;
         $users_id = $request->user()->id;
         $data = Documento::create([
             'nome'=>$nome,
@@ -32,6 +40,16 @@ class DocumentoController extends Controller
         return redirect()->route('documents');
     }
 
+    public function update(Request $request, $id){
+        //dd($request->id);
+        $document_id = $request->id;
+        $documents = Documento::where('document_id', '=', $document_id)->first();
+        $documents->update($request->all('nome'));
 
+        $componente = new ComponenteController();
+        $componente->update($request);
+
+        return redirect()->route('documents');
+    }
 
 }

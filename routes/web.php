@@ -39,6 +39,13 @@ Route::get('/documents', [DocumentoController::class, 'index'],  function () {
     return Inertia::render('Documents');
 })->middleware(['auth', 'verified'])->name('documents');
 
+Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
+    return Inertia::render('EditAcademicWork');
+})->middleware(['auth', 'verified'])->name('editDocument');
+
+
 Route::post('/documento', [DocumentoController::class, 'store']);
 require __DIR__.'/auth.php';
 
+Route::post('/documento/{id}', [DocumentoController::class, 'update']);
+require __DIR__.'/auth.php';
