@@ -14,20 +14,57 @@ export default {
     methods: {
         edit(id){
             Inertia.get('/documents/' + id)
+        },
+
+        newDoc(){
+            Inertia.get('/dashboard')
         }
+
     }
 
 }
 </script>
+
+<style>
+
+    .card:hover{
+        cursor: pointer;
+    }
+
+    .card .card-title{
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .card .btn {
+        height: 40px;
+        width: 100px;
+        text-align: center;
+    }
+
+    #new-doc {
+        padding: 40px 10px 0 0;
+    }
+
+    #new-doc-button {
+        height: 30px;
+        width: 180px;
+        border-radius: 5px;
+        font-weight: bold;
+        background-color: rgb(212, 211, 211);
+    }
+</style>
 
 <template>
     <Head title="Documentos" />
 
     <BreezeAuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Documentos
-            </h2>
+
+            <div id="new-doc" @click="newDoc">
+                <button id="new-doc-button">Novo Documento</button>
+            </div>
+
         </template>
 
         <div class="py-12">
@@ -38,14 +75,11 @@ export default {
                             <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
 
                                     <div class="col-sm-6">
-                                            <div class="card" style="width: 15rem;">
+                                            <div class="card" style="width: 13rem;" @click="edit(doc.document_id)">
                                                 <form @submit.prevent="submit">
                                                     <img class="card-img-top" src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000" alt="Card image cap">
                                                     <div class="card-body">
                                                             <h5 class="card-title">{{ doc.nome }}</h5>
-                                                            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-
-                                                            <button class="btn btn-primary" @click="edit(doc.document_id)">Go somewhere</button>
                                                     </div>
                                                 </form>
                                             </div>

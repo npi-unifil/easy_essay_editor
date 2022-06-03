@@ -35,4 +35,9 @@ class ComponenteController extends Controller
         $componente->update($request->all('conteudo'));
     }
 
+    public function destroy($id){
+        $componente = Componente::where('document_id', '=', $id)->first();
+        $componente->delete('DELETE FROM componentes WHERE document_id = ?', [$id]);
+    }
+
 }

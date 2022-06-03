@@ -20,7 +20,7 @@ import Editor from '@/Components/RichTextEditor.vue';
     <BreezeAuthenticatedLayout>
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Dashboard
+                Novo Documento
             </h2>
         </template>
 

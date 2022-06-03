@@ -40,14 +40,24 @@ class DocumentoController extends Controller
         return redirect()->route('documents');
     }
 
-    public function update(Request $request, $id){
-        //dd($request->id);
+    public function update(Request $request){
+        // dd($request->id);
         $document_id = $request->id;
         $documents = Documento::where('document_id', '=', $document_id)->first();
         $documents->update($request->all('nome'));
 
         $componente = new ComponenteController();
         $componente->update($request);
+
+        return redirect()->route('documents');
+    }
+
+    public function destroy(Request $request, $id){
+        $componente = new ComponenteController();
+        $componente->destroy($id);
+
+        $documents = Documento::where('document_id', '=', $id)->first();
+        $documents->delete('DELETE FROM documents WHERE id = ?', [$id]);
 
         return redirect()->route('documents');
     }

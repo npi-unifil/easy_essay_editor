@@ -717,9 +717,6 @@ select {
 .h-16 {
   height: 4rem;
 }
-.h-9 {
-  height: 2.25rem;
-}
 .h-4 {
   height: 1rem;
 }
@@ -825,11 +822,6 @@ select {
 }
 .justify-items-center {
   justify-items: center;
-}
-.space-x-8 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 0;
-  margin-right: calc(2rem * var(--tw-space-x-reverse));
-  margin-left: calc(2rem * calc(1 - var(--tw-space-x-reverse)));
 }
 .space-y-1 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
@@ -1393,17 +1385,8 @@ select {
 }
 @media (min-width: 640px) {
 
-  .sm\:-my-px {
-    margin-top: -1px;
-    margin-bottom: -1px;
-  }
-
   .sm\:ml-0 {
     margin-left: 0px;
-  }
-
-  .sm\:ml-10 {
-    margin-left: 2.5rem;
   }
 
   .sm\:ml-6 {

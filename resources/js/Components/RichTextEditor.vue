@@ -1,8 +1,7 @@
 <template>
     <form @submit.prevent="submit">
-        <input placeholder="Document Title" id="nome" v-model="form.nome">
-        <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow" />
-        <QuillEditor v-model:content="value" contentType="html" readOnly=true theme="snow" />
+        <textarea placeholder="Document Title" id="nome" v-model="form.nome"></textarea>
+        <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 800px;"/>
         <button id="button" type="submit">Salvar</button>
 
     </form>
@@ -56,8 +55,16 @@ export default {
 </script>
 
 <style>
+
     #button {
+        width: 100px;
+        height: 30px;
+        font-weight: bold;
+        color: white;
+        border: 0;
+        border-radius: 5px;
         background-color: blue;
+        margin-top: 20px;
     }
 
     #nome {

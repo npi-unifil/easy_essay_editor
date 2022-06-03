@@ -19,8 +19,8 @@ defineProps({
             <header id="title"><h1>Easy Essay Editor</h1></header>
             <img class="logo" src="https://unifil.br/assets/uploads/2019/10/logo.svg" alt="Logo Unifil">
             <div v-if="canLogin" class="hidden top-0 right-0 px-6 py-4 sm:block">
-                <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="text-sm text-gray-700 underline">
-                    Dashboard
+                <Link v-if="$page.props.auth.user" :href="route('documents')" class="text-sm text-gray-700 underline">
+                    Documentos
                 </Link>
 
                 <template v-else>
