@@ -2,9 +2,11 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\ComponenteController;
+use App\Models\Documento;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +49,9 @@ Route::post('/documento', [DocumentoController::class, 'store']);
 require __DIR__.'/auth.php';
 
 Route::post('/doc/{id}', [DocumentoController::class, 'update']);
+require __DIR__.'/auth.php';
+
+Route::post('/export/{id}', [DocumentoController::class, 'exportPdf']);
 require __DIR__.'/auth.php';
 
 Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);

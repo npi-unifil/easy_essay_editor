@@ -3,7 +3,6 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import { Head } from '@inertiajs/inertia-vue3';
 import { ref } from 'vue';
 import { QuillEditor, Quill } from '@vueup/vue-quill';
-import BlotFormatter from 'quill-blot-formatter';
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
@@ -11,6 +10,7 @@ import { reactive } from 'vue';
 </script>
 
 <script>
+import BlotFormatter from 'quill-blot-formatter';
 
     export default {
 
@@ -35,7 +35,7 @@ import { reactive } from 'vue';
             name: 'blotFormatter',
             module: BlotFormatter
         }
-        return { modules, update }
+        return { modules }
     },
 
     methods: {
@@ -50,7 +50,9 @@ import { reactive } from 'vue';
         },
         deleteDoc(){
             const id = this.edit.document_id;
-            Inertia.delete('/documento/' + this.edit.document_id, id);
+            if(confirm("Deseja deletar o documento?")){
+                Inertia.delete('/documento/' + this.edit.document_id, id);
+            }
         }
     }
 }
@@ -125,5 +127,3 @@ import { reactive } from 'vue';
     }
 
 </style>
-
-

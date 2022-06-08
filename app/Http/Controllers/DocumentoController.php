@@ -6,24 +6,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use App\Models\Documento;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ComponenteController;
 
 class DocumentoController extends Controller
 {
 
     public function index(){
-        $documents = Documento::all('document_id', 'nome');
+        $user = Auth::user()->id;
+        $documents = Documento::where('users_id', '=', $user)->get();
         return Inertia::render('Documents',[
             'documents' => $documents
         ]);
     }
 
     public function getById($id){
+        $user = Auth::user()->id;
+
         $documents = Documento::findOrFail($id)->join('componentes', 'componentes.document_id', '=', 'documents.document_id')->findOrFail($id);
-        //dd($documents);
-        return Inertia::render('EditAcademicWork', [
-            'edit' => $documents
-        ]);
+
+        if($user == $documents->users_id){
+            return Inertia::render('EditAcademicWork', [
+                'edit' => $documents
+            ]);
+        }
+        return Inertia::render('NotFound');
     }
 
     public function store(Request $request){
@@ -60,6 +67,10 @@ class DocumentoController extends Controller
         $documents->delete('DELETE FROM documents WHERE id = ?', [$id]);
 
         return redirect()->route('documents');
+    }
+
+    public function exportPdf(Request $request){
+
     }
 
 }

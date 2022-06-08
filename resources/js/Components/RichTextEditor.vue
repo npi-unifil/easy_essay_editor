@@ -3,7 +3,7 @@
         <textarea placeholder="Document Title" id="nome" v-model="form.nome"></textarea>
         <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 800px;"/>
         <button id="button" type="submit">Salvar</button>
-
+        <button id="button" type="export">Exportar PDF</button>
     </form>
 
 </template>
@@ -14,9 +14,6 @@ import BlotFormatter from 'quill-blot-formatter'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
-import Quill from 'quill';
-import { pdfExporter } from 'quill-to-pdf';
-import { saveAs } from 'file-saver';
 
 export default {
 
@@ -30,6 +27,7 @@ export default {
     components: {
       QuillEditor,
     },
+
     setup: () => {
         const form = reactive({
             nome: null,
