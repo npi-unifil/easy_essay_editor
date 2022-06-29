@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Documento;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ComponenteController;
+use Spatie\Browsershot\Browsershot;
 
 class DocumentoController extends Controller
 {
@@ -70,7 +71,17 @@ class DocumentoController extends Controller
     }
 
     public function exportPdf(Request $request){
+        //dd($request);
+        //dd(html_entity_decode($request->value));
+        Browsershot::html('<div>'.html_entity_decode($request->value).'</div>')
+        ->format('A4')
+        ->margins(20, 20, 20, 20)
+        ->showBrowserHeaderAndFooter()
+        ->footerHtml('<span class="pageNumber"></span>')
+        ->initialPageNumber(9)
+        ->save(\storage_path().'/'.$request->nome.'.pdf');
 
+        return redirect()->route('dashboard');
     }
 
 }

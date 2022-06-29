@@ -3,8 +3,8 @@
         <textarea placeholder="Document Title" id="nome" v-model="form.nome"></textarea>
         <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 800px;"/>
         <button id="button" type="submit">Salvar</button>
-        <button id="button" type="export">Exportar PDF</button>
     </form>
+    <button id="button" @click="exportPdf()">Exportar PDF</button>
 
 </template>
 
@@ -40,11 +40,15 @@ export default {
 
         }
 
+        function exportPdf(){
+            Inertia.post('/export/', form)
+        }
+
         function submit() {
             console.log(form)
             Inertia.post('/documento', form)
         }
-        return { form, submit, modules }
+        return { form, exportPdf, submit, modules }
     },
 
 

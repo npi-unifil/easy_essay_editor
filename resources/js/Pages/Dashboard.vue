@@ -15,7 +15,7 @@ import Editor from '@/Components/RichTextEditor.vue';
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head title="Novo Documento" />
 
     <BreezeAuthenticatedLayout>
         <template #header>
