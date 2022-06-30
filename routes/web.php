@@ -54,5 +54,8 @@ require __DIR__.'/auth.php';
 Route::post('/export/', [DocumentoController::class, 'exportPdf']);
 require __DIR__.'/auth.php';
 
+Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
+require __DIR__.'/auth.php';
+
 Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
 require __DIR__.'/auth.php';

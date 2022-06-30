@@ -10,14 +10,14 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Welcome" />
+    <Head title="E3 Editor" />
 
-    <div class="relative flex items-top justify-center min-h-screen bg-gray-100 dark:bg-gray-900 sm:items-center sm:pt-0">
+    <div class="relative flex items-top justify-center min-h-screen bg-orange-400 sm:items-center sm:pt-0">
 
 
         <div>
             <header id="title"><h1>Easy Essay Editor</h1></header>
-            <img class="logo" src="https://unifil.br/assets/uploads/2019/10/logo.svg" alt="Logo Unifil">
+            <img class="logo ml-5" src="https://unifil.br/assets/uploads/2019/10/logo.svg" alt="Logo Unifil">
             <div v-if="canLogin" class="hidden top-0 right-0 px-6 py-4 sm:block">
                 <Link v-if="$page.props.auth.user" :href="route('documents')" class="text-sm text-gray-700 underline">
                     Documentos
@@ -45,9 +45,10 @@ defineProps({
 
     #title {
         font-size: 40px;
+        font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
         font-weight: bolder;
         color: #FFF;
-        margin-left: -80px;
+        margin-left: -60px;
         margin-bottom: 20px;
     }
 
@@ -62,7 +63,7 @@ defineProps({
         padding: 5px;
         border-radius: 10px;
         background-color: #FFF;
-        margin-left: -60px;
+        margin-left: -50px;
         margin-right: 30px;
     }
 

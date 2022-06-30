@@ -2,9 +2,9 @@
     <form @submit.prevent="submit">
         <textarea placeholder="Document Title" id="nome" v-model="form.nome"></textarea>
         <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 800px;"/>
-        <button id="button" type="submit">Salvar</button>
+        <button id="button" type="submit" class="bg-orange-400">Salvar</button>
     </form>
-    <button id="button" @click="exportPdf()">Exportar PDF</button>
+    <button id="button" @click="exportPdf()" class="bg-orange-400">Exportar PDF</button>
 
 </template>
 
@@ -65,7 +65,6 @@ export default {
         color: white;
         border: 0;
         border-radius: 5px;
-        background-color: blue;
         margin-top: 20px;
     }
 

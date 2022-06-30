@@ -76,12 +76,23 @@ class DocumentoController extends Controller
         Browsershot::html('<div>'.html_entity_decode($request->value).'</div>')
         ->format('A4')
         ->margins(20, 20, 20, 20)
-        ->showBrowserHeaderAndFooter()
         ->footerHtml('<span class="pageNumber"></span>')
         ->initialPageNumber(9)
         ->save(\storage_path().'/'.$request->nome.'.pdf');
 
-        return redirect()->route('dashboard');
+        return redirect()->route('documents');
+    }
+
+    public function exportOnUpdate(Request $request){
+
+        Browsershot::html('<div>'.html_entity_decode($request->conteudo).'</div>')
+        ->format('A4')
+        ->margins(20, 20, 20, 20)
+        ->footerHtml('<span class="pageNumber"></span>')
+        ->initialPageNumber(9)
+        ->save(\storage_path().'/'.$request->nome.'.pdf');
+
+        return redirect()->route('documents');
     }
 
 }

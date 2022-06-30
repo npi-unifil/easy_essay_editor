@@ -50,8 +50,13 @@ export default {
         height: 30px;
         width: 180px;
         border-radius: 5px;
+        color: bisque;
         font-weight: bold;
-        background-color: rgb(212, 211, 211);
+        background-color: rgb(252, 139, 34);
+    }
+
+    #new-doc-button:hover {
+        background-color: rgb(252, 132, 21);
     }
 </style>
 
@@ -61,7 +66,7 @@ export default {
     <BreezeAuthenticatedLayout>
         <template #header>
 
-            <div id="new-doc" @click="newDoc">
+            <div id="new-doc" @click="newDoc" class="mb-2.5">
                 <button id="new-doc-button">Novo Documento</button>
             </div>
 

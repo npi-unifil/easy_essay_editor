@@ -40,7 +40,6 @@ import BlotFormatter from 'quill-blot-formatter';
 
     methods: {
         submit(){
-            console.log(value);
             const update = {
                 id: this.edit.document_id,
                 nome: nome.value,
@@ -53,6 +52,14 @@ import BlotFormatter from 'quill-blot-formatter';
             if(confirm("Deseja deletar o documento?")){
                 Inertia.delete('/documento/' + this.edit.document_id, id);
             }
+        },
+        exportPdf(){
+            const dados = {
+                nome: nome.value,
+                conteudo: value.firstElementChild.innerHTML
+            }
+            console.log(dados);
+            Inertia.post('/export/' + this.edit.document_id, dados)
         }
     }
 }
@@ -64,12 +71,13 @@ import BlotFormatter from 'quill-blot-formatter';
     <BreezeAuthenticatedLayout>
         <template #header>
             <div id="head-buttons">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                <h2 class="font-semibold text-xl text-gray-50 mt-2.5 leading-tight">
                     {{this.edit.nome}}
                 </h2>
                 <div>
-                    <button id="button" @click="submit">Salvar</button>
+                    <button id="button" @click="submit" class="bg-orange-600">Salvar</button>
                     <button id="delete-button" @click="deleteDoc">Deletar</button>
+                    <button @click="exportPdf" class="bg-orange-600 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                 </div>
             </div>
         </template>
@@ -80,7 +88,9 @@ import BlotFormatter from 'quill-blot-formatter';
                     <div class="p-6 bg-white border-b border-gray-200">
                         <textarea placeholder="Document Title" id="nome" v-model="nome"></textarea>
                         <QuillEditor v-model:content="value" id="value" contentType="html" :modules="modules" style="height: 800px;" toolbar="full" theme="snow" />
-                        <button id="button" @click="submit">Salvar</button>
+                        <button id="button" @click="submit" class="bg-orange-400">Salvar</button>
+                        <button id="delete-button" @click="deleteDoc">Deletar</button>
+                        <button @click="exportPdf" class="bg-orange-600 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                     </div>
                 </div>
             </div>
@@ -99,24 +109,23 @@ import BlotFormatter from 'quill-blot-formatter';
 
     #button {
         width: 100px;
-        height: 30px;
+        height: 32px;
         font-weight: bold;
         color: white;
         border: 0;
         border-radius: 5px;
-        background-color: blue;
         margin-top: 20px;
     }
 
     #delete-button {
         width: 100px;
-        height: 30px;
+        height: 32px;
         margin-left: 5px;
         font-weight: bold;
         color: white;
         border: 0;
         border-radius: 5px;
-        background-color: red;
+        background-color: rgb(252, 66, 66);
         margin-top: 20px;
     }
 
