@@ -18,10 +18,10 @@ import Editor from '@/Components/RichTextEditor.vue';
     <Head title="Novo Documento" />
 
     <BreezeAuthenticatedLayout>
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-50 leading-tight">
-                Novo Documento
-            </h2>
+        <template #links>
+            <div class="mt-4 ml-2">
+                <a href="/documents" class="no-underline font-bold text-slate-100 hover:text-slate-800">Documentos</a>
+            </div>
         </template>
 
         <div class="py-12" style="text-align:center">

@@ -66,21 +66,24 @@ import BlotFormatter from 'quill-blot-formatter';
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head title="Editar Documento" />
 
     <BreezeAuthenticatedLayout>
-        <template #header>
-            <div id="head-buttons">
-                <h2 class="font-semibold text-xl text-gray-50 mt-2.5 leading-tight">
-                    {{this.edit.nome}}
-                </h2>
-                <div>
-                    <button id="button" @click="submit" class="bg-orange-600">Salvar</button>
-                    <button id="delete-button" @click="deleteDoc">Deletar</button>
-                    <button @click="exportPdf" class="bg-orange-600 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
-                </div>
+        <template #links>
+            <div class="mt-4 ml-2">
+                <a href="/documents" class="no-underline font-bold text-slate-100 hover:text-slate-800">Documentos</a>
             </div>
         </template>
+        <div id="head-buttons" class="mr-9">
+            <h2 class="font-semibold text-xl text-gray-50 mt-2.5 leading-tight">
+                {{this.edit.nome}}
+            </h2>
+            <div>
+                <button id="button" @click="submit" class="bg-orange-400">Salvar</button>
+                <button @click="exportPdf" class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
+                <button id="delete-button" @click="deleteDoc">Deletar</button>
+            </div>
+        </div>
 
         <div class="py-12" style="text-align:center">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -89,8 +92,8 @@ import BlotFormatter from 'quill-blot-formatter';
                         <textarea placeholder="Document Title" id="nome" v-model="nome"></textarea>
                         <QuillEditor v-model:content="value" id="value" contentType="html" :modules="modules" style="height: 800px;" toolbar="full" theme="snow" />
                         <button id="button" @click="submit" class="bg-orange-400">Salvar</button>
+                        <button @click="exportPdf" class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                         <button id="delete-button" @click="deleteDoc">Deletar</button>
-                        <button @click="exportPdf" class="bg-orange-600 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                     </div>
                 </div>
             </div>

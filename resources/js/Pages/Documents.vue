@@ -17,7 +17,7 @@ export default {
         },
 
         newDoc(){
-            Inertia.get('/dashboard')
+            Inertia.get('/newdoc')
         }
 
     }
@@ -52,11 +52,11 @@ export default {
         border-radius: 5px;
         color: bisque;
         font-weight: bold;
-        background-color: rgb(252, 139, 34);
     }
 
     #new-doc-button:hover {
-        background-color: rgb(252, 132, 21);
+        color: rgba(34, 28, 23, 0.671);
+        cursor: pointer;
     }
 </style>
 
@@ -64,12 +64,10 @@ export default {
     <Head title="Documentos" />
 
     <BreezeAuthenticatedLayout>
-        <template #header>
-
-            <div id="new-doc" @click="newDoc" class="mb-2.5">
-                <button id="new-doc-button">Novo Documento</button>
+        <template #links>
+            <div class="mt-4 ml-2">
+                <a id="new-doc-button" @click="newDoc">Novo Documento</a>
             </div>
-
         </template>
 
         <div class="py-12">

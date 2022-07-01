@@ -23,11 +23,10 @@ const showingNavigationDropdown = ref(false);
                                 <a href="/documents">
                                     <img class="w-14 h-14 mt-1.5 mb-1.5" src="https://unifil.br/assets/uploads/2019/10/logo.svg" alt="Logo Unifil">
                                 </a>
-                                <h2 class="ml-2.5 mt-2.5 text-gray-50">E3</h2>
                             </div>
 
                             <!-- Navigation Links -->
-
+                            <slot name="links" />
                         </div>
 
                         <div class="hidden sm:flex sm:items-center sm:ml-6">
