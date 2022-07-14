@@ -6,6 +6,33 @@
     </form>
     <button id="button" @click="exportPdf()" class="bg-orange-400">Exportar PDF</button>
 
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th scope="col">Editor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(editor, index) in editors" :key="index">
+          <td>
+            <span>{{index}}</span>
+            <component :is="editor.content"></component>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="d-flex">
+      <select class="sort-filter" v-model="editorOption" @on-change="createEditor(editorOption)">
+        <option value="paragrafo">Paragrafo</option>
+        <option value="titulo">Titulo</option>
+        <option value="paragrafo-imagem">Paragrafo-imagem</option>
+        <option value="completo">Completo</option>
+      </select>
+      <button @click="createEditor(editorOption)" class="btn btn-warning rounded-0">SUBMIT</button>
+    </div>
+
 </template>
 
 <script>
@@ -19,6 +46,8 @@ export default {
 
     data() {
         return {
+            editors: [],
+            editorOption: '',
             nome: '',
             value: ''
         }
@@ -51,6 +80,37 @@ export default {
         return { form, exportPdf, submit, modules }
     },
 
+    methods: {
+        createEditor(editor){
+            if(editor === "paragrafo"){
+              this.editors.push({content:
+                <>
+                  <div id="my-toolbar">
+                    <button class="ql-bold"></button>
+                    <button class="ql-italic"></button>
+                    <select class="ql-size">
+                      <option value="small"></option>
+                      <option selected></option>
+                      <option value="large"></option>
+                      <option value="huge"></option>
+                    </select>
+                  </div>
+                  <QuillEditor toolbar="#my-toolbar"></QuillEditor>
+                </>
+              })
+            }
+            if(editor === "titulo"){
+              this.editors.push({content: <h1>Titulo</h1>})
+            }
+            if(editor === "paragrafo-imagem"){
+              this.editors.push({content: <QuillEditor/>})
+            }
+            if(editor === "completo"){
+              this.editors.push({content: <QuillEditor v-model:content={this.form.value} id="value" contentType="html" toolbar="full" theme="snow"/>});
+            }
+            //
+        }
+    }
 
 }
 

@@ -6,63 +6,64 @@ import { QuillEditor, Quill } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
-
+import BlotFormatter from 'quill-blot-formatter';
 </script>
 
 <script>
-import BlotFormatter from 'quill-blot-formatter';
 
     export default {
 
-    props: {
-        edit: Object
-    },
-
-    data() {
-        const dados = {
-            nome: this.edit.nome,
-            value: this.edit.conteudo
-        }
-        return dados
-    },
-
-    components: {
-      QuillEditor,
-    },
-
-    setup: () => {
-        const modules = {
-            name: 'blotFormatter',
-            module: BlotFormatter
-        }
-        return { modules }
-    },
-
-    methods: {
-        submit(){
-            const update = {
-                id: this.edit.document_id,
-                nome: nome.value,
-                conteudo: value.firstElementChild.innerHTML
-            }
-            Inertia.post('/doc/' + this.edit.document_id, update);
+        props: {
+            edit: Object
         },
-        deleteDoc(){
-            const id = this.edit.document_id;
-            if(confirm("Deseja deletar o documento?")){
-                Inertia.delete('/documento/' + this.edit.document_id, id);
-            }
-        },
-        exportPdf(){
+
+        data() {
             const dados = {
-                nome: nome.value,
-                conteudo: value.firstElementChild.innerHTML
+                nome: this.edit.nome,
+                value: this.edit.conteudo
             }
-            console.log(dados);
-            Inertia.post('/export/' + this.edit.document_id, dados)
+
+            return dados
+        },
+
+        components: {
+        QuillEditor,
+        },
+
+        setup: () => {
+            const modules = {
+                name: 'blotFormatter',
+                module: BlotFormatter
+            }
+            return { modules }
+        },
+
+        methods: {
+            submit(){
+                const update = {
+                    id: this.edit.document_id,
+                    nome: nome.value,
+                    conteudo: value.firstElementChild.innerHTML
+                }
+                Inertia.post('/doc/' + this.edit.document_id, update);
+            },
+            deleteDoc(){
+                const id = this.edit.document_id;
+                if(confirm("Deseja deletar o documento?")){
+                    Inertia.delete('/documento/' + this.edit.document_id, id);
+                }
+            },
+            exportPdf(){
+                const dados = {
+                    nome: nome.value,
+                    conteudo: value.firstElementChild.innerHTML
+                }
+                console.log(dados);
+                Inertia.post('/export/' + this.edit.document_id, dados)
+            },
+
         }
     }
-}
 </script>
 
 <template>
@@ -98,8 +99,6 @@ import BlotFormatter from 'quill-blot-formatter';
                 </div>
             </div>
         </div>
-
-
 
     </BreezeAuthenticatedLayout>
 

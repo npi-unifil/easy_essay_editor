@@ -17,6 +17,7 @@ class ComponenteController extends Controller
      */
     public function store(Request $request, $data)
     {
+        //dd($request, $data);
         $value = explode(">", $request->value)[0];
         $nome = $value.">";
         $conteudo = $request->value;

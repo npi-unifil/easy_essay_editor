@@ -35,6 +35,7 @@ class DocumentoController extends Controller
     }
 
     public function store(Request $request){
+        dd($request);
         $nome = $request->nome;
         $users_id = $request->user()->id;
         $data = Documento::create([
@@ -49,7 +50,7 @@ class DocumentoController extends Controller
     }
 
     public function update(Request $request){
-        // dd($request->id);
+        //dd($request);
         $document_id = $request->id;
         $documents = Documento::where('document_id', '=', $document_id)->first();
         $documents->update($request->all('nome'));
