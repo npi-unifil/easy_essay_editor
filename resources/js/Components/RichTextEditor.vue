@@ -16,7 +16,6 @@
       <tbody>
         <tr v-for="(editor, index) in editors" :key="index">
           <td>
-            <span>{{index}}</span>
             <component :is="editor.content"></component>
           </td>
         </tr>
@@ -24,7 +23,7 @@
     </table>
 
     <div class="d-flex">
-      <select class="sort-filter" v-model="editorOption" @on-change="createEditor(editorOption)">
+      <select class="sort-filter" v-model="editorOption">
         <option value="paragrafo">Paragrafo</option>
         <option value="titulo">Titulo</option>
         <option value="paragrafo-imagem">Paragrafo-imagem</option>
@@ -49,7 +48,8 @@ export default {
             editors: [],
             editorOption: '',
             nome: '',
-            value: ''
+            value: '',
+            dynamicId: 0
         }
     },
 
@@ -81,11 +81,27 @@ export default {
     },
 
     methods: {
+
         createEditor(editor){
+            this.dynamicId++
+            const id = 'my-toolbar' + this.dynamicId
+            const toolbarId = '#' + id
             if(editor === "paragrafo"){
+              this.editors.push({
+                content:
+                <>
+                  <div id={id}>
+                    <button class="ql-bold"></button>
+                    <button class="ql-italic"></button>
+                  </div>
+                  <QuillEditor toolbar={toolbarId}></QuillEditor>
+                </>
+              })
+            }
+            if(editor === "titulo"){
               this.editors.push({content:
                 <>
-                  <div id="my-toolbar">
+                  <div id={id}>
                     <button class="ql-bold"></button>
                     <button class="ql-italic"></button>
                     <select class="ql-size">
@@ -95,12 +111,9 @@ export default {
                       <option value="huge"></option>
                     </select>
                   </div>
-                  <QuillEditor toolbar="#my-toolbar"></QuillEditor>
+                  <QuillEditor toolbar={toolbarId}></QuillEditor>
                 </>
               })
-            }
-            if(editor === "titulo"){
-              this.editors.push({content: <h1>Titulo</h1>})
             }
             if(editor === "paragrafo-imagem"){
               this.editors.push({content: <QuillEditor/>})
