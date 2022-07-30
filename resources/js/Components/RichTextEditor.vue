@@ -1,7 +1,7 @@
 <template>
     <form @submit.prevent="submit">
         <textarea placeholder="Document Title" id="nome" v-model="form.nome"></textarea>
-        <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 800px;"/>
+        <QuillEditor v-model:content="form.value" id="value" contentType="html" :modules="modules" toolbar="full" theme="snow"  style="height: 100px;"/>
         <button id="button" type="submit" class="bg-orange-400">Salvar</button>
     </form>
     <button id="button" @click="exportPdf()" class="bg-orange-400">Exportar PDF</button>
@@ -17,6 +17,7 @@
         <tr v-for="(editor, index) in editors" :key="index">
           <td>
             <component :is="editor.content"></component>
+            <div>{{this.dataContent}}</div>
           </td>
         </tr>
       </tbody>
@@ -49,7 +50,9 @@ export default {
             editorOption: '',
             nome: '',
             value: '',
-            dynamicId: 0
+            dynamicId: 0,
+            dinamicData: [],
+            dataContent: []
         }
     },
 
@@ -82,23 +85,48 @@ export default {
 
     methods: {
 
+        getDataFromEditor(data){
+          console.log(data);
+        },
+
         createEditor(editor){
             this.dynamicId++
             const id = 'my-toolbar' + this.dynamicId
             const toolbarId = '#' + id
             if(editor === "paragrafo"){
+
               this.editors.push({
                 content:
                 <>
                   <div id={id}>
                     <button class="ql-bold"></button>
                     <button class="ql-italic"></button>
+                    <button class="ql-underline"></button>
+                    <button class="ql-strike"></button>
                   </div>
-                  <QuillEditor toolbar={toolbarId}></QuillEditor>
+                  <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.dataContent[this.dynamicId]}></QuillEditor>
+                </>
+              }),
+              this.getDataFromEditor(this.dataContent);
+            }
+            if(editor === "titulo"){
+              this.editors.push({content:
+                <>
+                  <div id={id}>
+                  <select class="ql-header" aria-controls="ql-picker-options-1">
+                      <option value="1"></option>
+                      <option value="2"></option>
+                      <option value="3"></option>
+                      <option value="4"></option>
+                      <option value="5"></option>
+                      <option value="6"></option>
+                  </select>
+                  </div>
+                  <QuillEditor toolbar={toolbarId} style="height: 130px;"></QuillEditor>
                 </>
               })
             }
-            if(editor === "titulo"){
+            if(editor === "paragrafo-imagem"){
               this.editors.push({content:
                 <>
                   <div id={id}>
@@ -110,19 +138,19 @@ export default {
                       <option value="large"></option>
                       <option value="huge"></option>
                     </select>
+                    <button class="ql-header" type="button" value="1"></button>
+                    <button class="ql-header" type="button" value="2"></button>
                   </div>
                   <QuillEditor toolbar={toolbarId}></QuillEditor>
                 </>
               })
             }
-            if(editor === "paragrafo-imagem"){
-              this.editors.push({content: <QuillEditor/>})
-            }
             if(editor === "completo"){
               this.editors.push({content: <QuillEditor v-model:content={this.form.value} id="value" contentType="html" toolbar="full" theme="snow"/>});
             }
             //
-        }
+        },
+
     }
 
 }
