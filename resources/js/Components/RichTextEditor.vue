@@ -135,11 +135,11 @@ export default {
                                     <button class="ql-underline"></button>
                                     <button class="ql-strike"></button>
                                 </div>
-                                <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.editors[id].content}></QuillEditor>
+                                <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.editors[id]}></QuillEditor>
                             </>
                     },
                     content: {
-                        value: ''
+                        value: '<h1>Teste<h1>'
                     }
                 }
             }
