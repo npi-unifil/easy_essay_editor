@@ -18,7 +18,6 @@
             <tr v-for="{ editor, content } in editors" :key="content">
                 <td>
                     <component :is="editor.value"></component>
-                    <div v-html="this.value"></div>
                 </td>
             </tr>
         </tbody>
@@ -47,35 +46,19 @@ import rnd from '../utils/generator.js';
 
 export default {
 
+    mounted() {
+        this.initialEditor()
+    },
+
     data() {
         return {
-
             editorOption: '',
             nome: '',
-            value: '666',
+            value: 'Digite um título',
             dynamicId: 0,
             dinamicData: [],
             dataContent: [],
-            editors: {
-                'abcdefg': {
-                    editor: {
-                        type: 'titulo',
-                        value:
-                            <>
-                                <div id='abcdefg'>
-                                    <button class="ql-bold"></button>
-                                    <button class="ql-italic"></button>
-                                    <button class="ql-underline"></button>
-                                    <button class="ql-strike"></button>
-                                </div>
-                                <QuillEditor toolbar='#abcdefg' content-type="html" v-model:content={this.value} theme="bubble" />
-                            </>
-                    },
-                    content: {
-                        value: '<h1>Escreva seu título</h1>'
-                    }
-                },
-            }
+            editors: {}
         }
     },
 
@@ -84,6 +67,7 @@ export default {
     },
 
     setup: () => {
+
         const form = reactive({
             nome: null,
             value: null
@@ -109,12 +93,32 @@ export default {
     methods: {
 
         removeEditor(id) {
-            this.editors.splice(id, 1);
-            this.dataContent.splice(id, 1);
             console.log(id);
             console.log(this.editors);
             console.log(this.dataContent);
         },
+
+        initialEditor() {
+            this.editors['abcdefg'] = {
+                editor: {
+                    type: 'titulo',
+                    value:
+                        <>
+                            <div id='abcdefg'>
+                                <button class="ql-bold"></button>
+                                <button class="ql-italic"></button>
+                                <button class="ql-underline"></button>
+                                <button class="ql-strike"></button>
+                            </div>
+                            <QuillEditor toolbar='#abcdefg' content-type="html" v-model:content={this.value} theme="bubble" />
+                        </>
+                },
+                content: {
+                    value: '<h1>Escreva seu título</h1>'
+                }
+            }
+        },
+
 
         createEditor(editor) {
             const id = rnd(20, rnd.alphaLower);
@@ -131,7 +135,7 @@ export default {
                                     <button class="ql-underline"></button>
                                     <button class="ql-strike"></button>
                                 </div>
-                                <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.value}></QuillEditor>
+                                <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.editors[id].content}></QuillEditor>
                             </>
                     },
                     content: {
@@ -205,7 +209,6 @@ export default {
 
             console.log(this.editors);
         },
-
     }
 
 }
