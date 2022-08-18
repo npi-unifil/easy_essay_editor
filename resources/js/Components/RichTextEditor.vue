@@ -15,7 +15,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="{ editor, content } in editors" :key="content">
+            <tr v-for="{ editor, content } in editorStore.editors" :key="content">
                 <td>
                     <component :is="editor.value"></component>
                 </td>
@@ -43,11 +43,32 @@ import '@vueup/vue-quill/dist/vue-quill.bubble.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import rnd from '../utils/generator.js';
+import { useEditorStore } from '@/utils/EditorStore';
+
 
 export default {
 
     mounted() {
-        this.initialEditor()
+        const id = 'abcdefg';
+        const initialEditor = {
+                editor: {
+                    type: 'titulo',
+                    value:
+                        <>
+                            <div id='abcdefg'>
+                                <button class="ql-bold"></button>
+                                <button class="ql-italic"></button>
+                                <button class="ql-underline"></button>
+                                <button class="ql-strike"></button>
+                            </div>
+                            <QuillEditor toolbar='#abcdefg' content-type="html" v-model:content={this.content} theme="bubble" />
+                        </>
+                },
+                content: {
+                    value: '<h1>Escreva seu título</h1>'
+                }
+            }
+        this.editorStore.fill(id, initialEditor);
     },
 
     data() {
@@ -55,10 +76,6 @@ export default {
             editorOption: '',
             nome: '',
             value: 'Digite um título',
-            dynamicId: 0,
-            dinamicData: [],
-            dataContent: [],
-            editors: {}
         }
     },
 
@@ -67,6 +84,8 @@ export default {
     },
 
     setup: () => {
+
+        const editorStore = useEditorStore();
 
         const form = reactive({
             nome: null,
@@ -87,7 +106,7 @@ export default {
             console.log(form)
             Inertia.post('/documento', form)
         }
-        return { form, exportPdf, submit, modules }
+        return { form, exportPdf, submit, editorStore, modules }
     },
 
     methods: {
@@ -98,33 +117,11 @@ export default {
             console.log(this.dataContent);
         },
 
-        initialEditor() {
-            this.editors['abcdefg'] = {
-                editor: {
-                    type: 'titulo',
-                    value:
-                        <>
-                            <div id='abcdefg'>
-                                <button class="ql-bold"></button>
-                                <button class="ql-italic"></button>
-                                <button class="ql-underline"></button>
-                                <button class="ql-strike"></button>
-                            </div>
-                            <QuillEditor toolbar='#abcdefg' content-type="html" v-model:content={this.value} theme="bubble" />
-                        </>
-                },
-                content: {
-                    value: '<h1>Escreva seu título</h1>'
-                }
-            }
-        },
-
-
         createEditor(editor) {
             const id = rnd(20, rnd.alphaLower);
-            const toolbarId = '#' + id
+            const toolbarId = '#' + id;
             if (editor === "paragrafo") {
-                this.editors[id] = {
+                const paragrafo = {
                     editor: {
                         type: 'paragrafo',
                         value:
@@ -135,17 +132,19 @@ export default {
                                     <button class="ql-underline"></button>
                                     <button class="ql-strike"></button>
                                 </div>
-                                <QuillEditor toolbar={toolbarId} contentType="html" v-model:content={this.editors[id]}></QuillEditor>
+                                <QuillEditor toolbar={toolbarId} contentType="html"></QuillEditor>
                             </>
                     },
                     content: {
                         value: '<h1>Teste<h1>'
                     }
                 }
+
+                this.editorStore.fill(id, paragrafo)
             }
 
             if (editor === "titulo") {
-                this.editors[id] = {
+                const titulo = {
                     editor: {
                         type: 'titulo',
                         value:
@@ -168,9 +167,10 @@ export default {
                     }
 
                 }
+                this.editorStore.fill(id, titulo)
             }
             if (editor === "paragrafo-imagem") {
-                this.editors[id] = {
+                const paragrafoImagem = {
                     editor: {
                         type: 'paragrafo-imagem',
                         value:
@@ -194,9 +194,10 @@ export default {
                         value: ''
                     }
                 }
+                this.editorStore.fill(id, paragrafoImagem)
             }
             if (editor === "completo") {
-                this.editors[id] = {
+                const completo = {
                     editor: {
                         type: 'completo',
                         value: <QuillEditor v-model:content={this.value} id="value" contentType="html" toolbar="full" theme="snow" />
@@ -205,6 +206,8 @@ export default {
                         value: ''
                     }
                 };
+
+                this.editorStore.fill(id, completo)
             }
 
             console.log(this.editors);

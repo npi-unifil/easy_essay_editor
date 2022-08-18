@@ -25,6 +25,7 @@
     "lexical": "^0.2.9",
     "lexical-vue": "^0.1.0-beta.9",
     "marked": "^4.0.16",
+    "pinia": "^2.0.19",
     "puppeteer": "^14.3.0",
     "quill": "^1.3.6",
     "quill-blot-formatter": "^1.0.5",
