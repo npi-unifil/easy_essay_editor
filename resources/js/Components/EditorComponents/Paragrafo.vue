@@ -1,20 +1,27 @@
 <template>
     <div>
-        <QuillEditor :options="editorOption" v-model:content='content' contentType="html" theme="snow"></QuillEditor>
+        <QuillEditor @editorChange="saveContent()" @textChange="saveContent()" :options="editorOption" v-model:content='content' contentType="html" theme="snow"></QuillEditor>
     </div>
 </template>
 
 <script>
 import { QuillEditor } from '@vueup/vue-quill';
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import '@vueup/vue-quill/dist/vue-quill.bubble.css'
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import '@vueup/vue-quill/dist/vue-quill.bubble.css';
+import { useEditorStore } from '@/utils/EditorStore';
 
 
 export default {
 
     name: 'Paragrafo',
 
-    props: ['id', 'content'],
+    props: {
+        id: String,
+        content: {
+            type: String,
+            default: ''
+        }
+    },
 
     components: {
         QuillEditor
@@ -37,6 +44,18 @@ export default {
                 }
             }
         }
+    },
+
+    methods: {
+        saveContent(){
+           this.editorStore.saveContent(this.id, this.content);
+        }
+    },
+
+    setup: () => {
+        const editorStore = useEditorStore();
+
+        return{editorStore}
     }
 }
 </script>

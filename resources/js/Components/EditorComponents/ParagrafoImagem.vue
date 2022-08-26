@@ -1,6 +1,6 @@
 <template>
     <div>
-        <QuillEditor :options="editorOption" v-model:content='content' contentType="html" theme="snow"></QuillEditor>
+        <QuillEditor @editorChange="saveContent()" @textChange="saveContent()" :options="editorOption" v-model:content='content' contentType="html" theme="snow"></QuillEditor>
     </div>
 </template>
 
@@ -9,6 +9,7 @@ import { Quill } from '@vueup/vue-quill';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import '@vueup/vue-quill/dist/vue-quill.bubble.css';
+import { useEditorStore } from '@/utils/EditorStore';
 import BlotFormatter, { AlignAction, ResizeAction, DeleteAction, ImageSpec } from 'quill-blot-formatter';
 Quill.register('modules/blotFormatter', BlotFormatter);
 
@@ -22,7 +23,13 @@ export default {
 
     name: 'ParagrafoImagem',
 
-    props: ['id', 'content'],
+    props: {
+        id: String,
+        content: {
+            type: String,
+            default: ''
+        }
+    },
 
     components: {
         QuillEditor
@@ -56,6 +63,18 @@ export default {
             }
         }
     },
+
+    methods: {
+        saveContent(){
+           this.editorStore.saveContent(this.id, this.content);
+        }
+    },
+
+    setup: () => {
+        const editorStore = useEditorStore();
+
+        return{editorStore}
+    }
 
 }
 </script>

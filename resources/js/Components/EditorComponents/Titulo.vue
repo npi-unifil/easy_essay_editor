@@ -1,6 +1,6 @@
 <template>
     <div>
-        <QuillEditor :options="editorOption" v-model:content='content' contentType="html" style="height: 130px;" theme="bubble"></QuillEditor>
+        <QuillEditor @editorChange="saveContent()" @textChange="saveContent()" :options="editorOption" v-model:content='content' contentType="html" style="height: 130px;" theme="snow"></QuillEditor>
     </div>
 </template>
 
@@ -8,13 +8,19 @@
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import '@vueup/vue-quill/dist/vue-quill.bubble.css'
-
+import { useEditorStore } from '@/utils/EditorStore';
 
 export default {
 
     name: 'Titulo',
 
-    props: ['id', 'content'],
+    props: {
+        id: String,
+        content: {
+            type: String,
+            default: 'Escreva seu título'
+        }
+    },
 
     components: {
         QuillEditor
@@ -34,6 +40,18 @@ export default {
                 }
             }
         }
+    },
+
+    methods: {
+        saveContent(){
+           this.editorStore.saveContent(this.id, this.content);
+        }
+    },
+
+    setup: () => {
+        const editorStore = useEditorStore();
+
+        return{editorStore}
     }
 }
 </script>

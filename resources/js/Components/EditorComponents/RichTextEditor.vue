@@ -27,12 +27,12 @@
 </template>
 
 <script>
-import { QuillEditor } from '@vueup/vue-quill'
+import { QuillEditor } from '@vueup/vue-quill';
 import Titulo from './Titulo.vue';
 import Paragrafo from './Paragrafo.vue';
 import ParagrafoImagem from './ParagrafoImagem.vue';
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import '@vueup/vue-quill/dist/vue-quill.bubble.css'
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import '@vueup/vue-quill/dist/vue-quill.bubble.css';
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import rnd from '../../utils/generator.js';
@@ -43,15 +43,14 @@ export default {
 
     mounted() {
         const id = 'abcdefg';
-        let content = {
-                    value: 'Escreva seu título'
-                }
         const initialEditor = {
                 editor: {
                     type: 'titulo',
-                    value: <Titulo id={id} content={content.value}/>
-
+                    value: <Titulo id={id}/>
                 },
+                content: {
+                    value: ''
+                }
 
             }
         this.editorStore.fill(id, initialEditor);
@@ -99,7 +98,6 @@ export default {
 
         createEditor(editor) {
             const id = rnd(20, rnd.alphaLower);
-            const toolbarId = '#' + id;
             if (editor === "paragrafo") {
                 const paragrafo = {
                     editor: {
@@ -107,7 +105,7 @@ export default {
                         value:  <Paragrafo id={id}/>,
                     },
                     content: {
-                        value: '<h1>Teste<h1>'
+                        value: ''
                     }
                 }
 
@@ -119,7 +117,6 @@ export default {
                     editor: {
                         type: 'titulo',
                         value: <Titulo id={id}/>
-
                     },
                     content: {
                         value: ''

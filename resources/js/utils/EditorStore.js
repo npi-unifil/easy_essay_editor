@@ -11,6 +11,10 @@ export const useEditorStore = defineStore("EditorStore", {
     actions: {
         fill(id, editor){
             this.editors[id] = editor;
+        },
+
+        saveContent(id, content){
+            this.editors[id].content.value = content;
         }
     }
 
