@@ -10,6 +10,7 @@ import { fas } from '@fortawesome/free-solid-svg-icons'
 import "bootstrap/dist/css/bootstrap.min.css"
 import "bootstrap"
 
+
 library.add(fas);
 
 const pinia = createPinia()
