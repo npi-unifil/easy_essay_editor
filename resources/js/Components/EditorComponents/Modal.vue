@@ -108,8 +108,8 @@
   .btn-green {
     color: white;
     width: 150px;
-    background: #4AAE9B;
-    border: 1px solid #4AAE9B;
+    background: #4a6dae;
+    border: 1px solid #4a6dae;
     border-radius: 20px;
     margin: 5px;
   }

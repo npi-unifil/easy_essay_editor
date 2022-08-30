@@ -1,11 +1,8 @@
 <template>
     <div>
+        <textarea name="title" id="title" placeholder="Titulo do documento"></textarea>
+
         <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th scope="col">Editor</th>
-                </tr>
-            </thead>
             <tbody>
                 <tr v-for="{ editor, content } in editorStore.editors" :key="content">
                     <td>
@@ -15,9 +12,14 @@
             </tbody>
         </table>
 
-        <button type="button" class="btn-green" @click="showModal">
-            Adicionar Campo
-        </button>
+        <div>
+            <button type="button" class="btn-add" @click="showModal">
+                Adicionar Campo
+            </button>
+            <button type="button" class="btn-save">
+                Salvar
+            </button>
+        </div>
         <Modal v-show="isModalVisible" @close="closeModal">
             <template v-slot:header>
                 Selecione o editor:
@@ -37,7 +39,7 @@
                         <button @click="closeModal()">
                             Cancelar
                         </button>
-                        <button id="btn-blue" @click="closeModal(), createEditor(editorOption)">
+                        <button @click="closeModal(), createEditor(editorOption)">
                             Adicionar
                         </button>
                     </div>
@@ -83,6 +85,7 @@ export default {
     data() {
         return {
             isModalVisible: false,
+            title: '',
             editorOption: '',
             value: 'Digite um título',
         }
@@ -115,12 +118,6 @@ export default {
         },
         closeModal() {
             this.isModalVisible = false;
-        },
-
-        removeEditor(id) {
-            console.log(id);
-            console.log(this.editors);
-            console.log(this.dataContent);
         },
 
         createEditor(editor) {
@@ -173,6 +170,30 @@ export default {
 </script>
 
 <style>
+
+.btn-add {
+    color: white;
+    width: 150px;
+    background: #4AAE9B;
+    border: 1px solid #4AAE9B;
+    border-radius: 20px;
+    margin: 5px;
+}
+
+.btn-save {
+    color: white;
+    width: 150px;
+    background: #514aae;
+    border: 1px solid #514aae;
+    border-radius: 20px;
+    margin: 5px;
+}
+
+#title {
+    border: none;
+    text-align: center;
+    margin-bottom: 20px;
+}
 
 .editor-options {
     margin-left: 20px;

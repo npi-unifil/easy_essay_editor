@@ -13,6 +13,10 @@ export const useEditorStore = defineStore("EditorStore", {
             this.editors[id] = editor;
         },
 
+        removeContent(id){
+            delete this.editors[id];
+        },
+
         saveContent(id, content){
             this.editors[id].content.value = content;
         }
