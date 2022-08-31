@@ -1,12 +1,12 @@
 <template>
     <div>
-        <textarea name="title" id="title" placeholder="Titulo do documento"></textarea>
+        <textarea name="title" id="title" v-model="title" placeholder="Titulo do documento"></textarea>
 
         <table class="table table-bordered">
             <tbody>
                 <tr v-for="{ editor, content } in editorStore.editors" :key="content">
                     <td>
-                        <component :is="editor.value"></component>
+                        <component :is="editor.component"></component>
                     </td>
                 </tr>
             </tbody>
@@ -16,7 +16,7 @@
             <button type="button" class="btn-add" @click="showModal">
                 Adicionar Campo
             </button>
-            <button type="button" class="btn-save">
+            <button type="button" class="btn-save" @click="saveDocument">
                 Salvar
             </button>
         </div>
@@ -71,8 +71,8 @@ export default {
         const id = 'abcdefg';
         const initialEditor = {
             editor: {
-                type: 'titulo',
-                value: <Titulo id={id} />
+                name: 'titulo',
+                component: <Titulo id={id} />
             },
             content: {
                 value: ''
@@ -104,11 +104,7 @@ export default {
             Inertia.post('/export/', form)
         }
 
-        function submit() {
-            console.log(form)
-            Inertia.post('/documento', form)
-        }
-        return { exportPdf, submit, editorStore }
+        return { exportPdf, editorStore }
     },
 
     methods: {
@@ -125,8 +121,8 @@ export default {
             if (editor === "paragrafo") {
                 const paragrafo = {
                     editor: {
-                        type: 'paragrafo',
-                        value: <Paragrafo id={id} />,
+                        name: 'paragrafo',
+                        component: <Paragrafo id={id} />,
                     },
                     content: {
                         value: ''
@@ -139,8 +135,8 @@ export default {
             if (editor === "titulo") {
                 const titulo = {
                     editor: {
-                        type: 'titulo',
-                        value: <Titulo id={id} />
+                        name: 'titulo',
+                        component: <Titulo id={id} />
                     },
                     content: {
                         value: ''
@@ -152,8 +148,8 @@ export default {
             if (editor === "paragrafo-imagem") {
                 const paragrafoImagem = {
                     editor: {
-                        type: 'paragrafo-imagem',
-                        value: <ParagrafoImagem id={id} />
+                        name: 'paragrafo-imagem',
+                        component: <ParagrafoImagem id={id} />
                     },
                     content: {
                         value: ''
@@ -163,6 +159,10 @@ export default {
             }
 
         },
+
+        saveDocument(){
+            this.editorStore.saveDocument(this.title);
+        }
     }
 
 }

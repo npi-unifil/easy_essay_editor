@@ -35,16 +35,38 @@ class DocumentoController extends Controller
     }
 
     public function store(Request $request){
-        dd($request);
-        $nome = $request->nome;
+        $content = $request -> content;
+
+        $components = [];
+        $componentName = '';
+        $contentsInside = [];
+        $contents = '';
+        $count = 0;
+
+        $nome = $request -> docTitle;
         $users_id = $request->user()->id;
+
         $data = Documento::create([
             'nome'=>$nome,
             'users_id'=>$users_id
         ]);
 
         $componente = new ComponenteController();
-        $componente->store($request, $data);
+
+        foreach ($content as $key) {
+            $components[$count] = $key['editor'];
+            $components[$count] = $components[$count]['name'];
+            $componentName = $components[$count];
+            $contentsInside[$count] = $key['content']['value'];
+            $contents = $contentsInside[$count];
+
+            $componente->store($componentName, $contents, $data);
+
+            $count++;
+        }
+
+        //dd($title, $content);
+
 
         return redirect()->route('documents');
     }
