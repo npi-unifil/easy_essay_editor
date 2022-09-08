@@ -5,17 +5,20 @@ export const useEditorStore = defineStore("EditorStore", {
 
     state: () => {
         return {
-            editors: {}
+            editors: {},
+            component_order: 0
         };
     },
 
     actions: {
         fill(id, editor){
             this.editors[id] = editor;
+            this.increaseOrder();
         },
 
         removeContent(id){
             delete this.editors[id];
+            this.decreaseOrder();
         },
 
         saveContent(id, content){
@@ -28,7 +31,19 @@ export const useEditorStore = defineStore("EditorStore", {
                 content: this.editors
             };
             Inertia.post('/documento', request);
-        }
+        },
+
+        getOrder(){
+            return this.component_order;
+        },
+
+        increaseOrder(){
+            this.component_order++;
+        },
+
+        decreaseOrder(){
+            this.component_order--;
+        },
     }
 
 })

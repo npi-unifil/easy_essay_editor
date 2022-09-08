@@ -72,7 +72,8 @@ export default {
         const initialEditor = {
             editor: {
                 name: 'titulo',
-                component: <Titulo id={id} />
+                component: <Titulo id={id} />,
+                component_order: 0
             },
             content: {
                 value: ''
@@ -80,6 +81,7 @@ export default {
 
         }
         this.editorStore.fill(id, initialEditor);
+        console.log(this.editorStore.getOrder());
     },
 
     data() {
@@ -123,6 +125,7 @@ export default {
                     editor: {
                         name: 'paragrafo',
                         component: <Paragrafo id={id} />,
+                        component_order: this.editorStore.getOrder()
                     },
                     content: {
                         value: ''
@@ -136,7 +139,8 @@ export default {
                 const titulo = {
                     editor: {
                         name: 'titulo',
-                        component: <Titulo id={id} />
+                        component: <Titulo id={id} />,
+                        component_order: this.editorStore.getOrder()
                     },
                     content: {
                         value: ''
@@ -149,7 +153,8 @@ export default {
                 const paragrafoImagem = {
                     editor: {
                         name: 'paragrafo-imagem',
-                        component: <ParagrafoImagem id={id} />
+                        component: <ParagrafoImagem id={id} />,
+                        component_order: this.editorStore.getOrder()
                     },
                     content: {
                         value: ''

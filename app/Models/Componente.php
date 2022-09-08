@@ -11,11 +11,11 @@ class Componente extends Model
 
     protected $table = 'componentes';
 
-    protected $primaryKey = 'component_id';
-
     protected $fillable = [
         'name',
         'conteudo',
+        'component_order',
+        'object_id',
         'document_id'
     ];
 

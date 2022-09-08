@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use App\Models\Documento;
+use App\Models\Componente;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ComponenteController;
 use Spatie\Browsershot\Browsershot;
@@ -23,12 +24,26 @@ class DocumentoController extends Controller
 
     public function getById($id){
         $user = Auth::user()->id;
+        $documents = Documento::findOrFail($id);
+        $components = Componente::where('document_id', '=', $id)->get();
 
-        $documents = Documento::findOrFail($id)->join('componentes', 'componentes.document_id', '=', 'documents.document_id')->findOrFail($id);
+        $document_name = $documents->nome;
+        foreach ($components as $key){
+            $editors[$key->object_id] = [
+                'editor' => [
+                    'name' => $key->name,
+                    'component_order' => $key->component_order
+                ],
+                'content' => [
+                    'value' => $key->conteudo
+                ]];
+        }
+        // dd($editors);
 
         if($user == $documents->users_id){
             return Inertia::render('EditAcademicWork', [
-                'edit' => $documents
+                'edit' => $editors,
+                'document_name' => $document_name
             ]);
         }
         return Inertia::render('NotFound');
@@ -36,7 +51,6 @@ class DocumentoController extends Controller
 
     public function store(Request $request){
         $content = $request -> content;
-
         $components = [];
         $componentName = '';
         $contentsInside = [];
@@ -53,19 +67,18 @@ class DocumentoController extends Controller
 
         $componente = new ComponenteController();
 
-        foreach ($content as $key) {
+        foreach ($content as $id => $key) {
             $components[$count] = $key['editor'];
-            $components[$count] = $components[$count]['name'];
-            $componentName = $components[$count];
+            $componentName = $components[$count]['name'];
+            $component_order = $components[$count]['component_order'];
+            $object_id = $id;
             $contentsInside[$count] = $key['content']['value'];
             $contents = $contentsInside[$count];
 
-            $componente->store($componentName, $contents, $data);
+            $componente->store($componentName, $component_order, $object_id, $contents, $data);
 
             $count++;
         }
-
-        //dd($title, $content);
 
 
         return redirect()->route('documents');

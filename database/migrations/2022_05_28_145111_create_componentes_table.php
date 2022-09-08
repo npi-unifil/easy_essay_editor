@@ -14,12 +14,14 @@ return new class extends Migration
     public function up()
     {
         Schema::create('componentes', function (Blueprint $table) {
-            $table->id('component_id');
+            $table->id();
             $table->string('name');
             $table->longText('conteudo');
+            $table->integer('component_order');
+            $table->string('object_id');
             $table->timestamps();
             $table->unsignedBigInteger('document_id');
-            $table->foreign('document_id')->references('document_id')->on('documents');
+            $table->foreign('document_id')->references('id')->on('documents');
         });
     }
 

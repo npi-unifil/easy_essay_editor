@@ -11,8 +11,6 @@ class Documento extends Model
 
     protected $table = 'documents';
 
-    protected $primaryKey = 'document_id';
-
     protected $fillable = [
         'nome',
         'users_id'
@@ -27,7 +25,7 @@ class Documento extends Model
 
     public function componentes()
     {
-        return $this->hasMany(Componente::class, 'component_id', 'id');
+        return $this->hasMany(Componente::class, 'document_id', 'id');
     }
 
 }

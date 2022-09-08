@@ -13,13 +13,11 @@ import BlotFormatter from 'quill-blot-formatter';
 
     export default {
 
-        props: {
-            edit: Object
-        },
+        props: ['edit', 'document_name'],
 
         data() {
             const dados = {
-                nome: this.edit.nome,
+                nome: this.document_name,
                 value: this.edit.conteudo
             }
 
@@ -39,28 +37,9 @@ import BlotFormatter from 'quill-blot-formatter';
         },
 
         methods: {
-            submit(){
-                const update = {
-                    id: this.edit.document_id,
-                    nome: nome.value,
-                    conteudo: value.firstElementChild.innerHTML
-                }
-                Inertia.post('/doc/' + this.edit.document_id, update);
-            },
-            deleteDoc(){
-                const id = this.edit.document_id;
-                if(confirm("Deseja deletar o documento?")){
-                    Inertia.delete('/documento/' + this.edit.document_id, id);
-                }
-            },
-            exportPdf(){
-                const dados = {
-                    nome: nome.value,
-                    conteudo: value.firstElementChild.innerHTML
-                }
-                console.log(dados);
-                Inertia.post('/export/' + this.edit.document_id, dados)
-            },
+            teste(){
+                console.log(this.edit);
+            }
 
         }
     }
@@ -80,7 +59,7 @@ import BlotFormatter from 'quill-blot-formatter';
                 {{this.edit.nome}}
             </h2>
             <div>
-                <button id="button" @click="submit" class="bg-orange-400">Salvar</button>
+                <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
                 <button @click="exportPdf" class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                 <button id="delete-button" @click="deleteDoc">Deletar</button>
             </div>
