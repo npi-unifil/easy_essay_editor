@@ -15,10 +15,10 @@ class DocumentoController extends Controller
 {
 
     public function index(){
-        $user = Auth::user()->id;
-        $documents = Documento::where('users_id', '=', $user)->get();
+        $user = Auth::user();
+
         return Inertia::render('Documents',[
-            'documents' => $documents
+            'documents' => $user->documentos
         ]);
     }
 

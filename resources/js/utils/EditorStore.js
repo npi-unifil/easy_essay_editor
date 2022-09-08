@@ -30,7 +30,7 @@ export const useEditorStore = defineStore("EditorStore", {
                 docTitle: title,
                 content: this.editors
             };
-            Inertia.post('/documento', request);
+            Inertia.post('/documentos', request);
         },
 
         getOrder(){

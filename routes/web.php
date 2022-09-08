@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\ComponenteController;
-use App\Models\Documento;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,25 +36,24 @@ Route::get('/newdoc', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/documents', [DocumentoController::class, 'index'],  function () {
-    return Inertia::render('Documents');
-})->middleware(['auth', 'verified'])->name('documents');
+Route::resource('documentos', DocumentoController::class);
 
-Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
-    return Inertia::render('EditAcademicWork');
-})->middleware(['auth', 'verified'])->name('editDocument');
+// Route::get('/documents', [DocumentoController::class, 'index'],  function () {
+//     return Inertia::render('Documents');
+// })->middleware(['auth', 'verified'])->name('documents');
 
-Route::post('/documento', [DocumentoController::class, 'store']);
-require __DIR__.'/auth.php';
+// Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
+//     return Inertia::render('EditAcademicWork');
+// })->middleware(['auth', 'verified'])->name('editDocument');
 
-Route::post('/doc/{id}', [DocumentoController::class, 'update']);
-require __DIR__.'/auth.php';
+// Route::post('/documento', [DocumentoController::class, 'store']);
+
+// Route::post('/doc/{id}', [DocumentoController::class, 'update']);
 
 Route::post('/export/', [DocumentoController::class, 'exportPdf']);
-require __DIR__.'/auth.php';
 
 Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
-require __DIR__.'/auth.php';
 
-Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
+// Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
+
 require __DIR__.'/auth.php';
