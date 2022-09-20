@@ -78,7 +78,7 @@ export default {
                             <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
 
                                     <div class="col-sm-6">
-                                            <div class="card" style="width: 13rem;" @click="edit(doc.document_id)">
+                                            <div class="card" style="width: 13rem;" @click="edit(doc.id)">
                                                 <form @submit.prevent="submit">
                                                     <img class="card-img-top" src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000" alt="Card image cap">
                                                     <div class="card-body">

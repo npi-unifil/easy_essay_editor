@@ -19,7 +19,7 @@ class ComponenteController extends Controller
     {
         //dd($componentName, $component_order, $object_id, $contents, $data);
 
-        $document_id = $data->document_id;
+        $document_id = $data->id;
         Componente::create([
             'name'=>$componentName,
             'conteudo'=>$contents,

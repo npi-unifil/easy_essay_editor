@@ -18,7 +18,8 @@ export default {
 
     name: 'Paragrafo',
 
-    props: {
+    props:
+    {
         id: String,
         content: {
             type: String,

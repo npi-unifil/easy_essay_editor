@@ -7,45 +7,112 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import BlotFormatter from 'quill-blot-formatter';
+import { useEditorStore } from '@/utils/EditorStore';
+import Modal from '../Components/EditorComponents/Modal.vue';
+import Titulo from '../Components/EditorComponents/Titulo.vue';
+import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
+import ParagrafoImagem from '../Components/EditorComponents/ParagrafoImagem.vue';
+import rnd from '../utils/generator.js';
 </script>
 
 <script>
 
-    export default {
+export default {
 
-        props: ['edit', 'document_name'],
+    props: ['edit', 'document_name'],
 
-        data() {
-            const dados = {
-                nome: this.document_name,
-                value: this.edit.conteudo
-            }
-
-            return dados
-        },
-
-        components: {
-        QuillEditor,
-        },
-
-        setup: () => {
-            const modules = {
-                name: 'blotFormatter',
-                module: BlotFormatter
-            }
-            return { modules }
-        },
-
-        methods: {
-            teste(){
-                console.log(this.edit);
-            }
-
+    data() {
+        const editorStore = useEditorStore();
+        const dados = {
+            nome: this.document_name,
+            value: this.edit.conteudo
         }
+        const modules = {
+            name: 'blotFormatter',
+            module: BlotFormatter
+        }
+        return {isModalVisible: false, dados, editorStore, modules }
+    },
+
+    components: {
+        QuillEditor,
+        Modal
+    },
+
+    mounted() {
+        this.editorStore.setEditor(this.edit);
+        this.editorStore.setExistingContent();
+    },
+
+    methods: {
+        teste() {
+            console.log(this.editorStore.editors);
+            this.editorStore.setExistingContent();
+        },
+        showModal() {
+            this.isModalVisible = true;
+        },
+        closeModal() {
+            this.isModalVisible = false;
+        },
+
+        createEditor(editor) {
+            const id = rnd(20, rnd.alphaLower);
+            if (editor === "paragrafo") {
+                const paragrafo = {
+                    editor: {
+                        name: 'paragrafo',
+                        component: <Paragrafo id={id} />,
+                        component_order: this.editorStore.getOrder()
+                    },
+                    content: {
+                        value: ''
+                    }
+                }
+
+                this.editorStore.fill(id, paragrafo)
+            }
+
+            if (editor === "titulo") {
+                const titulo = {
+                    editor: {
+                        name: 'titulo',
+                        component: <Titulo id={id} />,
+                        component_order: this.editorStore.getOrder()
+                    },
+                    content: {
+                        value: ''
+                    }
+
+                }
+                this.editorStore.fill(id, titulo)
+            }
+            if (editor === "paragrafo-imagem") {
+                const paragrafoImagem = {
+                    editor: {
+                        name: 'paragrafo-imagem',
+                        component: <ParagrafoImagem id={id} />,
+                        component_order: this.editorStore.getOrder()
+                    },
+                    content: {
+                        value: ''
+                    }
+                }
+                this.editorStore.fill(id, paragrafoImagem)
+            }
+
+        },
+
+        saveDocument(){
+            this.editorStore.saveDocument(this.title);
+        }
+
     }
+}
 </script>
 
 <template>
+
     <Head title="Editar Documento" />
 
     <BreezeAuthenticatedLayout>
@@ -60,7 +127,8 @@ import BlotFormatter from 'quill-blot-formatter';
             </h2>
             <div>
                 <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
-                <button @click="exportPdf" class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
+                <button @click="exportPdf"
+                    class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
                 <button id="delete-button" @click="deleteDoc">Deletar</button>
             </div>
         </div>
@@ -69,11 +137,57 @@ import BlotFormatter from 'quill-blot-formatter';
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <textarea placeholder="Document Title" id="nome" v-model="nome"></textarea>
-                        <QuillEditor v-model:content="value" id="value" contentType="html" :modules="modules" style="height: 800px;" toolbar="full" theme="snow" />
-                        <button id="button" @click="submit" class="bg-orange-400">Salvar</button>
-                        <button @click="exportPdf" class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
-                        <button id="delete-button" @click="deleteDoc">Deletar</button>
+
+                        <div>
+                            <textarea name="title" id="title" v-model="this.document_name"
+                                placeholder="Titulo do documento"></textarea>
+
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr v-for="{ editor, content } in this.editorStore.editors" :key="content">
+                                        <td>
+                                            <component :is="editor.component"></component>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div>
+                                <button type="button" class="btn-add" @click="showModal">
+                                    Adicionar Campo
+                                </button>
+                                <button type="button" class="btn-save" @click="saveDocument">
+                                    Salvar
+                                </button>
+                            </div>
+                            <Modal v-show="isModalVisible" @close="closeModal">
+                                <template v-slot:header>
+                                    Selecione o editor:
+                                </template>
+                                <template v-slot:body>
+                                    <div class="container">
+                                        <div class="editor-options">
+                                            <p>Tipo</p>
+                                            <select v-model="editorOption">
+                                                <option disabled value="">Selecione uma opção</option>
+                                                <option value="titulo">Titulo</option>
+                                                <option value="paragrafo">Paragrafo</option>
+                                                <option value="paragrafo-imagem">Paragrafo-imagem</option>
+                                            </select>
+                                        </div>
+                                        <div class="modal-buttons">
+                                            <button @click="closeModal()">
+                                                Cancelar
+                                            </button>
+                                            <button @click="closeModal(), createEditor(editorOption)">
+                                                Adicionar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Modal>
+
+                        </div>
                     </div>
                 </div>
             </div>
@@ -83,37 +197,119 @@ import BlotFormatter from 'quill-blot-formatter';
 
 </template>
 <style>
-    #head-buttons {
-        display: flex;
-        justify-content: space-between;
-    }
+#head-buttons {
+    display: flex;
+    justify-content: space-between;
+}
 
-    #button {
-        width: 100px;
-        height: 32px;
-        font-weight: bold;
-        color: white;
-        border: 0;
-        border-radius: 5px;
-        margin-top: 20px;
-    }
+#button {
+    width: 100px;
+    height: 32px;
+    font-weight: bold;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    margin-top: 20px;
+}
 
-    #delete-button {
-        width: 100px;
-        height: 32px;
-        margin-left: 5px;
-        font-weight: bold;
-        color: white;
-        border: 0;
-        border-radius: 5px;
-        background-color: rgb(252, 66, 66);
-        margin-top: 20px;
-    }
+#delete-button {
+    width: 100px;
+    height: 32px;
+    margin-left: 5px;
+    font-weight: bold;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    background-color: rgb(252, 66, 66);
+    margin-top: 20px;
+}
 
-    #nome {
-        text-align: center;
-        border: 0;
-        margin-bottom: 20px;
-    }
+.btn-add {
+    color: white;
+    width: 150px;
+    background: #4AAE9B;
+    border: 1px solid #4AAE9B;
+    border-radius: 20px;
+    margin: 5px;
+}
+
+.btn-save {
+    color: white;
+    width: 150px;
+    background: #514aae;
+    border: 1px solid #514aae;
+    border-radius: 20px;
+    margin: 5px;
+}
+
+#title {
+    border: none;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.editor-options {
+    margin-left: 20px;
+    text-align: left;
+}
+
+.editor-options select {
+    width: 100%;
+    border: 1px solid rgb(190, 190, 190);
+    border-radius: 20px;
+}
+
+
+.modal-buttons {
+    margin-top: 20px;
+    text-align: right;
+}
+
+
+.modal-buttons button {
+    width: 100px;
+    border: solid 1px rgb(199, 182, 182);
+    border-radius: 20px;
+    margin: 0 5px 0 5px;
+}
+
+.modal-buttons button:nth-child(1):hover {
+    border: solid 1px blue;
+    color: blue;
+}
+
+.modal-buttons button:nth-child(2)  {
+    background-color: rgb(83, 83, 226);
+    color: white;
+    border: none;
+}
+
+.modal-buttons button:nth-child(2):hover  {
+    background-color: rgb(112, 112, 221);
+}
+
+#button {
+    width: 100px;
+    height: 30px;
+    font-weight: bold;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+#nome {
+    text-align: center;
+    border: 0;
+    margin-bottom: 20px;
+}
+
+#remove-editor {
+    background-color: red;
+    height: 30px;
+    width: 80px;
+    border-radius: 5px;
+}
+
 
 </style>

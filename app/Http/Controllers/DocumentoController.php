@@ -16,9 +16,9 @@ class DocumentoController extends Controller
 
     public function index(){
         $user = Auth::user();
-
+        $documents = Documento::where('users_id', '=', $user->id)->get();
         return Inertia::render('Documents',[
-            'documents' => $user->documentos
+            'documents' => $documents
         ]);
     }
 
@@ -32,13 +32,14 @@ class DocumentoController extends Controller
             $editors[$key->object_id] = [
                 'editor' => [
                     'name' => $key->name,
+                    'component' => '',
                     'component_order' => $key->component_order
                 ],
                 'content' => [
                     'value' => $key->conteudo
                 ]];
         }
-        // dd($editors);
+        //dd($editors);
 
         if($user == $documents->users_id){
             return Inertia::render('EditAcademicWork', [
@@ -64,7 +65,6 @@ class DocumentoController extends Controller
             'nome'=>$nome,
             'users_id'=>$users_id
         ]);
-
         $componente = new ComponenteController();
 
         foreach ($content as $id => $key) {

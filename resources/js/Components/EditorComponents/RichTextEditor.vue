@@ -76,12 +76,12 @@ export default {
                 component_order: 0
             },
             content: {
-                value: ''
+                value: '<p>Escreva seu titulo<p>'
             }
 
         }
         this.editorStore.fill(id, initialEditor);
-        console.log(this.editorStore.getOrder());
+        console.log(this.editorStore.editors);
     },
 
     data() {
