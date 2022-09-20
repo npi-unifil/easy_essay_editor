@@ -1,0 +1,19 @@
+name: e3
+recipe: laravel
+config:
+  webroot: public
+services:
+  appserver:
+    type: php:8.0
+    xdebug: debug
+    config:
+      php: .lando/php.ini
+    build_as_root:
+      - apt-get update -y
+      - apt install libgmp-dev -y
+      - docker-php-ext-install gmp
+    portforward: 9100
+  database:
+    type: mysql
+    config:
+      database: .lando/database/my.cnf

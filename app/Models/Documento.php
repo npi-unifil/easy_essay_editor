@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Documento extends Model
 {
@@ -23,9 +25,11 @@ class Documento extends Model
     }
 
 
-    public function componentes()
+    public function componentes(): HasMany
     {
         return $this->hasMany(Componente::class, 'document_id', 'id');
     }
+
+
 
 }

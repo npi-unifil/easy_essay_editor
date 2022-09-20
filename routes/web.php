@@ -36,27 +36,27 @@ Route::get('/newdoc', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-//Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
+Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
-Route::get('/documents', [DocumentoController::class, 'index'],  function () {
-    return Inertia::render('Documents');
-})->middleware(['auth', 'verified'])->name('documents');
+// Route::get('/documents', [DocumentoController::class, 'index'],  function () {
+//     return Inertia::render('Documents');
+// })->middleware(['auth', 'verified'])->name('documents');
 
-Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
-    return Inertia::render('EditAcademicWork');
-})->middleware(['auth', 'verified'])->name('editDocument');
+// Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
+//     return Inertia::render('EditAcademicWork');
+// })->middleware(['auth', 'verified'])->name('editDocument');
 
-Route::post('/documento', [DocumentoController::class, 'store']);
+// Route::post('/documento', [DocumentoController::class, 'store']);
 require __DIR__.'/auth.php';
 
-Route::post('/doc/{id}', [DocumentoController::class, 'update']);
-require __DIR__.'/auth.php';
+// Route::post('/doc/{id}', [DocumentoController::class, 'update']);
+// require __DIR__.'/auth.php';
 
-Route::post('/export/', [DocumentoController::class, 'exportPdf']);
-require __DIR__.'/auth.php';
+// Route::post('/export/', [DocumentoController::class, 'exportPdf']);
+// require __DIR__.'/auth.php';
 
-Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
-require __DIR__.'/auth.php';
+// Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
+// require __DIR__.'/auth.php';
 
-Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
-require __DIR__.'/auth.php';
+// Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
+// require __DIR__.'/auth.php';
