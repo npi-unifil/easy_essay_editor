@@ -37,6 +37,7 @@ Route::get('/newdoc', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
+<<<<<<< HEAD
 require __DIR__.'/auth.php';
 // Route::get('/documents', [DocumentoController::class, 'index'],  function () {
 //     return Inertia::render('Documents');
@@ -58,5 +59,28 @@ require __DIR__.'/auth.php';
 // Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
 // require __DIR__.'/auth.php';
 
+=======
+
+// Route::get('/documents', [DocumentoController::class, 'index'],  function () {
+//     return Inertia::render('Documents');
+// })->middleware(['auth', 'verified'])->name('documents');
+
+// Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
+//     return Inertia::render('EditAcademicWork');
+// })->middleware(['auth', 'verified'])->name('editDocument');
+
+// Route::post('/documento', [DocumentoController::class, 'store']);
+require __DIR__.'/auth.php';
+
+// Route::post('/doc/{id}', [DocumentoController::class, 'update']);
+// require __DIR__.'/auth.php';
+
+// Route::post('/export/', [DocumentoController::class, 'exportPdf']);
+// require __DIR__.'/auth.php';
+
+// Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
+// require __DIR__.'/auth.php';
+
+>>>>>>> eebaa09f0e5bf758a749630afbbff93cb293b7e9
 // Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
 // require __DIR__.'/auth.php';

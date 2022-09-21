@@ -50,7 +50,6 @@ class DocumentoController extends Controller
 
     public function store(Request $request){
         $content = $request -> content;
-
         $nome = $request -> docTitle;
         $users_id = $request->user()->id;
 
@@ -59,7 +58,7 @@ class DocumentoController extends Controller
             'users_id'=>$users_id
         ]);
 
-        foreach ($content as $id => $item){
+        foreach ($content as $id => $item) {
             $editor = $item['editor'];
             $conteudo = $item['content'];
 

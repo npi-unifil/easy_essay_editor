@@ -30,4 +30,6 @@ class Documento extends Model
         return $this->hasMany(Componente::class, 'document_id', 'id');
     }
 
+
+
 }
