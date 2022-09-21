@@ -19,7 +19,7 @@ import rnd from '../utils/generator.js';
 
 export default {
 
-    props: ['edit', 'document_name'],
+    props: ['id','edit', 'document_name'],
 
     data() {
         const editorStore = useEditorStore();
@@ -105,6 +105,10 @@ export default {
 
         saveDocument(){
             this.editorStore.saveDocument(this.title);
+        },
+
+        deleteDoc(){
+            this.editorStore.deleteDoc(this.id);
         }
 
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Componente extends Model
 {
@@ -19,7 +20,7 @@ class Componente extends Model
         'document_id'
     ];
 
-    public function documento():BelongsTo
+    public function documento() : BelongsTo
     {
         return $this->belongsTo(Documento::class);
     }

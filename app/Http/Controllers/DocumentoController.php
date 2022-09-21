@@ -22,13 +22,13 @@ class DocumentoController extends Controller
         ]);
     }
 
-    public function getById($id){
-        $user = Auth::user()->id;
-        $documents = Documento::findOrFail($id);
-        $components = Componente::where('document_id', '=', $id)->get();
+    public function show(Documento $document){
+        $editors = [];
+        $document_name = $document->nome;
 
-        $document_name = $documents->nome;
-        foreach ($components as $key){
+        $components = $document->componentes;
+
+        foreach($components as $key){
             $editors[$key->object_id] = [
                 'editor' => [
                     'name' => $key->name,
@@ -37,51 +37,41 @@ class DocumentoController extends Controller
                 ],
                 'content' => [
                     'value' => $key->conteudo
-                ]];
+                ]
+            ];
         }
-        //dd($editors);
 
-        if($user == $documents->users_id){
-            return Inertia::render('EditAcademicWork', [
-                'edit' => $editors,
-                'document_name' => $document_name
-            ]);
-        }
-        return Inertia::render('NotFound');
+        return Inertia::render('EditAcademicWork', [
+            'id' => $document->id,
+            'edit' => $editors,
+            'document_name' => $document_name
+        ]);
     }
 
     public function store(Request $request){
         $content = $request -> content;
-        $components = [];
-        $componentName = '';
-        $contentsInside = [];
-        $contents = '';
-        $count = 0;
 
         $nome = $request -> docTitle;
         $users_id = $request->user()->id;
 
-        $data = Documento::create([
+        $document = Documento::create([
             'nome'=>$nome,
             'users_id'=>$users_id
         ]);
-        $componente = new ComponenteController();
 
-        foreach ($content as $id => $key) {
-            $components[$count] = $key['editor'];
-            $componentName = $components[$count]['name'];
-            $component_order = $components[$count]['component_order'];
-            $object_id = $id;
-            $contentsInside[$count] = $key['content']['value'];
-            $contents = $contentsInside[$count];
+        foreach ($content as $id => $item){
+            $editor = $item['editor'];
+            $conteudo = $item['content'];
 
-            $componente->store($componentName, $component_order, $object_id, $contents, $data);
-
-            $count++;
+            $document->componentes()->create([
+                'name' => $editor['name'],
+                'conteudo' => $conteudo['value'],
+                'component_order' => $editor['component_order'],
+                'object_id' => $id,
+            ]);
         }
 
-
-        return redirect()->route('documents');
+        return redirect()->route('documents.index');
     }
 
     public function update(Request $request){
@@ -96,14 +86,10 @@ class DocumentoController extends Controller
         return redirect()->route('documents');
     }
 
-    public function destroy(Request $request, $id){
-        $componente = new ComponenteController();
-        $componente->destroy($id);
-
-        $documents = Documento::where('document_id', '=', $id)->first();
-        $documents->delete('DELETE FROM documents WHERE id = ?', [$id]);
-
-        return redirect()->route('documents');
+    public function destroy(Documento $document){
+        $document->componentes()->delete();
+        $document->delete();
+        return redirect()->route('documents.index');
     }
 
     public function exportPdf(Request $request){
