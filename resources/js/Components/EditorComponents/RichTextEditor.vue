@@ -21,13 +21,10 @@
             </button>
         </div>
         <Modal v-show="isModalVisible" @close="closeModal">
-            <template v-slot:header>
-                Selecione o editor:
-            </template>
             <template v-slot:body>
                 <div class="container">
                     <div class="editor-options">
-                        <p>Tipo</p>
+                        <p>Selecione o editor:</p>
                         <select v-model="editorOption">
                             <option disabled value="">Selecione uma opção</option>
                             <option value="titulo">Titulo</option>

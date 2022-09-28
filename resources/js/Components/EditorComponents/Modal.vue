@@ -2,9 +2,9 @@
   <div class="modal-backdrop">
     <div class="modal">
       <header class="modal-header">
-        <slot name="header">
+        <!-- <slot name="header">
           This is the default title!
-        </slot>
+        </slot> -->
         <button
           type="button"
           class="btn-close"
@@ -19,11 +19,11 @@
           This is the default body!
         </slot>
        </section>
-
+<!--
       <footer class="modal-footer">
         <slot name="footer">
         </slot>
-      </footer>
+      </footer> -->
     </div>
   </div>
 </template>

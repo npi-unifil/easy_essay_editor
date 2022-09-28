@@ -40,6 +40,10 @@ Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho']
     return Inertia::render('GerenciarTrabalho');
 })->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
 
+Route::get('/referencias', function () {
+    return Inertia::render('GerenciarReferencias');
+})->middleware(['auth', 'verified'])->name('gerenciar_referencias');
+
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
 require __DIR__.'/auth.php';

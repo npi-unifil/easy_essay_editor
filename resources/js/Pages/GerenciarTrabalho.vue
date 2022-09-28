@@ -6,6 +6,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import { useEditorStore } from '@/utils/EditorStore';
+import Modal from '../Components/EditorComponents/Modal.vue';
 </script>
 
 <script>
@@ -13,15 +14,30 @@ export default {
 
     props: ['id', 'nome'],
 
+    components: {
+        Modal
+    },
+
     data(){
         const editorStore = useEditorStore();
 
-        return {editorStore};
+        return {isModalVisible: false, editorStore};
     },
 
     methods: {
         gerenciar_doc(){
             Inertia.get('/documents/' + this.id);
+        },
+
+        gerenciar_referencias(){
+            Inertia.get('/referencias');
+        },
+
+        showModal() {
+            this.isModalVisible = true;
+        },
+        closeModal() {
+            this.isModalVisible = false;
         },
 
         deletar_documento(){
@@ -64,6 +80,34 @@ export default {
     color: white;
     background-color: blue;
 }
+
+.modal-body{
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.modal-body p{
+    margin: 0;
+    font-size: xx-large;
+    font-weight: bolder;
+    margin-top: -30px;
+    margin-bottom: 60px;
+}
+
+#modal-buttons{
+    display: flex;
+    justify-content: space-around;
+}
+
+#modal-buttons button{
+    color: white;
+    font-weight: bolder;
+    border-radius: 5px;
+    width: 100px;
+    height: 50px;
+}
+
 </style>
 
 <template>
@@ -90,7 +134,7 @@ export default {
                                     <button style="background-color: blue;" @click="gerenciar_referencias">
                                         Gerenciar Referencias
                                     </button>
-                                    <button style="background-color: red;" @click="deletar_documento">
+                                    <button style="background-color: red;" @click="showModal">
                                         Deletar Documento
                                     </button>
                                     <button style="background-color: yellow;" @click="retornar">
@@ -111,6 +155,24 @@ export default {
                                 <p>----------------------------------------------------------------------------</p>
                             </div>
                         </div>
+
+                        <Modal v-show="isModalVisible" @close="closeModal">
+                                <template class="modal-body" v-slot:body>
+                                    <div>
+                                        <div>
+                                            <p>Deseja Realmente Apagar o Documento ?</p>
+                                        </div>
+                                        <div id="modal-buttons">
+                                            <button @click="closeModal()" style="background-color: green">
+                                                Cancelar
+                                            </button>
+                                            <button @click="closeModal(), deletar_documento()" style="background-color: red">
+                                                Sim
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                        </Modal>
                     </div>
                 </div>
             </div>
