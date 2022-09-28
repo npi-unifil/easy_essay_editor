@@ -22,6 +22,16 @@ class DocumentoController extends Controller
         ]);
     }
 
+    public function gerenciar_trabalho(Documento $id){
+        $document_id = $id->id;
+        $document_name = $id->nome;
+
+        return Inertia::render('GerenciarTrabalho', [
+            'id' => $document_id,
+            'nome' => $document_name
+        ]);
+    }
+
     public function show(Documento $document){
         $editors = [];
         $document_name = $document->nome;

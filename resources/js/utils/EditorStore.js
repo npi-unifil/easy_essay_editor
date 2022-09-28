@@ -38,10 +38,6 @@ export const useEditorStore = defineStore("EditorStore", {
             Inertia.post('/documents', request);
         },
 
-        deleteDoc(id){
-            Inertia.delete(id);
-        },
-
         getOrder(){
             return this.component_order;
         },
@@ -63,6 +59,7 @@ export const useEditorStore = defineStore("EditorStore", {
             console.log('Clone do editor: ', editorClone);
             Object.entries(this.editors).forEach(([key, value])=> {
                 const editorId = key;
+                const editorContent =  value.content.value;
                 Object.entries(value).forEach(([content, editor])=> {
                     Object.entries(editor).forEach(([key, value])=> {
                         if(key == 'name' && value == 'titulo'){
@@ -77,6 +74,7 @@ export const useEditorStore = defineStore("EditorStore", {
                     })
                 })
             });
+            console.log('Clone do editor atualizado: ', editorClone);
             console.log('Editor: ', this.editors);
             this.setEditor(editorClone);
         }

@@ -107,10 +107,6 @@ export default {
             this.editorStore.saveDocument(this.title);
         },
 
-        deleteDoc(){
-            this.editorStore.deleteDoc(this.id);
-        }
-
     }
 }
 </script>
@@ -133,7 +129,6 @@ export default {
                 <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
                 <button @click="exportPdf"
                     class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
-                <button id="delete-button" @click="deleteDoc">Deletar</button>
             </div>
         </div>
 
@@ -306,13 +301,6 @@ export default {
     text-align: center;
     border: 0;
     margin-bottom: 20px;
-}
-
-#remove-editor {
-    background-color: red;
-    height: 30px;
-    width: 80px;
-    border-radius: 5px;
 }
 
 

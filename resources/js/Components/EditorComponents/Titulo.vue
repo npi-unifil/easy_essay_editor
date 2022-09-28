@@ -22,7 +22,7 @@ export default {
         id: String,
         content: {
             type: String,
-            default: 'Escreva seu titulo'
+            default: '<p>Escreva seu titulo</p>'
         }
     },
 
