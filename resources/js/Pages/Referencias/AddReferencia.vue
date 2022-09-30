@@ -5,37 +5,52 @@ import { ref } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
-import { useEditorStore } from '@/utils/EditorStore';
 </script>
 
 <script>
 export default {
 
-    props: ['doc_id'],
+    props: [
+        'doc_id',
+        'nome',
+        'sobrenome',
+        'titulo',
+        'subtitulo',
+        'edicao',
+        'local',
+        'editora',
+        'ano',
+        'pagina',
+        'site',
+        'acessado',
+    ],
 
     data() {
-        const editorStore = useEditorStore();
         const referencia = {
-            nome: '',
-            sobrenome: '',
-            titulo: '',
-            subtitulo: '',
-            edicao: '',
-            local: '',
-            editora: '',
-            ano: '',
-            pagina: '',
-            site: '',
-            acessado: '',
-            document_id: this.doc_id
+            documento: this.doc_id,
+            nome: this.nome,
+            sobrenome: this.sobrenome,
+            titulo: this.titulo,
+            subtitulo: this.subtitulo,
+            edicao: this.edicao,
+            local: this.local,
+            editora: this.editora,
+            ano: this.ano,
+            pagina: this.pagina,
+            site: this.site,
+            acessado: this.acessado,
         }
-        return { editorStore, referencia };
+        return { referencia };
     },
 
     methods: {
 
         retornar() {
             Inertia.get('/documents');
+        },
+
+        salvar_referencia(){
+            Inertia.post('/salvar_referencia', this.referencia);
         }
     }
 
@@ -145,7 +160,7 @@ export default {
                             </div>
                         </div>
                         <div id="save-button">
-                            <button>Salvar</button>
+                            <button @click="salvar_referencia">Salvar</button>
                         </div>
                     </div>
                 </div>

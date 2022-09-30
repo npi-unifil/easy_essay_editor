@@ -19,7 +19,7 @@ class Referencia extends Model
         'sobrenome',
         'titulo',
         'subtitulo',
-        'edição',
+        'edicao',
         'local',
         'editora',
         'ano',

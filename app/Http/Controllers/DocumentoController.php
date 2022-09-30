@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use App\Models\Documento;
 use App\Models\Componente;
+use App\Models\Referencia;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ComponenteController;
 use Spatie\Browsershot\Browsershot;
@@ -14,21 +15,12 @@ use Spatie\Browsershot\Browsershot;
 class DocumentoController extends Controller
 {
 
+// Gerenciar Trabalho Acadêmico -------------------------------------------------------
     public function index(){
         $user = Auth::user();
         $documents = Documento::where('users_id', '=', $user->id)->get();
         return Inertia::render('Documents',[
             'documents' => $documents
-        ]);
-    }
-
-    public function gerenciar_trabalho(Documento $id){
-        $document_id = $id->id;
-        $document_name = $id->nome;
-
-        return Inertia::render('GerenciarTrabalho', [
-            'id' => $document_id,
-            'nome' => $document_name
         ]);
     }
 
@@ -97,16 +89,48 @@ class DocumentoController extends Controller
 
     public function destroy(Documento $document){
         $document->componentes()->delete();
+        $document->referencias()->delete();
         $document->delete();
         return redirect()->route('documents.index');
     }
+// Gerenciar Trabalho -------------------------------------------------------
+    public function gerenciar_trabalho(Documento $id){
+        $document_id = $id->id;
+        $document_name = $id->nome;
 
+        return Inertia::render('GerenciarTrabalho', [
+            'id' => $document_id,
+            'nome' => $document_name
+        ]);
+    }
+
+// Gerenciar Referencia -------------------------------------------------------
     public function buscar_referencias(Documento $id){
         return Inertia::render('Referencias/GerenciarReferencias', [
             'doc_id' => $id->id
         ]);
     }
 
+    public function salvar_referencia(Request $referencia){
+        //dd($referencia->titulo);
+        $document = Referencia::updateOrCreate(
+            ['titulo' => $referencia->titulo],
+            ['nome' => $referencia->nome,
+             'sobrenome' => $referencia->sobrenome,
+             'subtitulo' => $referencia->subtitulo,
+             'edicao' => $referencia->edicao,
+             'local' => $referencia->local,
+             'editora' => $referencia->editora,
+             'ano' => $referencia->ano,
+             'pagina' => $referencia->pagina,
+             'site' => $referencia->site,
+             'acessado' => $referencia->acessado,
+             'document_id' => $referencia->documento]
+        );
+        return redirect()->route('gerenciar_referencias', $referencia->documento);
+    }
+
+// Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request){
         //dd($request);
         //dd(html_entity_decode($request->value));

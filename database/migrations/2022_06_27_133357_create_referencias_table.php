@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('sobrenome')->nullable();
             $table->string('titulo');
             $table->string('subtitulo')->nullable();
-            $table->string('edição')->nullable();
+            $table->string('edicao')->nullable();
             $table->string('local')->nullable();
             $table->string('editora')->nullable();
             $table->string('ano')->nullable();

@@ -34,7 +34,7 @@
             },
 
             add_referencia(){
-                Inertia.get('/add_referencia');
+                Inertia.get('/add_referencia/' + this.doc_id);
             },
 
             deletar_referencia(){
