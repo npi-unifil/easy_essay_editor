@@ -15,11 +15,21 @@ return new class extends Migration
     {
         Schema::create('referencias', function (Blueprint $table) {
             $table->id();
+            $table->string('nome')->nullable();
+            $table->string('sobrenome')->nullable();
+            $table->string('titulo');
+            $table->string('subtitulo')->nullable();
+            $table->string('edição')->nullable();
+            $table->string('local')->nullable();
+            $table->string('editora')->nullable();
+            $table->string('ano')->nullable();
+            $table->string('pagina')->nullable();
+            $table->string('site')->nullable();
+            $table->date('acessado')->nullable();
+            $table->unsignedBigInteger('document_id');
+            $table->foreign('document_id')->references('id')->on('documents');
             $table->timestamps();
-            $table->string('nome');
-            $table->string('authorName');
-            $table->string('title');
-            $table->string('source');
+            $table->softDeletes();
         });
     }
 

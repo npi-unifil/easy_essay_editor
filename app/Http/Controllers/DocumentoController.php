@@ -101,6 +101,12 @@ class DocumentoController extends Controller
         return redirect()->route('documents.index');
     }
 
+    public function buscar_referencias(Documento $id){
+        return Inertia::render('Referencias/GerenciarReferencias', [
+            'doc_id' => $id->id
+        ]);
+    }
+
     public function exportPdf(Request $request){
         //dd($request);
         //dd(html_entity_decode($request->value));

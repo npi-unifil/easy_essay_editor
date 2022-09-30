@@ -30,7 +30,7 @@ export default {
         },
 
         gerenciar_referencias(){
-            Inertia.get('/referencias');
+            Inertia.get('/referencias/' + this.id);
         },
 
         showModal() {

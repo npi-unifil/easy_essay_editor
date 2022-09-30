@@ -30,7 +30,7 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('login-google');
 
 Route::get('/newdoc', function () {
     return Inertia::render('Dashboard');
@@ -40,9 +40,13 @@ Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho']
     return Inertia::render('GerenciarTrabalho');
 })->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
 
-Route::get('/referencias', function () {
+Route::get('/referencias/{id}', [DocumentoController::class, 'buscar_referencias'], function () {
     return Inertia::render('GerenciarReferencias');
 })->middleware(['auth', 'verified'])->name('gerenciar_referencias');
+
+Route::get('/add_referencia', function() {
+    return Inertia::render('Referencias/AddReferencia');
+})->middleware(['auth', 'verified'])->name('adicionar_referencia');
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
