@@ -12,7 +12,7 @@
     <script>
     export default {
 
-        props: ['doc_id'],
+        props: ['doc_id', 'referencia'],
 
         components: {
             Modal
@@ -37,8 +37,12 @@
                 Inertia.get('/add_referencia/' + this.doc_id);
             },
 
-            deletar_referencia(){
-                // Inertia.delete('/documents/' + this.id);
+            editar_referencia(id){
+                Inertia.get('/editar_referencia/' + id);
+            },
+
+            deletar_referencia(id){
+                Inertia.delete('/deletar_referencia/' + id);
             },
 
             retornar(){
@@ -80,6 +84,7 @@
     .referencias{
         display: flex;
         justify-content: space-between;
+        margin-top: 10px;
         border-bottom: 1px solid black;
     }
 
@@ -137,13 +142,13 @@
                                         <h1 style="font-weight: bolder; margin-bottom: 50px;">Referências</h1>
                                         <button @click="add_referencia">Adicionar</button>
                                     </div>
-                                    <div class="referencias">
-                                        <p>Referência #1</p>
+                                    <div class="referencias" v-for="value in this.referencia" :key="value.id">
+                                        <p>{{ value.titulo }}</p>
                                         <div id="botoes-gerenciar">
-                                            <button style="background-color: green;">
+                                            <button @click="editar_referencia(value.id)" style="background-color: green;">
                                                 Editar
                                             </button>
-                                            <button style="background-color: red;">
+                                            <button @click="deletar_referencia(value.id)" style="background-color: red;">
                                                 Deletar
                                             </button>
                                         </div>

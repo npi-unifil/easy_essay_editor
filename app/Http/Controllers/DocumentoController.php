@@ -93,6 +93,7 @@ class DocumentoController extends Controller
         $document->delete();
         return redirect()->route('documents.index');
     }
+
 // Gerenciar Trabalho -------------------------------------------------------
     public function gerenciar_trabalho(Documento $id){
         $document_id = $id->id;
@@ -105,18 +106,29 @@ class DocumentoController extends Controller
     }
 
 // Gerenciar Referencia -------------------------------------------------------
-    public function buscar_referencias(Documento $id){
-        return Inertia::render('Referencias/GerenciarReferencias', [
+    public function add_referencia(Documento $id){
+        return Inertia::render('Referencias/AddReferencia', [
+            'titulo_da_pagina' => 'Adicionar Referência',
             'doc_id' => $id->id
         ]);
     }
 
+
+    public function buscar_referencias(Documento $id){
+        $referencias = Referencia::where('document_id', '=', $id->id)->get();
+        return Inertia::render('Referencias/GerenciarReferencias', [
+            'doc_id' => $id->id,
+            'referencia' => $referencias
+        ]);
+    }
+
     public function salvar_referencia(Request $referencia){
-        //dd($referencia->titulo);
+        // dd($referencia->documento['id']);
         $document = Referencia::updateOrCreate(
-            ['titulo' => $referencia->titulo],
+            ['id' => $referencia->id],
             ['nome' => $referencia->nome,
              'sobrenome' => $referencia->sobrenome,
+             'titulo' => $referencia->titulo,
              'subtitulo' => $referencia->subtitulo,
              'edicao' => $referencia->edicao,
              'local' => $referencia->local,
@@ -128,6 +140,30 @@ class DocumentoController extends Controller
              'document_id' => $referencia->documento]
         );
         return redirect()->route('gerenciar_referencias', $referencia->documento);
+    }
+
+    public function editar_referencia(Referencia $id){
+        return Inertia::render('Referencias/AddReferencia', [
+            'titulo_da_pagina' => 'Editar Referência',
+            'doc_id' => $id->document_id,
+            'id' => $id->id,
+            'nome' => $id->nome,
+            'sobrenome' => $id->sobrenome,
+            'titulo' => $id->titulo,
+            'subtitulo' => $id->subtitulo,
+            'edicao' => $id->edicao,
+            'local' => $id->local,
+            'editora' => $id->editora,
+            'ano' => $id->ano,
+            'pagina' => $id->pagina,
+            'site' => $id->site,
+            'acessado' => $id->acessado,
+        ]);
+    }
+
+    public function deletar_referencia(Referencia $id){
+        $id->delete();
+        return redirect()->route('gerenciar_referencias', $id->document_id);
     }
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------

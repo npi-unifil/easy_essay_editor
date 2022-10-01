@@ -11,6 +11,8 @@ import { Link } from '@inertiajs/inertia-vue3';
 export default {
 
     props: [
+        'titulo_da_pagina',
+        'id',
         'doc_id',
         'nome',
         'sobrenome',
@@ -27,6 +29,7 @@ export default {
 
     data() {
         const referencia = {
+            id: this.id,
             documento: this.doc_id,
             nome: this.nome,
             sobrenome: this.sobrenome,
@@ -91,7 +94,7 @@ export default {
 
 <template>
 
-    <Head title="Adicionar Referência" />
+    <Head :title='this.titulo_da_pagina' />
 
     <BreezeAuthenticatedLayout>
         <template #links>
@@ -106,7 +109,7 @@ export default {
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
 
-                        <h1>Adicionar Referência</h1>
+                        <h1>{{this.titulo_da_pagina}}</h1>
                         <div class="form-container">
                             <div>
                                 <p>Nome do Autor:</p>

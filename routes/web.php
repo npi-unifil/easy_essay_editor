@@ -42,20 +42,16 @@ Route::get('/newdoc', function () {
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
 // Gerenciar Documento ------------------------------------------------------------------------------------
-Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'], function () {
-    return Inertia::render('GerenciarTrabalho');
-})->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
+Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'])->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
 
 // Referências ------------------------------------------------------------------------------------
-Route::get('/referencias/{id}', [DocumentoController::class, 'buscar_referencias'], function () {
-    return Inertia::render('GerenciarReferencias');
-})->middleware(['auth', 'verified'])->name('gerenciar_referencias');
+Route::get('/referencias/{id}', [DocumentoController::class, 'buscar_referencias'])->middleware(['auth', 'verified'])->name('gerenciar_referencias');
 
-Route::get('/add_referencia/{id}', function($id) {
-    return Inertia::render('Referencias/AddReferencia', [
-        'doc_id' => $id
-    ]);
-})->middleware(['auth', 'verified'])->name('adicionar_referencia');
+Route::get('/add_referencia/{id}', [DocumentoController::class, 'add_referencia'])->middleware(['auth', 'verified'])->name('adicionar_referencia');
+
+Route::get('/editar_referencia/{id}', [DocumentoController::class, 'editar_referencia'])->middleware(['auth', 'verified'])->name('editar_referencia');
+
+Route::delete('deletar_referencia/{id}', [DocumentoController::class, 'deletar_referencia'])->middleware(['auth', 'verified'])->name('deletar_referencia');
 
 Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referencia'])->middleware(['auth', 'verified']);
 
