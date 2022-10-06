@@ -1,0 +1,112 @@
+{
+    "ABNT": {
+        "Formato Geral": {
+            "Margens": {
+                "Esquerda": 3,
+                "Superior": 3,
+                "Direita": 2,
+                "Inferior": 2
+            },
+            "Fonte": {
+                "Font Family": "Arial, Times New Roman",
+                "Cor": "preto",
+                "Tamanho":{
+                    "Titulo": 14,
+                    "Texto": 12,
+                    "Citação e Rodapé": 10
+                },
+                "Texto": "justificado"
+            },
+            "Espaçamento": {
+                "Texto": 1.5,
+                "Citação longa": 1.0,
+                "Parágrafo": 1.25
+            }
+        },
+        "Capa": {
+            "Formato Nome e Titulo": "uppercase",
+            "Espaço Curso/Autor": "<p></p><p></p><p></p>",
+            "Titulo": "negrito",
+            "Espaço Autor/Titulo": "<p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>"
+        },
+        "Folha de Rosto": {
+            "Formato Nome e Titulo": "uppercase",
+            "Titulo": "negrito",
+            "Espaço Autor/Titulo": "<p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>",
+            "Espaço Subtitulo/Nota": "<p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>",
+            "Tamanho da fonte nota explicativa": 10,
+            "Espaço Nota/Local": "<p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p><p></p>",
+            "Local e ano":{
+                "tamanho-fonte": 14,
+                "peso do texto": "negrito",
+                "tamanho": "uppercase",
+                "alinhamento": "centralizado"
+            }
+        },
+        "Resumo": {
+            "Titulo": {
+                "alinhamento": "centralizado",
+                "tamanho": "uppercase",
+                "peso do texto": "negrito"
+            },
+            "Texto do Resumo": {
+                "alinhamento": "justificado",
+                "espaçamento entre linhas": 1.5
+            },
+            "Palavra-chaves": {
+                "alinhamento": "justificado",
+                "espaçamento entre linhas": 1.5
+            }
+        },
+        "Sumário": {
+            "Espaçamento": 1.5,
+            "Titulo": {
+                "titulo-primário": {
+                    "peso": "negrito",
+                    "tamanho": "uppercase"
+                },
+                "titulo-secundário": {
+                    "tamanho": "uppercase"
+                },
+                "titulo-terciário": {
+                    "peso": "negrito"
+                }
+            },
+            "Elementos-pos-textuais": {
+                "peso": "negrito",
+                "tamanho": "uppercase"
+            }
+        },
+        "Dedicatória": {
+
+        },
+        "Agradecimentos": {
+
+        },
+        "Epígrafe": {
+
+        },
+        "Abstract": {
+
+        },
+        "Lista": {
+
+        },
+        "Introdução": {
+
+        },
+        "Desenvolvimento": {
+
+        },
+        "Conclusão": {
+
+        },
+        "Bibliografia": {
+
+        },
+        "Anexos e apêndices": {
+
+        }
+    }
+
+}

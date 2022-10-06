@@ -33,6 +33,10 @@ export default {
             Inertia.get('/referencias/' + this.id);
         },
 
+        mudar_template(){
+
+        },
+
         showModal() {
             this.isModalVisible = true;
         },
@@ -128,6 +132,9 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="conteudo-corpo">
                                 <div class="gerenciar-botoes">
+                                    <button style="background-color: pink;" @click="mudar_template">
+                                        Mudar Template
+                                    </button>
                                     <button style="background-color: green;" @click="gerenciar_doc">
                                         Editar Documento
                                     </button>

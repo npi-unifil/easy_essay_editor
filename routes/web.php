@@ -55,6 +55,11 @@ Route::delete('deletar_referencia/{id}', [DocumentoController::class, 'deletar_r
 
 Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referencia'])->middleware(['auth', 'verified']);
 
+//Admin - Gerenciar Templates
+Route::get('/admin', function() {
+    return Inertia::render('GerenciarTemplate/AdminHome');
+})->middleware(['auth', 'verified'])->name('admin_login');
+
 require __DIR__.'/auth.php';
 
 // Route::post('/export/', [DocumentoController::class, 'exportPdf']);

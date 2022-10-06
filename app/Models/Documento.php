@@ -15,13 +15,19 @@ class Documento extends Model
 
     protected $fillable = [
         'nome',
-        'users_id'
+        'users_id',
+        'templates_id'
     ];
 
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class);
     }
 
 

@@ -21,13 +21,20 @@
         data(){
             const editorStore = useEditorStore();
 
-            return {isModalVisible: false, editorStore};
+            const referencia_data = {
+                id: 0,
+                titulo: '',
+            }
+
+            return {isModalVisible: false, editorStore, referencia_data};
         },
 
         methods: {
 
-            showModal() {
+            showModal(id, titulo) {
                 this.isModalVisible = true;
+                this.referencia_data.id = id;
+                this.referencia_data.titulo = titulo;
             },
             closeModal() {
                 this.isModalVisible = false;
@@ -62,7 +69,7 @@
 
     .modal-body p{
         margin: 0;
-        font-size: xx-large;
+        font-size: x-large;
         font-weight: bolder;
         margin-top: -30px;
         margin-bottom: 60px;
@@ -148,7 +155,7 @@
                                             <button @click="editar_referencia(value.id)" style="background-color: green;">
                                                 Editar
                                             </button>
-                                            <button @click="deletar_referencia(value.id)" style="background-color: red;">
+                                            <button @click="showModal(value.id, value.titulo)" style="background-color: red;">
                                                 Deletar
                                             </button>
                                         </div>
@@ -160,13 +167,13 @@
                                     <template class="modal-body" v-slot:body>
                                         <div>
                                             <div>
-                                                <p>Deseja Realmente Apagar a Referência ?</p>
+                                                <p>Deseja Realmente Apagar a Referência "{{this.referencia_data.titulo}}" ?</p>
                                             </div>
                                             <div id="modal-buttons">
                                                 <button @click="closeModal()" style="background-color: green">
                                                     Cancelar
                                                 </button>
-                                                <button @click="closeModal(), deletar_referencia()" style="background-color: red">
+                                                <button @click="closeModal(), deletar_referencia(this.referencia_data.id)" style="background-color: red">
                                                     Sim
                                                 </button>
                                             </div>
