@@ -56,26 +56,23 @@ export const useEditorStore = defineStore("EditorStore", {
 
         setExistingContent(){
             let editorClone = structuredClone(toRaw(this.editors));
-            console.log('Clone do editor: ', editorClone);
             Object.entries(this.editors).forEach(([key, value])=> {
                 const editorId = key;
                 const editorContent =  value.content.value;
                 Object.entries(value).forEach(([content, editor])=> {
                     Object.entries(editor).forEach(([key, value])=> {
                         if(key == 'name' && value == 'titulo'){
-                            editorClone[editorId].editor.component = <Titulo id={editorId} />;
+                            editorClone[editorId].editor.component = <Titulo id={editorId} content={editorContent}/>;
                         }
                         if(key == 'name' && value == 'paragrafo'){
-                            editorClone[editorId].editor.component = <Paragrafo id={editorId} />;
+                            editorClone[editorId].editor.component = <Paragrafo id={editorId} content={editorContent}/>;
                         }
                         if(key == 'name' && value == 'paragrafo-imagem'){
-                            editorClone[editorId].editor.component = <ParagrafoImagem id={editorId} />;
+                            editorClone[editorId].editor.component = <ParagrafoImagem id={editorId} content={editorContent}/>;
                         }
                     })
                 })
             });
-            console.log('Clone do editor atualizado: ', editorClone);
-            console.log('Editor: ', this.editors);
             this.setEditor(editorClone);
         }
     }

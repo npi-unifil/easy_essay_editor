@@ -166,6 +166,12 @@ class DocumentoController extends Controller
         return redirect()->route('gerenciar_referencias', $id->document_id);
     }
 
+// Gerenciar Template
+
+    public function get_template(){
+        //Pass
+    }
+
 // Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request){
         //dd($request);

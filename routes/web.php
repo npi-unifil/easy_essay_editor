@@ -60,6 +60,7 @@ Route::get('/admin', function() {
     return Inertia::render('GerenciarTemplate/AdminHome');
 })->middleware(['auth', 'verified'])->name('admin_login');
 
+
 require __DIR__.'/auth.php';
 
 // Route::post('/export/', [DocumentoController::class, 'exportPdf']);

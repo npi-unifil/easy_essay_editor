@@ -7,6 +7,8 @@ import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import { useEditorStore } from '@/utils/EditorStore';
 import Modal from '../Components/EditorComponents/Modal.vue';
+import {VueSidePanel} from 'vue3-side-panel';
+import 'vue3-side-panel/dist/vue3-side-panel.css';
 </script>
 
 <script>
@@ -15,26 +17,27 @@ export default {
     props: ['id', 'nome'],
 
     components: {
+        VueSidePanel,
         Modal
     },
 
-    data(){
+    data() {
         const editorStore = useEditorStore();
 
-        return {isModalVisible: false, editorStore};
+        return { isModalVisible: false, isOpened: false, editorStore };
     },
 
     methods: {
-        gerenciar_doc(){
+        gerenciar_doc() {
             Inertia.get('/documents/' + this.id);
         },
 
-        gerenciar_referencias(){
+        gerenciar_referencias() {
             Inertia.get('/referencias/' + this.id);
         },
 
-        mudar_template(){
-
+        mudar_template() {
+            this.isOpened = true;
         },
 
         showModal() {
@@ -44,11 +47,11 @@ export default {
             this.isModalVisible = false;
         },
 
-        deletar_documento(){
+        deletar_documento() {
             Inertia.delete('/documents/' + this.id);
         },
 
-        retornar(){
+        retornar() {
             Inertia.get('/documents');
         }
     }
@@ -57,16 +60,16 @@ export default {
 </script>
 
 <style>
-.conteudo-corpo{
+.conteudo-corpo {
     display: flex;
     justify-content: space-between;
 }
 
-.documento{
+.documento {
     border: 1px solid black;
     width: 700px;
     height: 500px;
-    text-align:center;
+    text-align: center;
 }
 
 .gerenciar-botoes {
@@ -85,13 +88,13 @@ export default {
     background-color: blue;
 }
 
-.modal-body{
+.modal-body {
     justify-content: center;
     align-items: center;
     text-align: center;
 }
 
-.modal-body p{
+.modal-body p {
     margin: 0;
     font-size: xx-large;
     font-weight: bolder;
@@ -99,12 +102,12 @@ export default {
     margin-bottom: 60px;
 }
 
-#modal-buttons{
+#modal-buttons {
     display: flex;
     justify-content: space-around;
 }
 
-#modal-buttons button{
+#modal-buttons button {
     color: white;
     font-weight: bolder;
     border-radius: 5px;
@@ -112,6 +115,22 @@ export default {
     height: 50px;
 }
 
+.templates{
+        display: flex;
+        justify-content: space-between;
+        width: 500px;
+        margin-top: 10px;
+        border-bottom: 1px solid black;
+}
+
+#botao-selecionar button{
+        color: white;
+        font-size: large;
+        font-weight: bolder;
+        width: 60px;
+        height: 30px;
+        border-radius: 5px;
+}
 </style>
 
 <template>
@@ -121,8 +140,8 @@ export default {
     <BreezeAuthenticatedLayout>
         <template #links>
             <div class="mt-4 ml-2">
-                <a
-                    class="no-underline font-bold text-slate-100 hover:text-slate-800 hover:cursor-pointer" @click="retornar">Documentos</a>
+                <a class="no-underline font-bold text-slate-100 hover:text-slate-800 hover:cursor-pointer"
+                    @click="retornar">Documentos</a>
             </div>
         </template>
 
@@ -131,23 +150,23 @@ export default {
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="conteudo-corpo">
-                                <div class="gerenciar-botoes">
-                                    <button style="background-color: pink;" @click="mudar_template">
-                                        Mudar Template
-                                    </button>
-                                    <button style="background-color: green;" @click="gerenciar_doc">
-                                        Editar Documento
-                                    </button>
-                                    <button style="background-color: blue;" @click="gerenciar_referencias">
-                                        Gerenciar Referencias
-                                    </button>
-                                    <button style="background-color: red;" @click="showModal">
-                                        Deletar Documento
-                                    </button>
-                                    <button style="background-color: yellow;" @click="retornar">
-                                        Retornar
-                                    </button>
-                                </div>
+                            <div class="gerenciar-botoes">
+                                <button style="background-color: pink;" @click="mudar_template">
+                                    Mudar Template
+                                </button>
+                                <button style="background-color: green;" @click="gerenciar_doc">
+                                    Editar Documento
+                                </button>
+                                <button style="background-color: blue;" @click="gerenciar_referencias">
+                                    Gerenciar Referencias
+                                </button>
+                                <button style="background-color: red;" @click="showModal">
+                                    Deletar Documento
+                                </button>
+                                <button style="background-color: yellow;" @click="retornar">
+                                    Retornar
+                                </button>
+                            </div>
 
                             <div class="documento">
                                 <h1 style="margin-top: 50px;">{{this.nome}}</h1>
@@ -164,28 +183,45 @@ export default {
                         </div>
 
                         <Modal v-show="isModalVisible" @close="closeModal">
-                                <template class="modal-body" v-slot:body>
+                            <template class="modal-body" v-slot:body>
+                                <div>
                                     <div>
-                                        <div>
-                                            <p>Deseja Realmente Apagar o Documento ?</p>
-                                        </div>
-                                        <div id="modal-buttons">
-                                            <button @click="closeModal()" style="background-color: green">
-                                                Cancelar
-                                            </button>
-                                            <button @click="closeModal(), deletar_documento()" style="background-color: red">
-                                                Sim
+                                        <p>Deseja Realmente Apagar o Documento ?</p>
+                                    </div>
+                                    <div id="modal-buttons">
+                                        <button @click="closeModal()" style="background-color: green">
+                                            Cancelar
+                                        </button>
+                                        <button @click="closeModal(), deletar_documento()"
+                                            style="background-color: red">
+                                            Sim
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </Modal>
+
+                        <VueSidePanel v-model="isOpened">
+                            <div style="height: 100%; background-color: white; width: 600px">
+                                <h1 style="text-align: center; margin-top: 23px;">Templates</h1>
+
+                                <div style="display: flex; justify-content: center;">
+                                    <div class="templates">
+                                        <p>Template 1</p>
+                                        <div id="botao-selecionar">
+                                            <button style="background-color: green;">
+                                                Editar
                                             </button>
                                         </div>
                                     </div>
-                                </template>
-                        </Modal>
+                                </div>
+                            </div>
+                        </VueSidePanel>
+
                     </div>
                 </div>
             </div>
         </div>
-
-
 
     </BreezeAuthenticatedLayout>
 
