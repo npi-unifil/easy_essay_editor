@@ -21,17 +21,20 @@ class Formatacao extends Model
         'margem-direita',
         'margem-esquerda',
         'fonte',
+        'fonte-secundaria',
         'cor',
         'tamanho-fonte',
         'tamanho-fonte-titulo',
         'alinhamento-texto',
+        'alinhamento-titulo',
         'espacamento-texto',
         'espacamento-citacao',
         'espacamento-paragrafo',
         'recuo-texto',
+        'formato-titulo',
         'formato-texto',
-        'espacamento-entre',
         'peso-texto',
+        'peso-titulo',
         'template_id'
     ];
 

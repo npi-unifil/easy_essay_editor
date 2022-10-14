@@ -11,6 +11,7 @@ export const useEditorStore = defineStore("EditorStore", {
     state: () => {
         return {
             editors: {},
+            componentRemoved: {},
             component_order: 0
         };
     },
@@ -22,6 +23,7 @@ export const useEditorStore = defineStore("EditorStore", {
         },
 
         removeContent(id){
+            this.componentRemoved[id] = this.editors[id];
             delete this.editors[id];
             this.decreaseOrder();
         },
@@ -38,6 +40,16 @@ export const useEditorStore = defineStore("EditorStore", {
             Inertia.post('/documents', request);
         },
 
+        updateDocument(title, id){
+            const request = {
+                doc_id: id,
+                docTitle: title,
+                content: this.editors,
+                removed: this.componentRemoved
+            }
+            Inertia.put('/documents/' + id, request);
+        },
+
         getOrder(){
             return this.component_order;
         },
@@ -48,6 +60,10 @@ export const useEditorStore = defineStore("EditorStore", {
 
         decreaseOrder(){
             this.component_order--;
+        },
+
+        setComponentOrder(){
+            this.component_order = Object.keys(this.editors).length;
         },
 
         setEditor(editor){

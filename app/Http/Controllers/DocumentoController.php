@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Documento;
 use App\Models\Componente;
 use App\Models\Referencia;
+use App\Models\Template;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ComponenteController;
 use Spatie\Browsershot\Browsershot;
@@ -76,15 +77,46 @@ class DocumentoController extends Controller
     }
 
     public function update(Request $request){
-        //dd($request);
-        $document_id = $request->id;
-        $documents = Documento::where('document_id', '=', $document_id)->first();
-        $documents->update($request->all('nome'));
+        $conteudo = $request->content;
+        $document_id = $request->doc_id;
+        $document_title = $request->docTitle;
+        $removedComponent = $request->removed;
 
-        $componente = new ComponenteController();
-        $componente->update($request);
+        foreach ($removedComponent as $id => $content){
+            $componente = Componente::where('object_id', '=', $id);
+            $componente->delete();
+        }
 
-        return redirect()->route('documents');
+        $document = Documento::where('id', $document_id)->first();
+        if($document != null){
+            $document->update(['nome'=>$document_title]);
+        }
+
+        foreach ($conteudo as $id => $item) {
+            $editor = $item['editor'];
+            $conteudo = $item['content'];
+
+            $component = Componente::where('object_id', $id)->first();
+            if($component != null){
+                $component->update([
+                    'name' => $editor['name'],
+                    'conteudo' => $conteudo['value'],
+                    'component_order' => $editor['component_order'],
+                    'object_id' => $id,
+                    'document_id' => $document_id,
+                ]);
+            }else{
+                $component = Componente::create([
+                    'name' => $editor['name'],
+                    'conteudo' => $conteudo['value'],
+                    'component_order' => $editor['component_order'],
+                    'object_id' => $id,
+                    'document_id' => $document_id,
+                ]);
+            }
+        }
+
+        return redirect()->route('documents.index');
     }
 
     public function destroy(Documento $document){
@@ -94,14 +126,22 @@ class DocumentoController extends Controller
         return redirect()->route('documents.index');
     }
 
+    public function removeComponent(Request $id){
+        $componentes = new Componente();
+        $componente = $componentes->where("object_id", "=", $id['id'])->first();
+        //return $componente->delete();
+    }
+
 // Gerenciar Trabalho -------------------------------------------------------
     public function gerenciar_trabalho(Documento $id){
         $document_id = $id->id;
         $document_name = $id->nome;
+        $templates = Template::all();
 
         return Inertia::render('GerenciarTrabalho', [
             'id' => $document_id,
-            'nome' => $document_name
+            'nome' => $document_name,
+            'templates' => $templates
         ]);
     }
 
@@ -168,9 +208,6 @@ class DocumentoController extends Controller
 
 // Gerenciar Template
 
-    public function get_template(){
-        //Pass
-    }
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request){

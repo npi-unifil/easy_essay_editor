@@ -41,6 +41,8 @@ Route::get('/newdoc', function () {
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
+Route::delete('/deleteComponent/{id}', [DocumentoController::class, 'removeComponent'])->middleware(['auth', 'verified']);
+
 // Gerenciar Documento ------------------------------------------------------------------------------------
 Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'])->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
 
@@ -54,12 +56,6 @@ Route::get('/editar_referencia/{id}', [DocumentoController::class, 'editar_refer
 Route::delete('deletar_referencia/{id}', [DocumentoController::class, 'deletar_referencia'])->middleware(['auth', 'verified'])->name('deletar_referencia');
 
 Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referencia'])->middleware(['auth', 'verified']);
-
-//Admin - Gerenciar Templates
-Route::get('/admin', function() {
-    return Inertia::render('GerenciarTemplate/AdminHome');
-})->middleware(['auth', 'verified'])->name('admin_login');
-
 
 require __DIR__.'/auth.php';
 

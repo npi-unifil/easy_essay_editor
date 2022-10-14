@@ -14,7 +14,7 @@ import 'vue3-side-panel/dist/vue3-side-panel.css';
 <script>
 export default {
 
-    props: ['id', 'nome'],
+    props: ['id', 'nome', 'templates'],
 
     components: {
         VueSidePanel,
@@ -127,7 +127,7 @@ export default {
         color: white;
         font-size: large;
         font-weight: bolder;
-        width: 60px;
+        width: 100px;
         height: 30px;
         border-radius: 5px;
 }
@@ -206,11 +206,11 @@ export default {
                                 <h1 style="text-align: center; margin-top: 23px;">Templates</h1>
 
                                 <div style="display: flex; justify-content: center;">
-                                    <div class="templates">
-                                        <p>Template 1</p>
+                                    <div class="templates" v-for="template in this.templates" :key="template.id">
+                                        <p>{{template.nome}}</p>
                                         <div id="botao-selecionar">
                                             <button style="background-color: green;">
-                                                Editar
+                                                Selecionar
                                             </button>
                                         </div>
                                     </div>

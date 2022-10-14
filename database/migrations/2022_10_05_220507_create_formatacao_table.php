@@ -27,13 +27,15 @@ return new class extends Migration
             $table->integer('tamanho-fonte')->nullable();
             $table->integer('tamanho-fonte-titulo')->nullable();
             $table->string('alinhamento-texto')->nullable();
+            $table->string('alinhamento-titulo')->nullable();
             $table->double('espacamento-texto')->nullable();
             $table->double('espacamento-citacao')->nullable();
             $table->double('espacamento-paragrafo')->nullable();
             $table->double('recuo-texto')->nullable();
+            $table->string('formato-titulo')->nullable();
             $table->string('formato-texto')->nullable();
-            $table->integer('espacamento-entre')->nullable();
             $table->string('peso-texto')->nullable();
+            $table->string('peso-titulo')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

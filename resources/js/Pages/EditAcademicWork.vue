@@ -42,6 +42,7 @@ export default {
     mounted() {
         this.editorStore.setEditor(this.edit);
         this.editorStore.setExistingContent();
+        this.editorStore.setComponentOrder();
     },
 
     methods: {
@@ -104,7 +105,7 @@ export default {
         },
 
         saveDocument(){
-            this.editorStore.saveDocument(this.title);
+            this.editorStore.updateDocument(this.dados.nome, this.id);
         },
 
     }
@@ -138,7 +139,7 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
 
                         <div>
-                            <textarea name="title" id="title" v-model="this.document_name"
+                            <textarea name="title" id="title" v-model="this.dados.nome"
                                 placeholder="Titulo do documento"></textarea>
 
                             <table class="table table-bordered">
