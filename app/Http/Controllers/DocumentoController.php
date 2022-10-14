@@ -44,6 +44,12 @@ class DocumentoController extends Controller
             ];
         }
 
+        uasort($editors, function($obj1, $obj2){
+            $order1 = $obj1['editor'];
+            $order2 = $obj2['editor'];
+            return $order1['component_order'] > $order2['component_order'];
+        });
+
         return Inertia::render('EditAcademicWork', [
             'id' => $document->id,
             'edit' => $editors,
