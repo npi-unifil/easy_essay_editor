@@ -15,8 +15,7 @@ class Referencia extends Model
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'nome',
-        'sobrenome',
+        'nome_autor',
         'titulo',
         'subtitulo',
         'edicao',

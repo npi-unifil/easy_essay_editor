@@ -172,8 +172,7 @@ class DocumentoController extends Controller
         // dd($referencia->documento['id']);
         $document = Referencia::updateOrCreate(
             ['id' => $referencia->id],
-            ['nome' => $referencia->nome,
-             'sobrenome' => $referencia->sobrenome,
+            ['nome_autor' => $referencia->nome,
              'titulo' => $referencia->titulo,
              'subtitulo' => $referencia->subtitulo,
              'edicao' => $referencia->edicao,
@@ -193,8 +192,7 @@ class DocumentoController extends Controller
             'titulo_da_pagina' => 'Editar Referência',
             'doc_id' => $id->document_id,
             'id' => $id->id,
-            'nome' => $id->nome,
-            'sobrenome' => $id->sobrenome,
+            'nome_autor' => $id->nome_autor,
             'titulo' => $id->titulo,
             'subtitulo' => $id->subtitulo,
             'edicao' => $id->edicao,

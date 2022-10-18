@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
+import { VueSidePanel } from 'vue3-side-panel';
 </script>
 
 <script>
@@ -14,8 +15,7 @@ export default {
         'titulo_da_pagina',
         'id',
         'doc_id',
-        'nome',
-        'sobrenome',
+        'nome_autor',
         'titulo',
         'subtitulo',
         'edicao',
@@ -27,12 +27,19 @@ export default {
         'acessado',
     ],
 
+    components: {
+        VueSidePanel
+    },
+
     data() {
+        const nome = ""
+
+        const editedNome = null
+
         const referencia = {
             id: this.id,
             documento: this.doc_id,
-            nome: this.nome,
-            sobrenome: this.sobrenome,
+            nome_autor: [],
             titulo: this.titulo,
             subtitulo: this.subtitulo,
             edicao: this.edicao,
@@ -43,17 +50,56 @@ export default {
             site: this.site,
             acessado: this.acessado,
         }
-        return { referencia };
+        return { isOpened: false, referencia, nome, editedNome };
     },
 
+
     methods: {
+        keypressed: function (event) {
+            if (this.nome.lenght === 0) return;
+            if (event.key == "Enter") {
+                this.adicionar_novo();
+            }
+        },
+
+        adicionar_novo() {
+            if (this.nome.length === 0) return;
+            if (this.editedNome === null) {
+                this.referencia.nome_autor.push({
+                    nome: this.nome
+                })
+            } else {
+                this.referencia.nome_autor[this.editedNome].nome = this.nome;
+                this.editedNome = null;
+            }
+            this.nome = "";
+        },
+
+        deleteAutor(index) {
+            this.referencia.nome_autor.splice(index, 1);
+        },
+
+        editar_nome(index) {
+            this.nome = this.referencia.nome_autor[index].nome;
+            this.editedNome = index;
+        },
+
+        add_autor() {
+            this.isOpened = true;
+        },
 
         retornar() {
             Inertia.get('/documents');
         },
 
-        salvar_referencia(){
+        salvar_referencia() {
             Inertia.post('/salvar_referencia', this.referencia);
+        },
+    },
+
+    mounted() {
+        if (this.nome_autor != undefined) {
+            this.referencia.nome_autor = this.nome_autor;
         }
     }
 
@@ -62,34 +108,67 @@ export default {
 
 <style>
 .form-container {
-    display:flex;
+    display: flex;
     justify-content: space-between;
     margin-top: 20px;
 }
 
-.form-container p{
+.form-container p {
     font-size: larger;
     font-weight: bolder;
 }
 
-.form-container input{
+.form-container input {
     text-align: center;
     width: 300px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.322);
 }
 
-#save-button{
+.autores {
+    display: block;
+    margin: 20px;
+    width: 500px;
+    border-bottom: 1px solid black;
+}
+
+.autores input {
+    margin-left: 10px;
+}
+
+.add-autor {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.add-autor input {
+    border-bottom: 1px solid black;
+    width: 350px;
+}
+
+.nome-autor {
     display: flex;
+    justify-content: space-between;
+}
+
+.nome-autor button {
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    width: 80px;
+    height: 30px;
+}
+
+#save-button {
+    display: block;
     justify-content: center;
 }
 
-#save-button button{
+#save-button button {
     background-color: orange;
     width: 100px;
     height: 50px;
     border-radius: 5px;
 }
-
 </style>
 
 <template>
@@ -112,12 +191,8 @@ export default {
                         <h1>{{this.titulo_da_pagina}}</h1>
                         <div class="form-container">
                             <div>
-                                <p>Nome do Autor:</p>
-                                <input v-model=referencia.nome />
-                            </div>
-                            <div>
-                                <p>Sobrenome do Autor:</p>
-                                <input v-model=referencia.sobrenome />
+                                <p>Nome do(s) Autor(es):</p>
+                                <input type="button" @click="add_autor">
                             </div>
                             <div>
                                 <p>Titulo da referência:</p>
@@ -159,7 +234,9 @@ export default {
                             </div>
                             <div>
                                 <p>Data de acesso:</p>
-                                <input style="border-bottom: 1px solid rgba(0, 0, 0, 0.322); border-left: none; border-right: none; border-top: none;" type="date" v-model=referencia.acessado />
+                                <input
+                                    style="border-bottom: 1px solid rgba(0, 0, 0, 0.322); border-left: none; border-right: none; border-top: none;"
+                                    type="date" v-model=referencia.acessado />
                             </div>
                         </div>
                         <div id="save-button">
@@ -170,6 +247,35 @@ export default {
             </div>
         </div>
 
+        <VueSidePanel v-model="isOpened">
+            <div style="height: 100%; background-color: white; width: 600px">
+                <h1 style="text-align: center; margin-top: 23px;">Autor(es)</h1>
+
+                <div style="display: block; justify-content: center;">
+                    <div class="autores">
+                        <div class="add-autor">
+                            <label for="nome">Nome:</label>
+                            <input v-model="this.nome" v-on:keyup="keypressed" />
+                            <button @click="adicionar_novo"
+                                style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
+                        </div>
+                        <div v-for="autor, index  in this.referencia.nome_autor" :key="index">
+                            <div class="nome-autor">
+                                <p>{{autor.nome}}</p>
+                                <div style="display:flex; width: 170px; justify-content: space-between;">
+                                    <button @click="editar_nome(index)" style="background-color: orange;">
+                                        Editar
+                                    </button>
+                                    <button style="background-color: red;" @click="deleteAutor(index)">
+                                        Deletar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </VueSidePanel>
 
 
     </BreezeAuthenticatedLayout>
