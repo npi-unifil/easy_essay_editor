@@ -28,6 +28,10 @@ class Referencia extends Model
         'document_id'
     ];
 
+    protected $casts = [
+        'nome_autor' => 'array'
+    ];
+
     public function documento() : BelongsTo
     {
         return $this->belongsTo(Documento::class);

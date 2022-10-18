@@ -169,10 +169,10 @@ class DocumentoController extends Controller
     }
 
     public function salvar_referencia(Request $referencia){
-        // dd($referencia->documento['id']);
+        //dd($referencia, $referencia->nome_autor);
         $document = Referencia::updateOrCreate(
             ['id' => $referencia->id],
-            ['nome_autor' => $referencia->nome,
+            ['nome_autor' => $referencia->nome_autor,
              'titulo' => $referencia->titulo,
              'subtitulo' => $referencia->subtitulo,
              'edicao' => $referencia->edicao,

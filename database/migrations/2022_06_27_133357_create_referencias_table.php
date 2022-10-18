@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('referencias', function (Blueprint $table) {
             $table->id();
-            $table->string('nome_autor')->nullable();
+            $table->text('nome_autor')->nullable();
             $table->string('titulo');
             $table->string('subtitulo')->nullable();
             $table->string('edicao')->nullable();
