@@ -32,9 +32,10 @@ export const useEditorStore = defineStore("EditorStore", {
             this.editors[id].content.value = content;
         },
 
-        saveDocument(title){
+        saveDocument(title, template){
             const request = {
                 docTitle: title,
+                template: template,
                 content: this.editors
             };
             Inertia.post('/documents', request);
@@ -90,6 +91,10 @@ export const useEditorStore = defineStore("EditorStore", {
                 })
             });
             this.setEditor(editorClone);
+        },
+
+        exportPdf(id){
+            Inertia.get('/export/' + id);
         }
     }
 

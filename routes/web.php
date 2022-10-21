@@ -34,10 +34,11 @@ Route::get('/', function () {
 })->name('login-google');
 
 // Documento ------------------------------------------------------------------------------------
+Route::get('/novo_documento/{template}', [DocumentoController::class, 'novo_doc'])->middleware(['auth', 'verified']);
+
 Route::get('/newdoc', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
-
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
@@ -59,8 +60,8 @@ Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referenci
 
 require __DIR__.'/auth.php';
 
-// Route::post('/export/', [DocumentoController::class, 'exportPdf']);
-// require __DIR__.'/auth.php';
+Route::get('/export/{document}', [DocumentoController::class, 'exportPdf']);
+require __DIR__.'/auth.php';
 
 // Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
 // require __DIR__.'/auth.php';

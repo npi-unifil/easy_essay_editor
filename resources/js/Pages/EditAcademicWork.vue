@@ -19,7 +19,7 @@ import rnd from '../utils/generator.js';
 
 export default {
 
-    props: ['id','edit', 'document_name'],
+    props: ['id','edit', 'template', 'document_name'],
 
     data() {
         const editorStore = useEditorStore();
@@ -107,6 +107,10 @@ export default {
         saveDocument(){
             this.editorStore.updateDocument(this.dados.nome, this.id);
         },
+
+        exportPdf(){
+            this.editorStore.exportPdf(this.id);
+        }
 
     }
 }

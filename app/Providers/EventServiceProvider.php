@@ -6,6 +6,8 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use App\Events\PdfGenerated;
+use App\Listeners\SendPdfNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,10 @@ class EventServiceProvider extends ServiceProvider
             Registered::class => [
                 SendEmailVerificationNotification::class,
             ],
+
+            PdfGenerated::class => [
+                SendPdfNotification::class,
+            ]
     ];
 
     /**
@@ -31,7 +37,10 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        Event::listen(
+            PdfGenerated::class,
+            [SendPdfNotification::class, 'handle']
+        );
     }
 
     /**

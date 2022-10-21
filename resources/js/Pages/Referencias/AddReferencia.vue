@@ -56,7 +56,7 @@ export default {
 
     methods: {
         keypressed: function (event) {
-            if (this.nome.lenght === 0) return;
+            if (this.nome.length === 0) return;
             if (event.key == "Enter") {
                 this.adicionar_novo();
             }

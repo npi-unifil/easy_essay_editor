@@ -4,69 +4,99 @@ import { Head } from '@inertiajs/inertia-vue3';
 import { ref } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
-import { Link } from '@inertiajs/inertia-vue3'
+import { Link } from '@inertiajs/inertia-vue3';
+import { VueSidePanel } from 'vue3-side-panel';
 </script>
 
 <script>
 export default {
-    props: ['documents'],
+    props: ['documents', 'templates'],
+
+    components: {
+        VueSidePanel,
+    },
 
     methods: {
-        gerenciar(id){
+        gerenciar(id) {
             Inertia.get('/gerenciar/' + id);
         },
 
-        newDoc(){
-            Inertia.get('/newdoc')
+        set_template() {
+            this.isOpened = true;
+        },
+
+        newDoc(template) {
+            Inertia.get('/novo_documento/'+ template);
         }
 
+    },
+
+    data() {
+        return { isOpened: false };
     }
 
 }
 </script>
 
 <style>
+.card:hover {
+    cursor: pointer;
+}
 
-    .card:hover{
-        cursor: pointer;
-    }
+.card .card-title {
+    text-align: center;
+    font-weight: bold;
+}
 
-    .card .card-title{
-        text-align: center;
-        font-weight: bold;
-    }
+.card .btn {
+    height: 40px;
+    width: 100px;
+    text-align: center;
+}
 
-    .card .btn {
-        height: 40px;
+#new-doc {
+    padding: 40px 10px 0 0;
+}
+
+#new-doc-button {
+    height: 30px;
+    width: 180px;
+    border-radius: 5px;
+    color: bisque;
+    font-weight: bold;
+}
+
+#new-doc-button:hover {
+    color: rgba(34, 28, 23, 0.671);
+    cursor: pointer;
+}
+
+.templates{
+        display: flex;
+        justify-content: space-between;
+        width: 500px;
+        margin-top: 10px;
+        border-bottom: 1px solid black;
+}
+
+#botao-selecionar button{
+        color: white;
+        font-size: large;
+        font-weight: bolder;
         width: 100px;
-        text-align: center;
-    }
-
-    #new-doc {
-        padding: 40px 10px 0 0;
-    }
-
-    #new-doc-button {
         height: 30px;
-        width: 180px;
         border-radius: 5px;
-        color: bisque;
-        font-weight: bold;
-    }
-
-    #new-doc-button:hover {
-        color: rgba(34, 28, 23, 0.671);
-        cursor: pointer;
-    }
+}
 </style>
 
 <template>
+
     <Head title="Documentos" />
 
     <BreezeAuthenticatedLayout>
         <template #links>
             <div class="mt-4 ml-2">
-                <a id="new-doc-button" @click="newDoc">Novo Documento</a>
+                <a id="new-doc-button" @click="set_template">Novo Documento</a>
             </div>
         </template>
 
@@ -77,17 +107,19 @@ export default {
                         <div class="card-group">
                             <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
 
-                                    <div class="col-sm-6">
-                                            <div class="card" style="width: 13rem;" @click="gerenciar(doc.id)">
-                                                <form @submit.prevent="submit">
-                                                    <img class="card-img-top" src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000" alt="Card image cap">
-                                                    <div class="card-body">
-                                                            <h5 class="card-title">{{ doc.nome }}</h5>
-                                                    </div>
-                                                </form>
+                                <div class="col-sm-6">
+                                    <div class="card" style="width: 13rem;" @click="gerenciar(doc.id)">
+                                        <form @submit.prevent="submit">
+                                            <img class="card-img-top"
+                                                src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000"
+                                                alt="Card image cap">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ doc.nome }}</h5>
                                             </div>
-
+                                        </form>
                                     </div>
+
+                                </div>
 
                             </div>
                         </div>
@@ -96,7 +128,22 @@ export default {
             </div>
         </div>
 
+        <VueSidePanel v-model="isOpened">
+            <div style="height: 100%; background-color: white; width: 600px">
+                <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>
 
+                <div style="display: flex; justify-content: center;">
+                    <div class="templates" v-for="template in this.templates" :key="template.id">
+                        <p>{{template.nome}}</p>
+                        <div id="botao-selecionar">
+                            <button style="background-color: green;" @click="newDoc(template.id)">
+                                Selecionar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </VueSidePanel>
 
     </BreezeAuthenticatedLayout>
 

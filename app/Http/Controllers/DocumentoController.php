@@ -10,18 +10,27 @@ use App\Models\Componente;
 use App\Models\Referencia;
 use App\Models\Template;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\ComponenteController;
-use Spatie\Browsershot\Browsershot;
+use App\Events\PdfGenerated;
 
 class DocumentoController extends Controller
 {
 
 // Gerenciar Trabalho Acadêmico -------------------------------------------------------
+    public function novo_doc(Template $template){
+        return Inertia::render('Dashboard', [
+            'template' => $template->id
+        ]);
+    }
+
     public function index(){
         $user = Auth::user();
         $documents = Documento::where('users_id', '=', $user->id)->get();
+        $templates = Template::all();
         return Inertia::render('Documents',[
-            'documents' => $documents
+            'documents' => $documents,
+            'templates' => $templates
         ]);
     }
 
@@ -53,6 +62,7 @@ class DocumentoController extends Controller
         return Inertia::render('EditAcademicWork', [
             'id' => $document->id,
             'edit' => $editors,
+            'template' => $document->templates_id,
             'document_name' => $document_name
         ]);
     }
@@ -60,11 +70,13 @@ class DocumentoController extends Controller
     public function store(Request $request){
         $content = $request -> content;
         $nome = $request -> docTitle;
+        $template = $request -> template;
         $users_id = $request->user()->id;
 
         $document = Documento::create([
             'nome'=>$nome,
-            'users_id'=>$users_id
+            'users_id'=>$users_id,
+            'templates_id' => $template
         ]);
 
         foreach ($content as $id => $item) {
@@ -143,7 +155,6 @@ class DocumentoController extends Controller
         $document_id = $id->id;
         $document_name = $id->nome;
         $templates = Template::all();
-
         return Inertia::render('GerenciarTrabalho', [
             'id' => $document_id,
             'nome' => $document_name,
@@ -214,17 +225,21 @@ class DocumentoController extends Controller
 
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------
-    public function exportPdf(Request $request){
-        //dd($request);
+    public function exportPdf(Request $request, Documento $document){
         //dd(html_entity_decode($request->value));
-        Browsershot::html('<div>'.html_entity_decode($request->value).'</div>')
-        ->format('A4')
-        ->margins(20, 20, 20, 20)
-        ->footerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(9)
-        ->save(\storage_path().'/'.$request->nome.'.pdf');
+        // $teste = [];
+        // foreach($request->content as $key){
+        //     array_push($teste, $key['content']);
+        // }
 
-        return redirect()->route('documents');
+        // $result = '';
+        // foreach($teste as $value){
+        //     $result .= $value['value'];
+        // }
+
+        PdfGenerated::dispatch($document);
+
+        return redirect()->back();
     }
 
     public function exportOnUpdate(Request $request){

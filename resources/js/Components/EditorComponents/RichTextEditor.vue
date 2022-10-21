@@ -64,6 +64,8 @@ import { useEditorStore } from '@/utils/EditorStore';
 
 export default {
 
+    props: ['template'],
+
     mounted() {
         const id = 'abcdefg';
         const initialEditor = {
@@ -78,7 +80,7 @@ export default {
 
         }
         this.editorStore.fill(id, initialEditor);
-        console.log(this.editorStore.editors);
+        console.log(this.template);
     },
 
     data() {
@@ -163,7 +165,7 @@ export default {
         },
 
         saveDocument(){
-            this.editorStore.saveDocument(this.title);
+            this.editorStore.saveDocument(this.title, this.template);
         }
     }
 
