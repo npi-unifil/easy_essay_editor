@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use App\Models\Documento;
+use App\Models\User;
 use App\Models\Componente;
 use App\Models\Referencia;
 use App\Models\Template;
@@ -236,7 +237,6 @@ class DocumentoController extends Controller
         // foreach($teste as $value){
         //     $result .= $value['value'];
         // }
-
         PdfGenerated::dispatch($document);
 
         return redirect()->back();

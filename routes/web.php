@@ -60,7 +60,7 @@ Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referenci
 
 require __DIR__.'/auth.php';
 
-Route::get('/export/{document}', [DocumentoController::class, 'exportPdf']);
+Route::get('/export/{document}', [DocumentoController::class, 'exportPdf'])->middleware(['auth', 'verified']);
 require __DIR__.'/auth.php';
 
 // Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
