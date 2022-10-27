@@ -9,6 +9,8 @@ use Spatie\Browsershot\Browsershot;
 use App\Models\Documento;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SendPdfNotification implements ShouldQueue
 {
@@ -36,7 +38,7 @@ class SendPdfNotification implements ShouldQueue
         $examinador1 = '';
         foreach($event->document->banca as $item){
             array_push($banca, $item['nome']);
-        }
+        };
         $template = view('template',  [
             'template' => $this,
             'curso' => $event->document->curso,
@@ -49,11 +51,15 @@ class SendPdfNotification implements ShouldQueue
             'examinador1' => $banca[0],
             'examinador2' => $banca[1]
         ])->render();
-        Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
         ->margins(20, 20, 20, 20)
         ->footerHtml('<span class="pageNumber"></span>')
         ->initialPageNumber(9)
-        ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
+        ->base64pdf();
+        $nomeDoArquivo = Str::slug($event->document->nome, '-');
+        Storage::disk('s3')->put($nomeDoArquivo.'.pdf', base64_decode($pdf_created));
+
+        //->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
     }
 }

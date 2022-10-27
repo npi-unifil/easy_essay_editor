@@ -82,7 +82,7 @@ export default {
             this.editedTitle = index;
         },
 
-        add_title() {
+        openSideModal() {
             this.isOpened = true;
         },
 
@@ -181,7 +181,7 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
 
                         <div>
-                            <div @click="add_title()">
+                            <div class="cursor-pointer" @click="openSideModal()">
                                 <h1 v-if="this.dados.nome == ''">
                                     Adicione um titulo...
                                 </h1>
