@@ -40,6 +40,10 @@ export default {
             this.isOpened = true;
         },
 
+        exportPdf() {
+            this.editorStore.exportPdf(this.id);
+        },
+
         showModal() {
             this.isModalVisible = true;
         },
@@ -79,7 +83,7 @@ export default {
 
 .gerenciar-botoes button {
     width: 200px;
-    height: 50px;
+    height: 60px;
     margin-bottom: 20px;
     border-radius: 10px;
     font-size: large;
@@ -159,6 +163,9 @@ export default {
                                 </button>
                                 <button style="background-color: blue;" @click="gerenciar_referencias">
                                     Gerenciar Referencias
+                                </button>
+                                <button style="background-color: orange;" @click="exportPdf">
+                                    Gerar Trabalho Formatado
                                 </button>
                                 <button style="background-color: red;" @click="showModal">
                                     Deletar Documento

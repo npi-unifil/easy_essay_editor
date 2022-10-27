@@ -15,10 +15,18 @@ class Documento extends Model
 
     protected $fillable = [
         'nome',
+        'orientador',
+        'cidade',
+        'ano',
+        'curso',
+        'banca',
         'users_id',
         'templates_id'
     ];
 
+    protected $casts = [
+        'banca' => 'array'
+    ];
 
     public function user(): BelongsTo
     {

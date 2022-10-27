@@ -13,30 +13,37 @@ import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
 import ParagrafoImagem from '../Components/EditorComponents/ParagrafoImagem.vue';
 import rnd from '../utils/generator.js';
+import { VueSidePanel } from 'vue3-side-panel';
 </script>
 
 <script>
 
 export default {
 
-    props: ['id','edit', 'template', 'document_name'],
+    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name'],
 
     data() {
         const editorStore = useEditorStore();
         const dados = {
             nome: this.document_name,
-            value: this.edit.conteudo
+            value: this.edit.conteudo,
+            orientador: this.orientador,
+            cidade: this.cidade,
+            ano: this.ano,
+            curso: this.curso,
+            banca: this.banca,
         }
         const modules = {
             name: 'blotFormatter',
             module: BlotFormatter
         }
-        return {isModalVisible: false, dados, editorStore, modules }
+        return { isModalVisible: false, nome_banca: '', isOpened: false, dados, editorStore, modules }
     },
 
     components: {
         QuillEditor,
-        Modal
+        Modal,
+        VueSidePanel
     },
 
     mounted() {
@@ -46,10 +53,39 @@ export default {
     },
 
     methods: {
-        teste() {
-            console.log(this.editorStore.editors);
-            this.editorStore.setExistingContent();
+        keypressed: function (event) {
+            if (this.nome_banca.length === 0) return;
+            if (event.key == "Enter") {
+                this.adicionar_novo();
+            }
         },
+
+        adicionar_novo() {
+            if (this.nome_banca.length === 0) return;
+            if (this.editedTitle === null) {
+                this.banca.push({
+                    nome: this.nome_banca
+                })
+            } else {
+                this.banca[this.editedTitle].nome = this.nome_banca;
+                this.editedTitle = null;
+            }
+            this.nome_banca = "";
+        },
+
+        deletarBanca(index) {
+            this.banca.splice(index, 1);
+        },
+
+        editar_nome(index) {
+            this.nome_banca = this.banca[index].nome;
+            this.editedTitle = index;
+        },
+
+        add_title() {
+            this.isOpened = true;
+        },
+
         showModal() {
             this.isModalVisible = true;
         },
@@ -104,13 +140,17 @@ export default {
 
         },
 
-        saveDocument(){
-            this.editorStore.updateDocument(this.dados.nome, this.id);
+        saveDocument() {
+            this.editorStore.updateDocument(
+                this.dados.nome,
+                this.id,
+                this.dados.orientador,
+                this.dados.cidade,
+                this.dados.ano,
+                this.dados.curso,
+                this.dados.banca
+            );
         },
-
-        exportPdf(){
-            this.editorStore.exportPdf(this.id);
-        }
 
     }
 }
@@ -132,8 +172,6 @@ export default {
             </h2>
             <div>
                 <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
-                <button @click="exportPdf"
-                    class="bg-orange-400 ml-1.5 rounded w-28 h-8 font-bold text-slate-100">Exportar PDF</button>
             </div>
         </div>
 
@@ -143,8 +181,14 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
 
                         <div>
-                            <textarea name="title" id="title" v-model="this.dados.nome"
-                                placeholder="Titulo do documento"></textarea>
+                            <div @click="add_title()">
+                                <h1 v-if="this.dados.nome == ''">
+                                    Adicione um titulo...
+                                </h1>
+                                <h1 v-if="this.dados.nome != ''">
+                                    {{this.dados.nome}}
+                                </h1>
+                            </div>
 
                             <table class="table table-bordered">
                                 <tbody>
@@ -193,6 +237,62 @@ export default {
                 </div>
             </div>
         </div>
+
+
+        <VueSidePanel v-model="isOpened">
+            <div style="height: 100%; background-color: white; width: 600px">
+                <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+
+                <div style="display: block; justify-content: center;">
+
+                </div>
+
+
+                <div style="display: block; justify-content: center;">
+                    <div class="autores">
+                        <div class="add-autor">
+                            <div style="margin-bottom: 10px;">
+                                <label for="titulo">Titulo: </label>
+                                <input v-model="this.dados.nome" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="orientador">Orientador: </label>
+                                <input v-model="this.dados.orientador" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="londrina">Cidade: </label>
+                                <input v-model="this.dados.cidade" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="ano">Ano: </label>
+                                <input v-model="this.dados.ano" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="curso">Curso: </label>
+                                <input v-model="this.dados.curso" />
+                            </div>
+                            <label for="nome">Adicionar examinador da Banca(se houver): </label>
+                            <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                            <button @click="adicionar_novo"
+                                style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
+                        </div>
+                        <div v-for="nome, index  in this.dados.banca" :key="index">
+                            <div class="nome-autor">
+                                <p>{{nome.nome}}</p>
+                                <div style="display:flex; width: 170px; justify-content: space-between;">
+                                    <button @click="editar_nome(index)" style="background-color: orange;">
+                                        Editar
+                                    </button>
+                                    <button style="background-color: red;" @click="deletarBanca(index)">
+                                        Deletar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </VueSidePanel>
 
     </BreezeAuthenticatedLayout>
 
@@ -279,13 +379,13 @@ export default {
     color: blue;
 }
 
-.modal-buttons button:nth-child(2)  {
+.modal-buttons button:nth-child(2) {
     background-color: rgb(83, 83, 226);
     color: white;
     border: none;
 }
 
-.modal-buttons button:nth-child(2):hover  {
+.modal-buttons button:nth-child(2):hover {
     background-color: rgb(112, 112, 221);
 }
 
@@ -305,5 +405,37 @@ export default {
     margin-bottom: 20px;
 }
 
+.autores {
+    display: block;
+    margin: 20px;
+    width: 500px;
+    border-bottom: 1px solid black;
+}
 
+.autores input {
+    margin-left: 10px;
+}
+
+.add-autor {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.add-autor input {
+    border-bottom: 1px solid black;
+    width: 350px;
+}
+
+.nome-autor {
+    display: flex;
+    justify-content: space-between;
+}
+
+.nome-autor button {
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    width: 80px;
+    height: 30px;
+}
 </style>

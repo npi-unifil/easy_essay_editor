@@ -53,9 +53,136 @@
             {{$cidade}}
         </span>
     </div>
-    <div style="text-align: center; justify-content:center;">
+    <div style="text-align: center; justify-content:center; margin-bottom: 40px;">
         <span >
             {{$ano}}
         </span>
+    </div>
+</div>
+ {{-- Contra capa --}}
+ <div>
+
+    <div style="text-align: center; justify-content:center; margin-bottom: 160px;">
+        <span >
+            {{$user}}
+        </span>
+    </div>
+
+    <div style="text-align: center; justify-content:center;">
+        <span >
+            {{$title}}
+        </span>
+    </div>
+    <div style="text-align: center; justify-content:center;">
+        <span>{{$subtitulo}}</span>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom: 500px; margin-top: 80px;">
+        <div style=" width: 285px; text-align: justify;">
+            <span>Trabalho de conclusão de curso apresentado ao Centro Universitário
+                Filadélfia como parte dos requisitos para obtenção de graduação
+                em {{$curso}}. Orientador: {{$orientador}}</span>
+        </div>
+    </div>
+
+    <div style="text-align: center; justify-content:center; margin-bottom: 5px;">
+        <span >
+            {{$cidade}}
+        </span>
+    </div>
+    <div style="text-align: center; justify-content:center; margin-bottom: 80px;">
+        <span >
+            {{$ano}}
+        </span>
+    </div>
+</div>
+{{-- Folha de Aprovação --}}
+<div>
+
+    <div style="text-align: center; justify-content:center; margin-bottom: 160px;">
+        <span >
+            {{$user}}
+        </span>
+    </div>
+
+    <div style="text-align: center; justify-content:center;">
+        <span >
+            {{$title}}
+        </span>
+    </div>
+    <div style="text-align: center; justify-content:center;">
+        <span>{{$subtitulo}}</span>
+    </div>
+
+    <div style="justify-content:center; text-align:center;  margin-top: 80px;">
+        <span style=" width: 280px; text-align:center;">
+                Trabalho de conclusão de curso apresentado à banca examinadora do curso de
+                {{$curso}} do Centro Universitário Filadélfia de Londrina em
+                cumprimento a requisito parcial para obtenção do título de Bacharel em {{$curso}}.
+        </span>
+    </div>
+    <div style="margin-top: 80px; margin-bottom: 250px; justify-content:center; text-align: center;">
+        <div style="display: block;">
+            <span>APROVADO PELA COMISSÃO EXAMINADORA</span><br>
+            <span style="text-transform: uppercase;"> EM {{$cidade}}, {{$ano}}.</span>
+        </div>
+    </div>
+
+    <div>
+        <div style="text-align: center; display: block; margin-bottom: 40px;">
+            <div style="margin-left: 30%; width: 250px;">
+                <div style="border-top: 1px solid black;"></div>
+            </div>
+            <div style="margin-left: 34%; margin-top: 10px; width: 200px;">
+                <span>{{$orientador}} - Orientador</span>
+            </div>
+        </div>
+        <div style="text-align: center; display: block; margin-bottom: 40px;">
+            <div style="margin-left: 30%; width: 250px;">
+                <div style="border-top: 1px solid black;"></div>
+            </div>
+            <div style="margin-left: 34%; margin-top: 10px; width: 200px;">
+                <span>{{$examinador1}} - Examinador</span>
+            </div>
+        </div>
+        <div style="text-align: center; display: block; margin-bottom: 40px;">
+            <div style="margin-left: 30%; width: 250px;">
+                <div style="border-top: 1px solid black;"></div>
+            </div>
+            <div style="margin-left: 34%; margin-top: 10px; width: 200px;">
+                <span>{{$examinador2}} - Examinador</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- RESUMO --}}
+
+<div style="margin-bottom: 830px;">
+
+    <div style="text-align:center; margin-bottom: 20px; margin-top: 80px;">
+        <span>RESUMO</span>
+    </div>
+
+    <div style="text-align:justify; justify-content: center; margin-bottom: 5px;">
+        Lorem, ipsum dolor sit amet consectetur adipisicing elit.
+        Fuga nostrum mollitia dolorem consequuntur eveniet non nihil in quos,
+        praesentium ea nisi iste dolore eius ipsam facere doloremque aperiam debitis cum.
+        <p>PALAVRAS-CHAVE:</p>
+    </div>
+</div>
+
+{{-- ABSTRACT --}}
+<div>
+
+    <div style="text-align:center; margin-bottom: 20px; margin-top: 80px;">
+        <span>ABSTRACT</span>
+    </div>
+
+    <div style="text-align:justify; justify-content: center; margin-bottom: 5px;">
+        Lorem, ipsum dolor sit amet consectetur adipisicing elit.
+        Fuga nostrum mollitia dolorem consequuntur eveniet non nihil in quos,
+        praesentium ea nisi iste dolore eius ipsam facere doloremque aperiam debitis cum.
+        <p>keywords:</p>
     </div>
 </div>

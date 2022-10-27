@@ -30,19 +30,24 @@ class SendPdfNotification implements ShouldQueue
      */
     public function handle(PdfGenerated $event)
     {
-        // $documento = Documento::class;
-        // $title = $event->document->nome;
-        // $user = User::class;
         $uid = $event->document->users_id;
         $user = User::findOrFail($uid);
+        $banca = [];
+        $examinador1 = '';
+        foreach($event->document->banca as $item){
+            array_push($banca, $item['nome']);
+        }
         $template = view('template',  [
             'template' => $this,
-            'curso' => 'Engenharia de Software',
+            'curso' => $event->document->curso,
             'user' => $user->name,
+            'orientador' => $event->document->orientador,
             'title' => $event->document->nome,
             'subtitulo' => '',
-            'cidade' => 'Londrina',
-            'ano' => 2022
+            'cidade' => $event->document->cidade,
+            'ano' => $event->document->ano,
+            'examinador1' => $banca[0],
+            'examinador2' => $banca[1]
         ])->render();
         Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')

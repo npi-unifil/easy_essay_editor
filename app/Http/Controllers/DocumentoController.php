@@ -64,20 +64,27 @@ class DocumentoController extends Controller
             'id' => $document->id,
             'edit' => $editors,
             'template' => $document->templates_id,
-            'document_name' => $document_name
+            'document_name' => $document_name,
+            'orientador' => $document->orientador,
+            'cidade' => $document->cidade,
+            'ano' => $document->ano,
+            'curso' => $document->curso,
+            'banca' => $document->banca
         ]);
     }
 
     public function store(Request $request){
         $content = $request -> content;
-        $nome = $request -> docTitle;
-        $template = $request -> template;
-        $users_id = $request->user()->id;
 
         $document = Documento::create([
-            'nome'=>$nome,
-            'users_id'=>$users_id,
-            'templates_id' => $template
+            'nome'=> $request -> docTitle,
+            'orientador' => $request -> orientador,
+            'cidade' => $request -> cidade,
+            'ano' => $request -> ano,
+            'curso' => $request -> curso,
+            'banca' => $request -> banca,
+            'users_id'=> $request->user()->id,
+            'templates_id' => $request -> template
         ]);
 
         foreach ($content as $id => $item) {
@@ -108,7 +115,15 @@ class DocumentoController extends Controller
 
         $document = Documento::where('id', $document_id)->first();
         if($document != null){
-            $document->update(['nome'=>$document_title]);
+            $document->update([
+                'nome'=>$document_title,
+                'orientador' => $request -> orientador,
+                'cidade' => $request -> cidade,
+                'ano' => $request -> ano,
+                'curso' => $request -> curso,
+                'banca' => $request -> banca,
+                'templates_id' => $request -> template
+            ]);
         }
 
         foreach ($conteudo as $id => $item) {

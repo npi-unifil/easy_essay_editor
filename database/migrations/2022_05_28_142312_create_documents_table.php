@@ -16,6 +16,11 @@ return new class extends Migration
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
             $table->string('nome');
+            $table->string('orientador');
+            $table->string('cidade');
+            $table->integer('ano');
+            $table->string('curso');
+            $table->text('banca')->nullable();
             $table->unsignedBigInteger('users_id');
             $table->foreign('users_id')->references('id')->on('users');
             $table->timestamps();

@@ -1,6 +1,13 @@
 <template>
     <div>
-        <textarea name="title" id="title" v-model="title" placeholder="Titulo do documento"></textarea>
+        <div @click="add_title">
+            <h1 v-if="this.title == ''">
+                <p>Adicione um titulo...</p>
+            </h1>
+            <h1 v-if="this.title != ''">
+                <p>{{this.title}}</p>
+            </h1>
+        </div>
 
         <table class="table table-bordered">
             <tbody>
@@ -46,6 +53,61 @@
 
     </div>
 
+    <VueSidePanel v-model="isOpened">
+        <div style="height: 100%; background-color: white; width: 600px">
+            <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+
+            <div style="display: block; justify-content: center;">
+
+            </div>
+
+
+            <div style="display: block; justify-content: center;">
+                <div class="autores">
+                    <div class="add-autor">
+                        <div style="margin-bottom: 10px;">
+                            <label for="titulo">Titulo: </label>
+                            <input v-model="this.title" />
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label for="orientador">Orientador: </label>
+                            <input v-model="this.orientador" />
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label for="londrina">Cidade: </label>
+                            <input v-model="this.cidade" />
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label for="ano">Ano: </label>
+                            <input v-model="this.ano" />
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label for="curso">Curso: </label>
+                            <input v-model="this.curso" />
+                        </div>
+                        <label for="nome">Adicionar examinador da Banca(se houver): </label>
+                        <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                        <button @click="adicionar_novo"
+                            style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
+                    </div>
+                    <div v-for="nome, index  in this.banca" :key="index">
+                        <div class="nome-autor">
+                            <p>{{nome.nome}}</p>
+                            <div style="display:flex; width: 170px; justify-content: space-between;">
+                                <button @click="editar_nome(index)" style="background-color: orange;">
+                                    Editar
+                                </button>
+                                <button style="background-color: red;" @click="deletarBanca(index)">
+                                    Deletar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </VueSidePanel>
+
 </template>
 
 <script>
@@ -60,7 +122,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import rnd from '../../utils/generator.js';
 import { useEditorStore } from '@/utils/EditorStore';
-
+import { VueSidePanel } from 'vue3-side-panel';
 
 export default {
 
@@ -80,21 +142,29 @@ export default {
 
         }
         this.editorStore.fill(id, initialEditor);
-        console.log(this.template);
     },
 
     data() {
         return {
             isModalVisible: false,
             title: '',
+            editedTitle: null,
+            orientador: '',
+            cidade: '',
+            ano: null,
+            curso: '',
+            nome_banca: '',
+            banca: [],
             editorOption: '',
             value: 'Digite um título',
+            isOpened: false
         }
     },
 
     components: {
         QuillEditor,
-        Modal
+        Modal,
+        VueSidePanel
     },
 
     setup: () => {
@@ -109,6 +179,38 @@ export default {
     },
 
     methods: {
+        keypressed: function (event) {
+            if (this.nome_banca.length === 0) return;
+            if (event.key == "Enter") {
+                this.adicionar_novo();
+            }
+        },
+
+        adicionar_novo() {
+            if (this.nome_banca.length === 0) return;
+            if (this.editedTitle === null) {
+                this.banca.push({
+                    nome: this.nome_banca
+                })
+            } else {
+                this.banca[this.editedTitle].nome = this.nome_banca;
+                this.editedTitle = null;
+            }
+            this.nome_banca = "";
+        },
+
+        deletarBanca(index) {
+            this.banca.splice(index, 1);
+        },
+
+        editar_nome(index) {
+            this.nome_banca = this.banca[index].nome;
+            this.editedTitle = index;
+        },
+
+        add_title() {
+            this.isOpened = true;
+        },
 
         showModal() {
             this.isModalVisible = true;
@@ -164,8 +266,16 @@ export default {
 
         },
 
-        saveDocument(){
-            this.editorStore.saveDocument(this.title, this.template);
+        saveDocument() {
+            this.editorStore.saveDocument(
+                this.title,
+                this.template,
+                this.orientador,
+                this.cidade,
+                this.ano,
+                this.curso,
+                this.banca
+            );
         }
     }
 
@@ -174,7 +284,6 @@ export default {
 </script>
 
 <style>
-
 .btn-add {
     color: white;
     width: 150px;
@@ -229,13 +338,13 @@ export default {
     color: blue;
 }
 
-.modal-buttons button:nth-child(2)  {
+.modal-buttons button:nth-child(2) {
     background-color: rgb(83, 83, 226);
     color: white;
     border: none;
 }
 
-.modal-buttons button:nth-child(2):hover  {
+.modal-buttons button:nth-child(2):hover {
     background-color: rgb(112, 112, 221);
 }
 
@@ -260,5 +369,39 @@ export default {
     height: 30px;
     width: 80px;
     border-radius: 5px;
+}
+
+.autores {
+    display: block;
+    margin: 20px;
+    width: 500px;
+    border-bottom: 1px solid black;
+}
+
+.autores input {
+    margin-left: 10px;
+}
+
+.add-autor {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.add-autor input {
+    border-bottom: 1px solid black;
+    width: 350px;
+}
+
+.nome-autor {
+    display: flex;
+    justify-content: space-between;
+}
+
+.nome-autor button {
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    width: 80px;
+    height: 30px;
 }
 </style>
