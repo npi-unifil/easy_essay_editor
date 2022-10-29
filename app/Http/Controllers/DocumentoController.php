@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\ComponenteController;
 use App\Events\PdfGenerated;
+use Spatie\Browsershot\Browsershot;
 
 class DocumentoController extends Controller
 {

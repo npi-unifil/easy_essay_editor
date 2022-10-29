@@ -172,17 +172,10 @@
     </div>
 </div>
 
-{{-- ABSTRACT --}}
+{{-- DESENVOLVIMENTO --}}
 <div>
 
-    <div style="text-align:center; margin-bottom: 20px; margin-top: 80px;">
-        <span>ABSTRACT</span>
-    </div>
-
-    <div style="text-align:justify; justify-content: center; margin-bottom: 5px;">
-        Lorem, ipsum dolor sit amet consectetur adipisicing elit.
-        Fuga nostrum mollitia dolorem consequuntur eveniet non nihil in quos,
-        praesentium ea nisi iste dolore eius ipsam facere doloremque aperiam debitis cum.
-        <p>keywords:</p>
-    </div>
+    @foreach ($conteudo as $content)
+        {{$content}}
+    @endforeach
 </div>
