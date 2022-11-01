@@ -23,6 +23,7 @@ class Referencia extends Model
         'editora',
         'ano',
         'pagina',
+        'nomeDoSite',
         'site',
         'acessado',
         'document_id'

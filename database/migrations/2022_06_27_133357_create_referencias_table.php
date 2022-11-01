@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('editora')->nullable();
             $table->string('ano')->nullable();
             $table->string('pagina')->nullable();
+            $table->string('nomeDoSite')->nullable();
             $table->string('site')->nullable();
             $table->date('acessado')->nullable();
             $table->unsignedBigInteger('document_id');

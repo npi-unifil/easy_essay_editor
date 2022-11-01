@@ -8,6 +8,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Spatie\Browsershot\Browsershot;
 use App\Models\Documento;
 use App\Models\User;
+use DateTime;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -67,16 +68,117 @@ implements ShouldQueue
         return $result;
     }
 
+    public function formatReferences($references){
+        $result = [];
+        $mes = array('', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro');
+        foreach($references as $reference){
+            if($reference->nome_autor != null){
+                $autor = explode(" ", $reference->nome_autor[0]['nome']);
+
+            }
+            if($reference->site != null){
+                $acessado = explode("-", $reference->acessado);
+                if(sizeof($reference->nome_autor) > 1){
+                    if($reference->subtitulo == null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor[count($autor)-1]}</span>, {$autor[0]}.
+                                            {$reference->titulo}.
+                                            {$reference->nomeDoSite}, {$reference->ano}.
+                                            Disponível em: {$reference->site}.
+                                            Acesso em: {$reference->acessado[2]} de {$mes[$acessado[1]]} de {$acessado[0]}.</p></div>
+                                            END
+                        );
+                    }
+                }
+                if($reference->nome_autor == null){
+                    if($reference->subtitulo == null){
+                        array_push($result, <<<END
+                                            <div><p>{$reference->nomeDoSite}. {$reference->titulo}. {$reference->nomeDoSite}, {$reference->ano}.
+                                            Disponível em: {$reference->site}.
+                                            Acesso em: {$reference->acessado[2]} de {$mes[$acessado[1]]} de {$acessado[0]}.</p></div>
+                                            END
+                        );
+                    }
+                }
+                if(sizeof($reference->nome_autor) > 1){
+                    if($reference->subtitulo != null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor[count($autor)-1]}</span>, {$autor[0]}.
+                                            {$reference->titulo}: {$reference->subtitulo}.
+                                            {$reference->nomeDoSite}, {$reference->ano}.
+                                            Disponível em: {$reference->site}.
+                                            Acesso em: {$reference->acessado[2]} de {$mes[$acessado[1]]} de {$acessado[0]}.</p></div>
+                                            END
+                        );
+                    }
+                }
+                if($reference->nome_autor == null){
+                    if($reference->subtitulo != null){
+                        array_push($result, <<<END
+                                            <div><p>{$reference->nomeDoSite}. {$reference->titulo}: {$reference->subtitulo}. {$reference->nomeDoSite}, {$reference->ano}.
+                                            Disponível em: {$reference->site}.
+                                            Acesso em: {$reference->acessado[2]} de {$mes[$acessado[1]]} de {$acessado[0]}.</p></div>
+                                            END
+                        );
+                    }
+                }
+            }else if($reference->site == null){
+                if(sizeof($reference->nome_autor) >= 3){
+                    $autor1 = explode(" ", $reference->nome_autor[0]['nome']);
+                    $autor2 = explode(" ", $reference->nome_autor[1]['nome']);
+                    $autor3 = explode(" ", $reference->nome_autor[2]['nome']);
+                }
+                if(sizeof($reference->nome_autor) < 4){
+                    if($reference->subtitulo == null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                            <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                            <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                            {$reference->titulo}.
+                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                            END
+                        );
+                    }
+                    if($reference->subtitulo != null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                            <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                            <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                            {$reference->titulo}: {$reference->subtitulo}.
+                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                            END
+                        );
+                    }
+                }else if(sizeof($reference->nome_autor) > 3){
+                    if($reference->subtitulo == null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                            {$reference->titulo}.
+                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                            END
+                        );
+                    }
+                    if($reference->subtitulo != null){
+                        array_push($result, <<<END
+                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                            {$reference->titulo}: {$reference->subtitulo}.
+                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                            END
+                        );
+                    }
+                }
+
+            }
+
+        }
+        return $result;
+    }
+
     public function handle(PdfGenerated $event)
     {
-        $conteudoDoEditor = [];
         $sortedContent = SendPdfNotification::sortEditorContent($event->document->componentes);
         $sortedContent = SendPdfNotification::getContent($sortedContent);
-        // for($i = 0; $i < count($event->document->componentes); $i++){
-        //     array_push($conteudoDoEditor, $event->document->componentes[$i]->conteudo);
-        // };
-
-        //$conteudoFormatado = SendPdfNotification::formatContent($sortedContent);
+        $references = SendPdfNotification::formatReferences($event->document->referencias);
         $uid = $event->document->users_id;
         $user = User::findOrFail($uid);
         $banca = [];
@@ -94,7 +196,8 @@ implements ShouldQueue
             'ano' => $event->document->ano,
             'examinador1' => $banca[0],
             'examinador2' => $banca[1],
-            'conteudo' => $sortedContent
+            'conteudo' => $sortedContent,
+            'referencias' => $references
         ])->render();
         //$pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         Browsershot::html('<div>'.html_entity_decode($template).'</div>')

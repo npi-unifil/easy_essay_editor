@@ -13,6 +13,7 @@ import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
 import ParagrafoImagem from '../Components/EditorComponents/ParagrafoImagem.vue';
 import rnd from '../utils/generator.js';
+import SideModal from '../Components/EditorComponents/SideModal.vue';
 import { VueSidePanel } from 'vue3-side-panel';
 </script>
 
@@ -43,7 +44,7 @@ export default {
     components: {
         QuillEditor,
         Modal,
-        VueSidePanel
+        SideModal
     },
 
     mounted() {
@@ -84,6 +85,10 @@ export default {
 
         openSideModal() {
             this.isOpened = true;
+        },
+
+        closeSideModal(){
+            this.isOpened = false;
         },
 
         showModal() {
@@ -239,60 +244,62 @@ export default {
         </div>
 
 
-        <VueSidePanel v-model="isOpened">
-            <div style="height: 100%; background-color: white; width: 600px">
-                <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+        <SideModal v-show="isOpened" @close="closeSideModal">
+            <template v-slot:body>
+                <div style="height: 100%; background-color: white; width: 600px">
+                    <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
 
-                <div style="display: block; justify-content: center;">
+                    <div style="display: block; justify-content: center;">
 
-                </div>
+                    </div>
 
 
-                <div style="display: block; justify-content: center;">
-                    <div class="autores">
-                        <div class="add-autor">
-                            <div style="margin-bottom: 10px;">
-                                <label for="titulo">Titulo: </label>
-                                <input v-model="this.dados.nome" />
+                    <div style="display: block; justify-content: center;">
+                        <div class="autores">
+                            <div class="add-autor">
+                                <div style="margin-bottom: 10px;">
+                                    <label for="titulo">Titulo: </label>
+                                    <input v-model="this.dados.nome" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="orientador">Orientador: </label>
+                                    <input v-model="this.dados.orientador" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="londrina">Cidade: </label>
+                                    <input v-model="this.dados.cidade" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="ano">Ano: </label>
+                                    <input v-model="this.dados.ano" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="curso">Curso: </label>
+                                    <input v-model="this.dados.curso" />
+                                </div>
+                                <label for="nome">Adicionar examinador da Banca(se houver): </label>
+                                <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                                <button @click="adicionar_novo"
+                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
                             </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="orientador">Orientador: </label>
-                                <input v-model="this.dados.orientador" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="londrina">Cidade: </label>
-                                <input v-model="this.dados.cidade" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="ano">Ano: </label>
-                                <input v-model="this.dados.ano" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="curso">Curso: </label>
-                                <input v-model="this.dados.curso" />
-                            </div>
-                            <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                            <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                            <button @click="adicionar_novo"
-                                style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
-                        </div>
-                        <div v-for="nome, index  in this.dados.banca" :key="index">
-                            <div class="nome-autor">
-                                <p>{{nome.nome}}</p>
-                                <div style="display:flex; width: 170px; justify-content: space-between;">
-                                    <button @click="editar_nome(index)" style="background-color: orange;">
-                                        Editar
-                                    </button>
-                                    <button style="background-color: red;" @click="deletarBanca(index)">
-                                        Deletar
-                                    </button>
+                            <div v-for="nome, index  in this.dados.banca" :key="index">
+                                <div class="nome-autor">
+                                    <p>{{nome.nome}}</p>
+                                    <div style="display:flex; width: 170px; justify-content: space-between;">
+                                        <button @click="editar_nome(index)" style="background-color: orange;">
+                                            Editar
+                                        </button>
+                                        <button style="background-color: red;" @click="deletarBanca(index)">
+                                            Deletar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </VueSidePanel>
+            </template>
+        </SideModal>
 
     </BreezeAuthenticatedLayout>
 

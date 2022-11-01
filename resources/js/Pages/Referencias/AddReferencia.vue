@@ -24,6 +24,7 @@ export default {
         'ano',
         'pagina',
         'site',
+        'nomeDoSite',
         'acessado',
     ],
 
@@ -48,6 +49,7 @@ export default {
             ano: this.ano,
             pagina: this.pagina,
             site: this.site,
+            nomeDoSite: this.nomeDoSite,
             acessado: this.acessado,
         }
         return { isOpened: false, referencia, nome, editedNome };
@@ -231,6 +233,10 @@ export default {
                             <div>
                                 <p>Site:</p>
                                 <input v-model=referencia.site />
+                            </div>
+                            <div>
+                                <p>Nome do Site:</p>
+                                <input v-model=referencia.nomeDoSite />
                             </div>
                             <div>
                                 <p>Data de acesso:</p>

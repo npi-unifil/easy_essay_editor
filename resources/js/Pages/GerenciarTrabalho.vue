@@ -7,7 +7,7 @@ import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import { useEditorStore } from '@/utils/EditorStore';
 import Modal from '../Components/EditorComponents/Modal.vue';
-import {VueSidePanel} from 'vue3-side-panel';
+import SideModal from '../Components/EditorComponents/SideModal.vue'
 import 'vue3-side-panel/dist/vue3-side-panel.css';
 </script>
 
@@ -17,7 +17,7 @@ export default {
     props: ['id', 'nome', 'templates'],
 
     components: {
-        VueSidePanel,
+        SideModal,
         Modal
     },
 
@@ -36,8 +36,12 @@ export default {
             Inertia.get('/referencias/' + this.id);
         },
 
-        mudar_template() {
+        openSideModal() {
             this.isOpened = true;
+        },
+
+        closeSideModal(){
+            this.isOpened = false;
         },
 
         exportPdf() {
@@ -155,7 +159,7 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="conteudo-corpo">
                             <div class="gerenciar-botoes">
-                                <button style="background-color: pink;" @click="mudar_template">
+                                <button style="background-color: pink;" @click="openSideModal">
                                     Mudar Template
                                 </button>
                                 <button style="background-color: green;" @click="gerenciar_doc">
@@ -208,22 +212,24 @@ export default {
                             </template>
                         </Modal>
 
-                        <VueSidePanel v-model="isOpened">
-                            <div style="height: 100%; background-color: white; width: 600px">
-                                <h1 style="text-align: center; margin-top: 23px;">Templates</h1>
+                        <SideModal v-show="isOpened" @close="closeSideModal">
+                            <template v-slot:body>
+                                <div style="height: 100%; background-color: white; width: 600px">
+                                    <h1 style="text-align: center; margin-top: 23px;">Templates</h1>
 
-                                <div style="display: flex; justify-content: center;">
-                                    <div class="templates" v-for="template in this.templates" :key="template.id">
-                                        <p>{{template.nome}}</p>
-                                        <div id="botao-selecionar">
-                                            <button style="background-color: green;">
-                                                Selecionar
-                                            </button>
+                                    <div style="display: flex; justify-content: center;">
+                                        <div class="templates" v-for="template in this.templates" :key="template.id">
+                                            <p>{{template.nome}}</p>
+                                            <div id="botao-selecionar">
+                                                <button style="background-color: green;">
+                                                    Selecionar
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </VueSidePanel>
+                            </template>
+                        </SideModal>
 
                     </div>
                 </div>

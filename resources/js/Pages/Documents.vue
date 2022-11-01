@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
-import { VueSidePanel } from 'vue3-side-panel';
+import SideModal from '../Components/EditorComponents/SideModal.vue';
 </script>
 
 <script>
@@ -13,7 +13,7 @@ export default {
     props: ['documents', 'templates'],
 
     components: {
-        VueSidePanel,
+        SideModal,
     },
 
     methods: {
@@ -21,8 +21,12 @@ export default {
             Inertia.get('/gerenciar/' + id);
         },
 
-        set_template() {
+        openSideModal() {
             this.isOpened = true;
+        },
+
+        closeSideModal(){
+            this.isOpened = false;
         },
 
         newDoc(template) {
@@ -96,7 +100,7 @@ export default {
     <BreezeAuthenticatedLayout>
         <template #links>
             <div class="mt-4 ml-2">
-                <a id="new-doc-button" @click="set_template">Novo Documento</a>
+                <a id="new-doc-button" @click="openSideModal">Novo Documento</a>
             </div>
         </template>
 
@@ -128,22 +132,25 @@ export default {
             </div>
         </div>
 
-        <VueSidePanel v-model="isOpened">
-            <div style="height: 100%; background-color: white; width: 600px">
-                <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>
 
-                <div style="display: flex; justify-content: center;">
-                    <div class="templates" v-for="template in this.templates" :key="template.id">
-                        <p>{{template.nome}}</p>
-                        <div id="botao-selecionar">
-                            <button style="background-color: green;" @click="newDoc(template.id)">
-                                Selecionar
-                            </button>
+        <SideModal v-show="isOpened" @close="closeSideModal">
+            <template v-slot:body>
+                <div style="height: 100%; background-color: white; width: 600px">
+                    <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>
+
+                    <div style="display: flex; justify-content: center;">
+                        <div class="templates" v-for="template in this.templates" :key="template.id">
+                            <p>{{template.nome}}</p>
+                            <div id="botao-selecionar">
+                                <button style="background-color: green;" @click="newDoc(template.id)">
+                                    Selecionar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </VueSidePanel>
+            </template>
+        </SideModal>
 
     </BreezeAuthenticatedLayout>
 

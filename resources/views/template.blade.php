@@ -179,3 +179,11 @@
         {{$content}}
     @endforeach
 </div>
+
+{{-- REFERENCIAS --}}
+<div>
+
+    @foreach ($referencias as $autor)
+        {{$autor}}
+    @endforeach
+</div>

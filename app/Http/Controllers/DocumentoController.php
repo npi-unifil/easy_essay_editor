@@ -209,6 +209,7 @@ class DocumentoController extends Controller
              'ano' => $referencia->ano,
              'pagina' => $referencia->pagina,
              'site' => $referencia->site,
+             'nomeDoSite' => $referencia->nomeDoSite,
              'acessado' => $referencia->acessado,
              'document_id' => $referencia->documento]
         );
@@ -229,6 +230,7 @@ class DocumentoController extends Controller
             'ano' => $id->ano,
             'pagina' => $id->pagina,
             'site' => $id->site,
+            'nomeDoSite' => $id->nomeDoSite,
             'acessado' => $id->acessado,
         ]);
     }
@@ -237,8 +239,6 @@ class DocumentoController extends Controller
         $id->delete();
         return redirect()->route('gerenciar_referencias', $id->document_id);
     }
-
-// Gerenciar Template
 
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------

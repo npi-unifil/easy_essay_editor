@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div @click="add_title">
+        <div @click="openSideModal" class="cursor-pointer">
             <h1 v-if="this.title == ''">
                 <p>Adicione um titulo...</p>
             </h1>
@@ -53,60 +53,56 @@
 
     </div>
 
-    <VueSidePanel v-model="isOpened">
-        <div style="height: 100%; background-color: white; width: 600px">
-            <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
-
-            <div style="display: block; justify-content: center;">
-
-            </div>
-
-
-            <div style="display: block; justify-content: center;">
-                <div class="autores">
-                    <div class="add-autor">
-                        <div style="margin-bottom: 10px;">
-                            <label for="titulo">Titulo: </label>
-                            <input v-model="this.title" />
+    <SideModal v-show="isOpened" @close="closeSideModal">
+        <template v-slot:body>
+            <div style="height: 100%; background-color: white; width: 600px">
+                <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+                <div style="display: block;">
+                    <div class="autores">
+                        <div class="add-autor">
+                            <div style="margin-bottom: 10px;">
+                                <label for="titulo">Titulo: </label>
+                                <input v-model="this.title" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="orientador">Orientador: </label>
+                                <input v-model="this.orientador" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="londrina">Cidade: </label>
+                                <input v-model="this.cidade" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="ano">Ano: </label>
+                                <input v-model="this.ano" />
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="curso">Curso: </label>
+                                <input v-model="this.curso" />
+                            </div>
+                            <label for="nome">Adicionar examinador da Banca(se houver): </label>
+                            <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                            <button @click="adicionar_novo"
+                                style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
                         </div>
-                        <div style="margin-bottom: 10px;">
-                            <label for="orientador">Orientador: </label>
-                            <input v-model="this.orientador" />
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <label for="londrina">Cidade: </label>
-                            <input v-model="this.cidade" />
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <label for="ano">Ano: </label>
-                            <input v-model="this.ano" />
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <label for="curso">Curso: </label>
-                            <input v-model="this.curso" />
-                        </div>
-                        <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                        <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                        <button @click="adicionar_novo"
-                            style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
-                    </div>
-                    <div v-for="nome, index  in this.banca" :key="index">
-                        <div class="nome-autor">
-                            <p>{{nome.nome}}</p>
-                            <div style="display:flex; width: 170px; justify-content: space-between;">
-                                <button @click="editar_nome(index)" style="background-color: orange;">
-                                    Editar
-                                </button>
-                                <button style="background-color: red;" @click="deletarBanca(index)">
-                                    Deletar
-                                </button>
+                        <div v-for="nome, index  in this.banca" :key="index">
+                            <div class="nome-autor">
+                                <p>{{nome.nome}}</p>
+                                <div style="display:flex; width: 170px; justify-content: space-between;">
+                                    <button @click="editar_nome(index)" style="background-color: orange;">
+                                        Editar
+                                    </button>
+                                    <button style="background-color: red;" @click="deletarBanca(index)">
+                                        Deletar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </VueSidePanel>
+        </template>
+    </SideModal>
 
 </template>
 
@@ -122,7 +118,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
 import rnd from '../../utils/generator.js';
 import { useEditorStore } from '@/utils/EditorStore';
-import { VueSidePanel } from 'vue3-side-panel';
+import SideModal from '../EditorComponents/SideModal.vue';
 
 export default {
 
@@ -164,7 +160,7 @@ export default {
     components: {
         QuillEditor,
         Modal,
-        VueSidePanel
+        SideModal
     },
 
     setup: () => {
@@ -208,8 +204,12 @@ export default {
             this.editedTitle = index;
         },
 
-        add_title() {
+        openSideModal() {
             this.isOpened = true;
+        },
+
+        closeSideModal(){
+            this.isOpened = false;
         },
 
         showModal() {
