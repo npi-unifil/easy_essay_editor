@@ -53,14 +53,7 @@ export default {
                         }
                     },
                     toolbar:[
-                        ['bold', 'italic', 'underline', 'strike'],
-                        ['link', 'image', 'video'],
-                        [{'list':'ordered'}, {'list':'bullet'}],
-                        [{'direction':'rtl'}],
-                        [{'size':[]}],
-                        [{'font':[]}],
-                        [{'align':[]}],
-                        [{'color':[]}],
+                        ['image', 'video'],
                     ],
                 }
             }

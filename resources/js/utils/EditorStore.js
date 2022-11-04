@@ -3,7 +3,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { Object } from "core-js";
 import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
-import ParagrafoImagem from '../Components/EditorComponents/ParagrafoImagem.vue';
+import Imagem from '../Components/EditorComponents/Imagem.vue';
 import { toRaw } from "vue";
 
 export const useEditorStore = defineStore("EditorStore", {
@@ -94,8 +94,8 @@ export const useEditorStore = defineStore("EditorStore", {
                         if(key == 'name' && value == 'paragrafo'){
                             editorClone[editorId].editor.component = <Paragrafo id={editorId} content={editorContent}/>;
                         }
-                        if(key == 'name' && value == 'paragrafo-imagem'){
-                            editorClone[editorId].editor.component = <ParagrafoImagem id={editorId} content={editorContent}/>;
+                        if(key == 'name' && value == 'imagem'){
+                            editorClone[editorId].editor.component = <Imagem id={editorId} content={editorContent}/>;
                         }
                     })
                 })

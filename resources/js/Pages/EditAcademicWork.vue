@@ -11,7 +11,7 @@ import { useEditorStore } from '@/utils/EditorStore';
 import Modal from '../Components/EditorComponents/Modal.vue';
 import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
-import ParagrafoImagem from '../Components/EditorComponents/ParagrafoImagem.vue';
+import Imagem from '../Components/EditorComponents/Imagem.vue';
 import rnd from '../utils/generator.js';
 import SideModal from '../Components/EditorComponents/SideModal.vue';
 import { VueSidePanel } from 'vue3-side-panel';
@@ -129,18 +129,18 @@ export default {
                 }
                 this.editorStore.fill(id, titulo)
             }
-            if (editor === "paragrafo-imagem") {
-                const paragrafoImagem = {
+            if (editor === "imagem") {
+                const imagem = {
                     editor: {
-                        name: 'paragrafo-imagem',
-                        component: <ParagrafoImagem id={id} />,
+                        name: 'imagem',
+                        component: <Imagem id={id} />,
                         component_order: this.editorStore.getOrder()
                     },
                     content: {
                         value: ''
                     }
                 }
-                this.editorStore.fill(id, paragrafoImagem)
+                this.editorStore.fill(id, imagem)
             }
 
         },
@@ -222,7 +222,7 @@ export default {
                                                 <option disabled value="">Selecione uma opção</option>
                                                 <option value="titulo">Titulo</option>
                                                 <option value="paragrafo">Paragrafo</option>
-                                                <option value="paragrafo-imagem">Paragrafo-imagem</option>
+                                                <option value="imagem">Imagem</option>
                                             </select>
                                         </div>
                                         <div class="modal-buttons">

@@ -55,9 +55,9 @@
 
     <SideModal v-show="isOpened" @close="closeSideModal">
         <template v-slot:body>
-            <div style="height: 100%; background-color: white; width: 600px">
+            <div style="height: 100%; background-color: white; width: 75%">
                 <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
-                <div style="display: block;">
+                <div>
                     <div class="autores">
                         <div class="add-autor">
                             <div style="margin-bottom: 10px;">
@@ -81,9 +81,11 @@
                                 <input v-model="this.curso" />
                             </div>
                             <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                            <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                            <button @click="adicionar_novo"
-                                style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
+                            <div style="display: flex;">
+                                <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                                <button @click="adicionar_novo"
+                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
+                            </div>
                         </div>
                         <div v-for="nome, index  in this.banca" :key="index">
                             <div class="nome-autor">
@@ -110,7 +112,7 @@
 import { QuillEditor } from '@vueup/vue-quill';
 import Titulo from './Titulo.vue';
 import Paragrafo from './Paragrafo.vue';
-import ParagrafoImagem from './ParagrafoImagem.vue';
+import Imagem from './Imagem.vue';
 import Modal from './Modal.vue';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import '@vueup/vue-quill/dist/vue-quill.bubble.css';
@@ -250,18 +252,18 @@ export default {
                 }
                 this.editorStore.fill(id, titulo)
             }
-            if (editor === "paragrafo-imagem") {
-                const paragrafoImagem = {
+            if (editor === "imagem") {
+                const imagem = {
                     editor: {
-                        name: 'paragrafo-imagem',
-                        component: <ParagrafoImagem id={id} />,
+                        name: 'imagem',
+                        component: <Imagem id={id} />,
                         component_order: this.editorStore.getOrder()
                     },
                     content: {
                         value: ''
                     }
                 }
-                this.editorStore.fill(id, paragrafoImagem)
+                this.editorStore.fill(id, imagem)
             }
 
         },
@@ -372,9 +374,9 @@ export default {
 }
 
 .autores {
-    display: block;
+    text-align: left;
     margin: 20px;
-    width: 500px;
+    width: 90%;
     border-bottom: 1px solid black;
 }
 
@@ -389,7 +391,7 @@ export default {
 
 .add-autor input {
     border-bottom: 1px solid black;
-    width: 350px;
+    width: 80%;
 }
 
 .nome-autor {

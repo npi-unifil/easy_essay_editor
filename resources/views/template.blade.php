@@ -172,17 +172,59 @@
     </div>
 </div>
 
+{{-- Lista de Ilustrações --}}
+
+<div style="margin-bottom: 950px;">
+
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1>LISTA DE ILUSTRAÇÕES</h1>
+    </div>
+
+</div>
+
+{{-- Lista de Abreviaturas e siglas --}}
+
+<div style="margin-bottom: 830px;">
+
+    @foreach ($listaAbreviaturas as $lista)
+        {{$lista}}
+    @endforeach
+
+</div>
+
+{{-- SUMÁRIO --}}
+
+<div style="margin-bottom: 950px;">
+
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1>SUMÁRIO</h1>
+    </div>
+
+</div>
+
+{{-- INTRODUÇÃO --}}
+
+<div style="margin-bottom: 950px;">
+
+    @foreach ($introducao as $intro)
+        {{$intro}}
+    @endforeach
+
+</div>
+
 {{-- DESENVOLVIMENTO --}}
 <div>
 
-    @foreach ($conteudo as $content)
+    {{-- @foreach ($conteudo as $content)
         {{$content}}
-    @endforeach
+    @endforeach --}}
 </div>
 
 {{-- REFERENCIAS --}}
 <div>
-
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1>REFERÊNCIAS</h1>
+    </div>
     @foreach ($referencias as $autor)
         {{$autor}}
     @endforeach

@@ -54,10 +54,10 @@
 
     .side-modal {
       background: #FFFFFF;
-      height: 640px;
-      width: 600px;
+      height: 100%;
+      width: 30%;
       position: absolute;
-      left: 80%;
+      left: 90%;
       top: 50%;
       border-radius: 10px;
       transform: translate(-50%, -50%);

@@ -135,7 +135,7 @@ export default {
 
         <SideModal v-show="isOpened" @close="closeSideModal">
             <template v-slot:body>
-                <div style="height: 100%; background-color: white; width: 600px">
+                <div style="text-align: center; height: 100%; background-color: white; width: 75%">
                     <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>
 
                     <div style="display: flex; justify-content: center;">

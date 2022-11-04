@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SendPdfNotification
-implements ShouldQueue
+// implements ShouldQueue
 {
     /**
      * Create the event listener.
@@ -35,9 +35,10 @@ implements ShouldQueue
     public function formatContent($conteudo){
         $result = [];
         foreach($conteudo as $item){
-            $value = str_replace(['class="ql-align-center"', 'class="ql-size-huge"'], ['style="text-align:center; font-size: h1"', ''], $item);
+            $value = str_replace(['class="ql-align-center"', 'class="ql-size-huge"'], ['style="text-align:center; font-size: h1"', ''], $item['content']['value']);
             array_push($result, $value);
         }
+        dd($result);
         return $result;
     }
 
@@ -49,22 +50,38 @@ implements ShouldQueue
                     'name' => $key->name,
                     'component_order' => $key->component_order,
                     'value' => $key->conteudo
-                ]
-            ];
-        }
-        uasort($editors, function($obj1, $obj2){
-            $order1 = $obj1['content'];
-            $order2 = $obj2['content'];
-            return $order1['component_order'] > $order2['component_order'];
-        });
-        return $editors;
+                    ]
+                ];
+            }
+            uasort($editors, function($obj1, $obj2){
+                $order1 = $obj1['content'];
+                $order2 = $obj2['content'];
+                return $order1['component_order'] > $order2['component_order'];
+            });
+
+            return $editors;
     }
 
     public function getContent($editor){
         $result = [];
-        foreach($editor as $key){
-            array_push($result, $key['content']['value']);
+        $indexAbreviaturas = 0;
+        $indexIntroducao = 0;
+        $listaSiglas = [];
+        $introducao = [];
+
+        foreach($editor as $i => $key){
+            if(Str::contains($key, 'Introdução')){
+                $indexIntroducao = $i;
+            }
+            if(Str::contains($key, 'Lista de Abreviaturas')){
+                $indexAbreviaturas = $i;
+            }
         }
+        $listaSiglas = array_slice($editor, $indexAbreviaturas, $indexIntroducao);
+        $introducao = array_slice($editor, $indexIntroducao);
+        array_push($result, $listaSiglas);
+        array_push($result, $introducao);
+        //dd($listaSiglas, $introducao, $content);
         return $result;
     }
 
@@ -177,6 +194,7 @@ implements ShouldQueue
     public function handle(PdfGenerated $event)
     {
         $sortedContent = SendPdfNotification::sortEditorContent($event->document->componentes);
+        $sortedContent = SendPdfNotification::formatContent($sortedContent);
         $sortedContent = SendPdfNotification::getContent($sortedContent);
         $references = SendPdfNotification::formatReferences($event->document->referencias);
         $uid = $event->document->users_id;
@@ -196,7 +214,9 @@ implements ShouldQueue
             'ano' => $event->document->ano,
             'examinador1' => $banca[0],
             'examinador2' => $banca[1],
-            'conteudo' => $sortedContent,
+            'listaAbreviaturas' => $sortedContent[0],
+            'introducao' => $sortedContent[1],
+            // 'conteudo' => $sortedContent,
             'referencias' => $references
         ])->render();
         //$pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')

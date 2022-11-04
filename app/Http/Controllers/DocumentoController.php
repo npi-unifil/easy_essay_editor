@@ -243,16 +243,7 @@ class DocumentoController extends Controller
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request, Documento $document){
-        //dd(html_entity_decode($request->value));
-        // $teste = [];
-        // foreach($request->content as $key){
-        //     array_push($teste, $key['content']);
-        // }
-
-        // $result = '';
-        // foreach($teste as $value){
-        //     $result .= $value['value'];
-        // }
+        
         PdfGenerated::dispatch($document);
 
         return redirect()->back();
