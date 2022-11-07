@@ -1,12 +1,7 @@
 <template>
     <div>
-        <div @click="openSideModal" class="cursor-pointer">
-            <h1 v-if="this.title == ''">
-                <p>Adicione um titulo...</p>
-            </h1>
-            <h1 v-if="this.title != ''">
-                <p>{{this.title}}</p>
-            </h1>
+        <div>
+            <textarea style="text-align: center; border: none; margin-bottom: 10px; font-weight: bolder;" name="title" cols="30" rows="2" v-model="this.title" placeholder="Dê um título ao seu capitulo..."></textarea>
         </div>
 
         <table class="table table-bordered">
@@ -36,7 +31,7 @@
                             <option disabled value="">Selecione uma opção</option>
                             <option value="titulo">Titulo</option>
                             <option value="paragrafo">Paragrafo</option>
-                            <option value="paragrafo-imagem">Paragrafo-imagem</option>
+                            <option value="imagem">Imagem</option>
                         </select>
                     </div>
                     <div class="modal-buttons">
@@ -53,58 +48,6 @@
 
     </div>
 
-    <SideModal v-show="isOpened" @close="closeSideModal">
-        <template v-slot:body>
-            <div style="height: 100%; background-color: white; width: 75%">
-                <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
-                <div>
-                    <div class="autores">
-                        <div class="add-autor">
-                            <div style="margin-bottom: 10px;">
-                                <label for="titulo">Titulo: </label>
-                                <input v-model="this.title" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="orientador">Orientador: </label>
-                                <input v-model="this.orientador" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="londrina">Cidade: </label>
-                                <input v-model="this.cidade" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="ano">Ano: </label>
-                                <input v-model="this.ano" />
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <label for="curso">Curso: </label>
-                                <input v-model="this.curso" />
-                            </div>
-                            <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                            <div style="display: flex;">
-                                <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                                <button @click="adicionar_novo"
-                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
-                            </div>
-                        </div>
-                        <div v-for="nome, index  in this.banca" :key="index">
-                            <div class="nome-autor">
-                                <p>{{nome.nome}}</p>
-                                <div style="display:flex; width: 170px; justify-content: space-between;">
-                                    <button @click="editar_nome(index)" style="background-color: orange;">
-                                        Editar
-                                    </button>
-                                    <button style="background-color: red;" @click="deletarBanca(index)">
-                                        Deletar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </template>
-    </SideModal>
 
 </template>
 
@@ -146,16 +89,7 @@ export default {
         return {
             isModalVisible: false,
             title: '',
-            editedTitle: null,
-            orientador: '',
-            cidade: '',
-            ano: null,
-            curso: '',
-            nome_banca: '',
-            banca: [],
             editorOption: '',
-            value: 'Digite um título',
-            isOpened: false
         }
     },
 
@@ -169,50 +103,10 @@ export default {
 
         const editorStore = useEditorStore();
 
-        function exportPdf() {
-            Inertia.post('/export/', form)
-        }
-
-        return { exportPdf, editorStore }
+        return { editorStore }
     },
 
     methods: {
-        keypressed: function (event) {
-            if (this.nome_banca.length === 0) return;
-            if (event.key == "Enter") {
-                this.adicionar_novo();
-            }
-        },
-
-        adicionar_novo() {
-            if (this.nome_banca.length === 0) return;
-            if (this.editedTitle === null) {
-                this.banca.push({
-                    nome: this.nome_banca
-                })
-            } else {
-                this.banca[this.editedTitle].nome = this.nome_banca;
-                this.editedTitle = null;
-            }
-            this.nome_banca = "";
-        },
-
-        deletarBanca(index) {
-            this.banca.splice(index, 1);
-        },
-
-        editar_nome(index) {
-            this.nome_banca = this.banca[index].nome;
-            this.editedTitle = index;
-        },
-
-        openSideModal() {
-            this.isOpened = true;
-        },
-
-        closeSideModal(){
-            this.isOpened = false;
-        },
 
         showModal() {
             this.isModalVisible = true;
@@ -268,8 +162,8 @@ export default {
 
         },
 
-        saveDocument() {
-            this.editorStore.saveDocument(
+        saveChapter() {
+            this.editorStore.saveChapter(
                 this.title,
                 this.template,
                 this.orientador,

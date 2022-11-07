@@ -42,6 +42,10 @@ Route::get('/newdoc', function () {
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
+Route::get('/newchapter', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified']);
+
 Route::delete('/deleteComponent/{id}', [DocumentoController::class, 'removeComponent'])->middleware(['auth', 'verified']);
 
 // Gerenciar Documento ------------------------------------------------------------------------------------

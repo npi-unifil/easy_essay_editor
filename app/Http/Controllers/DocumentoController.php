@@ -21,7 +21,7 @@ class DocumentoController extends Controller
 
 // Gerenciar Trabalho Acadêmico -------------------------------------------------------
     public function novo_doc(Template $template){
-        return Inertia::render('Dashboard', [
+        return Inertia::render('Chapters', [
             'template' => $template->id
         ]);
     }
@@ -37,33 +37,10 @@ class DocumentoController extends Controller
     }
 
     public function show(Documento $document){
-        $editors = [];
         $document_name = $document->nome;
 
-        $components = $document->componentes;
-
-        foreach($components as $key){
-            $editors[$key->object_id] = [
-                'editor' => [
-                    'name' => $key->name,
-                    'component' => '',
-                    'component_order' => $key->component_order
-                ],
-                'content' => [
-                    'value' => $key->conteudo
-                ]
-            ];
-        }
-
-        uasort($editors, function($obj1, $obj2){
-            $order1 = $obj1['editor'];
-            $order2 = $obj2['editor'];
-            return $order1['component_order'] > $order2['component_order'];
-        });
-
-        return Inertia::render('EditAcademicWork', [
+        return Inertia::render('Chapters', [
             'id' => $document->id,
-            'edit' => $editors,
             'template' => $document->templates_id,
             'document_name' => $document_name,
             'orientador' => $document->orientador,
@@ -75,10 +52,12 @@ class DocumentoController extends Controller
     }
 
     public function store(Request $request){
+        //dd($request, $request->nome);
         $content = $request -> content;
 
-        $document = Documento::create([
-            'nome'=> $request -> docTitle,
+        $document = Documento::updateOrCreate(
+            ['id' => $request->id],
+            ['nome'=> $request->nome,
             'orientador' => $request -> orientador,
             'cidade' => $request -> cidade,
             'ano' => $request -> ano,
@@ -88,19 +67,19 @@ class DocumentoController extends Controller
             'templates_id' => $request -> template
         ]);
 
-        foreach ($content as $id => $item) {
-            $editor = $item['editor'];
-            $conteudo = $item['content'];
+        // foreach ($content as $id => $item) {
+        //     $editor = $item['editor'];
+        //     $conteudo = $item['content'];
 
-            $document->componentes()->create([
-                'name' => $editor['name'],
-                'conteudo' => $conteudo['value'],
-                'component_order' => $editor['component_order'],
-                'object_id' => $id,
-            ]);
-        }
+        //     $document->componentes()->create([
+        //         'name' => $editor['name'],
+        //         'conteudo' => $conteudo['value'],
+        //         'component_order' => $editor['component_order'],
+        //         'object_id' => $id,
+        //     ]);
+        // }
 
-        return redirect()->route('documents.index');
+        return redirect()->route('documents.show', $document);
     }
 
     public function update(Request $request){
@@ -159,6 +138,35 @@ class DocumentoController extends Controller
         $document->referencias()->delete();
         $document->delete();
         return redirect()->route('documents.index');
+    }
+
+    public function chapterComponent(Documento $document){
+        $editors = [];
+        $components = $document->componentes;
+
+        foreach($components as $key){
+            $editors[$key->object_id] = [
+                'editor' => [
+                    'name' => $key->name,
+                    'component' => '',
+                    'component_order' => $key->component_order
+                ],
+                'content' => [
+                    'value' => $key->conteudo
+                ]
+            ];
+        }
+
+        uasort($editors, function($obj1, $obj2){
+            $order1 = $obj1['editor'];
+            $order2 = $obj2['editor'];
+            return $order1['component_order'] > $order2['component_order'];
+        });
+
+        return Inertia::render('EditAcademicWork', [
+            'chapterName' => $document->chapterName,
+            'edit' => $editors,
+        ]);
     }
 
     public function removeComponent(Request $id){
@@ -243,7 +251,7 @@ class DocumentoController extends Controller
 
 // Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request, Documento $document){
-        
+
         PdfGenerated::dispatch($document);
 
         return redirect()->back();

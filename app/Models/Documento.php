@@ -39,9 +39,9 @@ class Documento extends Model
     }
 
 
-    public function componentes(): HasMany
+    public function capitulos(): HasMany
     {
-        return $this->hasMany(Componente::class, 'document_id', 'id');
+        return $this->hasMany(Capitulo::class, 'document_id', 'id');
     }
 
     public function referencias(): HasMany

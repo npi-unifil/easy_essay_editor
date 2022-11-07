@@ -14,7 +14,6 @@ import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
 import Imagem from '../Components/EditorComponents/Imagem.vue';
 import rnd from '../utils/generator.js';
 import SideModal from '../Components/EditorComponents/SideModal.vue';
-import { VueSidePanel } from 'vue3-side-panel';
 </script>
 
 <script>
@@ -38,7 +37,7 @@ export default {
             name: 'blotFormatter',
             module: BlotFormatter
         }
-        return { isModalVisible: false, nome_banca: '', isOpened: false, dados, editorStore, modules }
+        return { isModalVisible: false, nome_banca: '', editedTitle: null, isOpened: false, dados, editorStore, modules }
     },
 
     components: {
@@ -248,11 +247,6 @@ export default {
             <template v-slot:body>
                 <div style="height: 100%; background-color: white; width: 600px">
                     <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
-
-                    <div style="display: block; justify-content: center;">
-
-                    </div>
-
 
                     <div style="display: block; justify-content: center;">
                         <div class="autores">

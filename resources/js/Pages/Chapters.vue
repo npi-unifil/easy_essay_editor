@@ -1,0 +1,235 @@
+<script setup>
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';;
+import { Head } from '@inertiajs/inertia-vue3';
+import { ref } from 'vue';
+import { Inertia } from '@inertiajs/inertia';
+import { reactive } from 'vue';
+import { Link } from '@inertiajs/inertia-vue3';
+import { useEditorStore } from '@/utils/EditorStore';
+import SideModal from '../Components/EditorComponents/SideModal.vue';
+</script>
+
+<script>
+export default {
+    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name'],
+
+    components: {
+        SideModal,
+    },
+
+    mounted() {
+        if(this.banca == undefined | this.banca == null){
+            this.dados.banca = [];
+        }else{
+            this.dados.banca = this.banca;
+        }
+    },
+
+    methods: {
+
+        openSideModal() {
+            this.isOpened = true;
+            console.log(this.id);
+        },
+
+        closeSideModal(){
+            this.isOpened = false;
+        },
+
+        keypressed: function (event) {
+            if (this.nome_banca.length === 0) return;
+            if (event.key == "Enter") {
+                this.adicionar_novo();
+            }
+        },
+
+        adicionar_novo() {
+            if (this.nome_banca.length === 0) return;
+            if (this.editedTitle === null) {
+                this.dados.banca.push({
+                    nome: this.nome_banca
+                })
+            } else {
+                this.dados.banca[this.editedTitle].nome = this.nome_banca;
+                this.editedTitle = null;
+            }
+            this.nome_banca = "";
+        },
+
+        deletarBanca(index) {
+            this.dados.banca.splice(index, 1);
+        },
+
+        editar_nome(index) {
+            this.nome_banca = this.dados.banca[index].nome;
+            this.editedTitle = index;
+        },
+
+        newChapter(){
+            Inertia.get('/newchapter');
+        },
+
+        saveDocument() {
+            Inertia.post('/documents', this.dados);
+        }
+    },
+
+    data() {
+        const editorStore = useEditorStore();
+        const mocado = [];
+        const dados = {
+            id: this.id,
+            nome: this.document_name,
+            template: this.template,
+            orientador: this.orientador,
+            cidade: this.cidade,
+            ano: this.ano,
+            curso: this.curso,
+            banca: [],
+        }
+        return {editorStore, dados, nome_banca: '', editedTitle: null, isOpened: false, mocado};
+    }
+
+}
+</script>
+
+<style>
+.autores {
+    display: block;
+    margin: 20px;
+    width: 130%;
+}
+
+.autores input {
+    margin-left: 10px;
+}
+
+.add-autor {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.add-autor input {
+    border-bottom: 1px solid black;
+    width: 40%;
+}
+
+.nome-autor {
+    display: flex;
+    justify-content: space-between;
+}
+
+.nome-autor button {
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    width: 80px;
+    height: 30px;
+}
+
+.chapter-button{
+    border-radius: 5px;
+    background-color: orange;
+    color: white;
+    width: 200px;
+    height: 50px;
+}
+</style>
+
+<template>
+
+    <Head title="Documentos" />
+
+    <BreezeAuthenticatedLayout>
+        <template #links>
+            <div class="mt-4 ml-2">
+                <a href="/documents" class="no-underline font-bold text-slate-100 hover:text-slate-800">Documentos</a>
+            </div>
+        </template>
+
+        <div class="py-12">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6 bg-white border-b border-gray-200">
+                        <div @click="openSideModal()" class="cursor-pointer text-center">
+                            <h1 v-if="this.dados.nome == '' | this.dados.nome == null">
+                                <p>Adicione um titulo...</p>
+                            </h1>
+                            <h1 v-if="this.dados.nome != ''">
+                                <p>{{ this.dados.nome }}</p>
+                            </h1>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <h1>Capitulos: </h1>
+                            <button v-if="this.id != undefined | this.id != null" class="chapter-button" @click="newChapter">Adicionar Capitulo</button>
+                        </div>
+                        <h3 class="mt-8" v-if="this.mocado.length < 1">Adicione um novo capitulo ao seu trabalho...</h3>
+                        <div v-for="item, index in this.mocado" :key="index" class="cursor-pointer mt-4">
+                            <h2 class="cursor-pointer mt-4">{{ index + 1 }} - {{ item }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <SideModal v-show="isOpened" @close="closeSideModal">
+            <template v-slot:body>
+                <div style="height: 100%; background-color: white; width: 75%">
+                    <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+                    <div>
+                        <div class="autores">
+                            <div class="add-autor">
+                                <div style="margin-bottom: 10px;">
+                                    <label for="titulo">Titulo: </label>
+                                    <input v-model="this.dados.nome" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="orientador">Orientador: </label>
+                                    <input v-model="this.dados.orientador" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="londrina">Cidade: </label>
+                                    <input v-model="this.dados.cidade" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="ano">Ano: </label>
+                                    <input v-model="this.dados.ano" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="curso">Curso: </label>
+                                    <input v-model="this.dados.curso" />
+                                </div>
+                                <label for="nome">Adicionar examinador da Banca(se houver): </label>
+                                <div style="display: flex;">
+                                    <input v-model="this.nome_banca" v-on:keyup="keypressed" />
+                                <button @click="adicionar_novo"
+                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Adicionar</button>
+                                </div>
+                            </div>
+                            <div v-for="nome, index  in this.dados.banca" :key="index">
+                                <div class="nome-autor">
+                                    <div style="display:flex; width: 80%; justify-content: space-between;">
+                                        <p>{{ nome.nome }}</p>
+                                        <div style="display:flex; width: 45%; justify-content: space-between;">
+                                            <button @click="editar_nome(index)" style="background-color: orange;">
+                                                Editar
+                                            </button>
+                                            <br>
+                                            <button style="background-color: red;"  @click="deletarBanca(index)">
+                                                Deletar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="chapter-button" @click="saveDocument">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </SideModal>
+
+    </BreezeAuthenticatedLayout>
+
+</template>
+

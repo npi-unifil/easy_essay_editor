@@ -57,7 +57,7 @@
       height: 100%;
       width: 30%;
       position: absolute;
-      left: 90%;
+      left: 85%;
       top: 50%;
       border-radius: 10px;
       transform: translate(-50%, -50%);

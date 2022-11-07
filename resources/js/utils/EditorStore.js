@@ -32,18 +32,13 @@ export const useEditorStore = defineStore("EditorStore", {
             this.editors[id].content.value = content;
         },
 
-        saveDocument(title, template, orientador, cidade, ano, curso, banca){
+        saveChapter(name){
             const request = {
-                docTitle: title,
-                template: template,
-                orientador: orientador,
-                cidade: cidade,
-                ano: ano,
-                curso: curso,
-                banca: banca,
+                name: name,
                 content: this.editors
             };
             Inertia.post('/documents', request);
+            // alterar aqui para os chapters
         },
 
         updateDocument(title, id, orientador, cidade, ano, curso, banca){
