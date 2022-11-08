@@ -18,7 +18,7 @@
             <button type="button" class="btn-add" @click="showModal">
                 Adicionar Campo
             </button>
-            <button type="button" class="btn-save" @click="saveDocument">
+            <button type="button" class="btn-save" @click="saveChapter">
                 Salvar
             </button>
         </div>
@@ -67,7 +67,7 @@ import SideModal from '../EditorComponents/SideModal.vue';
 
 export default {
 
-    props: ['template'],
+    props: ['document'],
 
     mounted() {
         const id = 'abcdefg';
@@ -165,12 +165,7 @@ export default {
         saveChapter() {
             this.editorStore.saveChapter(
                 this.title,
-                this.template,
-                this.orientador,
-                this.cidade,
-                this.ano,
-                this.curso,
-                this.banca
+                this.document
             );
         }
     }

@@ -9,7 +9,7 @@ import Editor from '../Components/EditorComponents/RichTextEditor.vue';
 <script>
 export default {
 
-    props: ['template'],
+    props: ['document_id'],
 
 }
 </script>
@@ -28,7 +28,7 @@ export default {
             <div class="max-w-9xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="max-w-7xl text-center mx-auto p-6 bg-white border-b border-gray-200">
-                        <Editor :template=this.template />
+                        <Editor :document=this.document_id />
                     </div>
                 </div>
             </div>

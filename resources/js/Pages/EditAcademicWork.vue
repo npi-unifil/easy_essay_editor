@@ -20,24 +20,20 @@ import SideModal from '../Components/EditorComponents/SideModal.vue';
 
 export default {
 
-    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name'],
+    props: ['chapter_id', 'edit', 'chapter_name'],
 
     data() {
         const editorStore = useEditorStore();
         const dados = {
-            nome: this.document_name,
+            id: this.chapter_id,
+            nome: this.chapter_name,
             value: this.edit.conteudo,
-            orientador: this.orientador,
-            cidade: this.cidade,
-            ano: this.ano,
-            curso: this.curso,
-            banca: this.banca,
         }
         const modules = {
             name: 'blotFormatter',
             module: BlotFormatter
         }
-        return { isModalVisible: false, nome_banca: '', editedTitle: null, isOpened: false, dados, editorStore, modules }
+        return { isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore, modules }
     },
 
     components: {
@@ -53,6 +49,13 @@ export default {
     },
 
     methods: {
+
+        showModal() {
+            this.isModalVisible = true;
+        },
+        closeModal() {
+            this.isModalVisible = false;
+        },
         keypressed: function (event) {
             if (this.nome_banca.length === 0) return;
             if (event.key == "Enter") {
@@ -86,15 +89,8 @@ export default {
             this.isOpened = true;
         },
 
-        closeSideModal(){
+        closeSideModal() {
             this.isOpened = false;
-        },
-
-        showModal() {
-            this.isModalVisible = true;
-        },
-        closeModal() {
-            this.isModalVisible = false;
         },
 
         createEditor(editor) {
@@ -145,14 +141,9 @@ export default {
         },
 
         saveDocument() {
-            this.editorStore.updateDocument(
+            this.editorStore.updateChapter(
+                this.dados.id,
                 this.dados.nome,
-                this.id,
-                this.dados.orientador,
-                this.dados.cidade,
-                this.dados.ano,
-                this.dados.curso,
-                this.dados.banca
             );
         },
 
@@ -172,7 +163,7 @@ export default {
         </template>
         <div id="head-buttons" class="mr-9">
             <h2 class="font-semibold text-xl text-gray-50 mt-2.5 leading-tight">
-                {{this.edit.nome}}
+                {{ this.edit.nome }}
             </h2>
             <div>
                 <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
@@ -185,13 +176,11 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
 
                         <div>
-                            <div class="cursor-pointer" @click="openSideModal()">
-                                <h1 v-if="this.dados.nome == ''">
-                                    Adicione um titulo...
-                                </h1>
-                                <h1 v-if="this.dados.nome != ''">
-                                    {{this.dados.nome}}
-                                </h1>
+                            <div>
+                                <textarea
+                                    style="text-align: center; border: none; margin-bottom: 10px; font-weight: bolder;"
+                                    name="title" cols="30" rows="2" v-model="this.dados.nome"
+                                    placeholder="Dê um título ao seu capitulo..."></textarea>
                             </div>
 
                             <table class="table table-bordered">
@@ -241,60 +230,6 @@ export default {
                 </div>
             </div>
         </div>
-
-
-        <SideModal v-show="isOpened" @close="closeSideModal">
-            <template v-slot:body>
-                <div style="height: 100%; background-color: white; width: 600px">
-                    <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
-
-                    <div style="display: block; justify-content: center;">
-                        <div class="autores">
-                            <div class="add-autor">
-                                <div style="margin-bottom: 10px;">
-                                    <label for="titulo">Titulo: </label>
-                                    <input v-model="this.dados.nome" />
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="orientador">Orientador: </label>
-                                    <input v-model="this.dados.orientador" />
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="londrina">Cidade: </label>
-                                    <input v-model="this.dados.cidade" />
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="ano">Ano: </label>
-                                    <input v-model="this.dados.ano" />
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="curso">Curso: </label>
-                                    <input v-model="this.dados.curso" />
-                                </div>
-                                <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                                <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                                <button @click="adicionar_novo"
-                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Salvar</button>
-                            </div>
-                            <div v-for="nome, index  in this.dados.banca" :key="index">
-                                <div class="nome-autor">
-                                    <p>{{nome.nome}}</p>
-                                    <div style="display:flex; width: 170px; justify-content: space-between;">
-                                        <button @click="editar_nome(index)" style="background-color: orange;">
-                                            Editar
-                                        </button>
-                                        <button style="background-color: red;" @click="deletarBanca(index)">
-                                            Deletar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </SideModal>
-
     </BreezeAuthenticatedLayout>
 
 </template>

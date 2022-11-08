@@ -42,11 +42,16 @@ Route::get('/newdoc', function () {
 
 Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
-Route::get('/newchapter', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified']);
-
 Route::delete('/deleteComponent/{id}', [DocumentoController::class, 'removeComponent'])->middleware(['auth', 'verified']);
+
+// Capitulos
+Route::post('/newChapter', [DocumentoController::class, 'saveChapter'])->middleware(['auth', 'verified']);
+
+Route::get('/newchapter/{id}', [DocumentoController::class, 'newChapter'])->middleware(['auth', 'verified']);
+
+Route::get('/editChapter/{id}', [DocumentoController::class, 'chapterComponent'])->middleware(['auth', 'verified']);
+
+Route::delete('/chapter/{id}', [DocumentoController::class, 'removeChapter'])->middleware(['auth', 'verified']);
 
 // Gerenciar Documento ------------------------------------------------------------------------------------
 Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'])->middleware(['auth', 'verified'])->name('gerenciar_trabalho');

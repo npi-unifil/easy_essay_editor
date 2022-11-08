@@ -17,12 +17,12 @@ class Componente extends Model
         'conteudo',
         'component_order',
         'object_id',
-        'document_id'
+        'capitulos_id'
     ];
 
-    public function documento() : BelongsTo
+    public function capitulos() : BelongsTo
     {
-        return $this->belongsTo(Documento::class);
+        return $this->belongsTo(Capitulo::class);
     }
 
 

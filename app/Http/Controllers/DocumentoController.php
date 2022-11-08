@@ -11,9 +11,8 @@ use App\Models\Componente;
 use App\Models\Referencia;
 use App\Models\Template;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\ComponenteController;
 use App\Events\PdfGenerated;
+use App\Models\Capitulo;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentoController extends Controller
@@ -38,11 +37,20 @@ class DocumentoController extends Controller
 
     public function show(Documento $document){
         $document_name = $document->nome;
+        $capitulos = [];
+        foreach($document->capitulos as $capitulo){
+            array_push($capitulos, ['id' => $capitulo->id, 'name' => $capitulo->name]);
+        }
+
+        usort($capitulos, function($obj1, $obj2){
+            return $obj1['id'] > $obj2['id'];
+        });
 
         return Inertia::render('Chapters', [
             'id' => $document->id,
             'template' => $document->templates_id,
             'document_name' => $document_name,
+            'capitulos' => $capitulos,
             'orientador' => $document->orientador,
             'cidade' => $document->cidade,
             'ano' => $document->ano,
@@ -52,9 +60,6 @@ class DocumentoController extends Controller
     }
 
     public function store(Request $request){
-        //dd($request, $request->nome);
-        $content = $request -> content;
-
         $document = Documento::updateOrCreate(
             ['id' => $request->id],
             ['nome'=> $request->nome,
@@ -67,49 +72,30 @@ class DocumentoController extends Controller
             'templates_id' => $request -> template
         ]);
 
-        // foreach ($content as $id => $item) {
-        //     $editor = $item['editor'];
-        //     $conteudo = $item['content'];
-
-        //     $document->componentes()->create([
-        //         'name' => $editor['name'],
-        //         'conteudo' => $conteudo['value'],
-        //         'component_order' => $editor['component_order'],
-        //         'object_id' => $id,
-        //     ]);
-        // }
-
         return redirect()->route('documents.show', $document);
     }
 
     public function update(Request $request){
         $conteudo = $request->content;
-        $document_id = $request->doc_id;
-        $document_title = $request->docTitle;
-        $removedComponent = $request->removed;
 
-        foreach ($removedComponent as $id => $content){
+        foreach ($request->removed as $id => $content){
             $componente = Componente::where('object_id', '=', $id);
             $componente->delete();
         }
 
-        $document = Documento::where('id', $document_id)->first();
-        if($document != null){
-            $document->update([
-                'nome'=>$document_title,
-                'orientador' => $request -> orientador,
-                'cidade' => $request -> cidade,
-                'ano' => $request -> ano,
-                'curso' => $request -> curso,
-                'banca' => $request -> banca,
-                'templates_id' => $request -> template
+        $capitulo = Capitulo::where('id', $request->id)->first();
+        $document = Documento::where('id', '=', $capitulo->document_id)->first();
+
+        if($capitulo != null){
+            $capitulo->update([
+                'name'=>$request->name,
+                'document_id' => $capitulo->document_id
             ]);
         }
 
         foreach ($conteudo as $id => $item) {
             $editor = $item['editor'];
             $conteudo = $item['content'];
-
             $component = Componente::where('object_id', $id)->first();
             if($component != null){
                 $component->update([
@@ -117,7 +103,7 @@ class DocumentoController extends Controller
                     'conteudo' => $conteudo['value'],
                     'component_order' => $editor['component_order'],
                     'object_id' => $id,
-                    'document_id' => $document_id,
+                    'capitulos_id' => $request->id,
                 ]);
             }else{
                 $component = Componente::create([
@@ -125,24 +111,57 @@ class DocumentoController extends Controller
                     'conteudo' => $conteudo['value'],
                     'component_order' => $editor['component_order'],
                     'object_id' => $id,
-                    'document_id' => $document_id,
+                    'capitulos_id' => $request->id,
                 ]);
             }
         }
-
-        return redirect()->route('documents.index');
+        return redirect()->route('documents.show', $document);
     }
 
     public function destroy(Documento $document){
-        $document->componentes()->delete();
+        foreach($document->capitulos as $capitulo){
+            $capitulo->componentes()->delete();
+        }
+        $document->capitulos()->delete();
         $document->referencias()->delete();
         $document->delete();
         return redirect()->route('documents.index');
     }
 
-    public function chapterComponent(Documento $document){
+// Capitulos
+
+    public function newChapter(Request $id){
+        return Inertia::render('Dashboard', [
+            'document_id' => $id->id
+        ]);
+    }
+
+    public function saveChapter(Request $request){
+        $capitulo = Capitulo::create([
+            'name' => $request->name,
+            'document_id' => $request->document_id,
+        ]);
+        foreach ($request->content as $id => $item) {
+            $editor = $item['editor'];
+            $conteudo = $item['content'];
+            $capitulo->componentes()->create([
+                'name' => $editor['name'],
+                'conteudo' => $conteudo['value'],
+                'component_order' => $editor['component_order'],
+                'object_id' => $id,
+                'capitulos_id' => $capitulo->id
+            ]);
+        }
+
+        $document = Documento::where('id', $request->document_id)->first();
+
+        return redirect()->route('documents.show', $document);
+    }
+
+    public function chapterComponent(Request $request){
+        $capitulo = Capitulo::where('id', $request->id)->first();
         $editors = [];
-        $components = $document->componentes;
+        $components = $capitulo->componentes;
 
         foreach($components as $key){
             $editors[$key->object_id] = [
@@ -164,9 +183,19 @@ class DocumentoController extends Controller
         });
 
         return Inertia::render('EditAcademicWork', [
-            'chapterName' => $document->chapterName,
+            'chapter_id' => $capitulo->id,
+            'chapter_name' => $capitulo->name,
             'edit' => $editors,
         ]);
+    }
+
+    public function removeChapter(Request $id){
+        $capitulo = Capitulo::where('id', $id->id)->first();
+        $document = Documento::where('id', $capitulo->document_id)->first();
+        $capitulo->componentes()->delete();
+        $capitulo->delete();
+
+        return redirect()->route('documents.show', $document);
     }
 
     public function removeComponent(Request $id){

@@ -7,32 +7,57 @@ import { reactive } from 'vue';
 import { Link } from '@inertiajs/inertia-vue3';
 import { useEditorStore } from '@/utils/EditorStore';
 import SideModal from '../Components/EditorComponents/SideModal.vue';
+import Modal from '@/Components/EditorComponents/Modal.vue';
 </script>
 
 <script>
 export default {
-    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name'],
+    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name', 'capitulos'],
 
     components: {
         SideModal,
+        Modal
     },
 
     mounted() {
-        if(this.banca == undefined | this.banca == null){
-            this.dados.banca = [];
-        }else{
-            this.dados.banca = this.banca;
-        }
+        this.checkBanca();
+        this.checkCapitulos();
     },
 
     methods: {
+
+        checkBanca() {
+            if (this.banca == undefined | this.banca == null) {
+                this.dados.banca = [];
+            } else {
+                this.dados.banca = this.banca;
+            }
+        },
+
+        checkCapitulos() {
+            if (this.capitulos == undefined | this.capitulos == null) {
+                this.dados.capitulos = [];
+            } else {
+                this.dados.capitulos = this.capitulos;
+            }
+        },
+
+        showModal(index, id, nome) {
+            this.isModalVisible = true;
+            this.chapter_data.index = index;
+            this.chapter_data.id = id;
+            this.chapter_data.nome = nome;
+        },
+        closeModal() {
+            this.isModalVisible = false;
+        },
 
         openSideModal() {
             this.isOpened = true;
             console.log(this.id);
         },
 
-        closeSideModal(){
+        closeSideModal() {
             this.isOpened = false;
         },
 
@@ -65,8 +90,17 @@ export default {
             this.editedTitle = index;
         },
 
-        newChapter(){
-            Inertia.get('/newchapter');
+        newChapter() {
+            Inertia.get('/newchapter/' + this.id);
+        },
+
+        editChapter(id) {
+            Inertia.get('/editChapter/' + id);
+        },
+
+        delete_chapter(){
+            this.dados.capitulos.splice(this.chapter_data.index, 1);
+            Inertia.delete('/chapter/' + this.chapter_data.id);
         },
 
         saveDocument() {
@@ -76,7 +110,11 @@ export default {
 
     data() {
         const editorStore = useEditorStore();
-        const mocado = [];
+        const chapter_data = {
+            index: 0,
+            id: 0,
+            nome: '',
+        }
         const dados = {
             id: this.id,
             nome: this.document_name,
@@ -86,8 +124,9 @@ export default {
             ano: this.ano,
             curso: this.curso,
             banca: [],
+            capitulos: []
         }
-        return {editorStore, dados, nome_banca: '', editedTitle: null, isOpened: false, mocado};
+        return { editorStore, chapter_data, dados, nome_banca: '', editedTitle: null, isOpened: false, isModalVisible: false };
     }
 
 }
@@ -127,11 +166,38 @@ export default {
     height: 30px;
 }
 
-.chapter-button{
+.chapter-button {
     border-radius: 5px;
     background-color: orange;
     color: white;
     width: 200px;
+    height: 50px;
+}
+
+.modal-body {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.modal-body p {
+    margin: 0;
+    font-size: xx-large;
+    font-weight: bolder;
+    margin-top: -30px;
+    margin-bottom: 60px;
+}
+
+#modal-buttons {
+    display: flex;
+    justify-content: space-around;
+}
+
+#modal-buttons button {
+    color: white;
+    font-weight: bolder;
+    border-radius: 5px;
+    width: 100px;
     height: 50px;
 }
 </style>
@@ -161,20 +227,49 @@ export default {
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <h1>Capitulos: </h1>
-                            <button v-if="this.id != undefined | this.id != null" class="chapter-button" @click="newChapter">Adicionar Capitulo</button>
+                            <button v-if="this.id != undefined | this.id != null" class="chapter-button"
+                                @click="newChapter">Adicionar Capitulo</button>
                         </div>
-                        <h3 class="mt-8" v-if="this.mocado.length < 1">Adicione um novo capitulo ao seu trabalho...</h3>
-                        <div v-for="item, index in this.mocado" :key="index" class="cursor-pointer mt-4">
-                            <h2 class="cursor-pointer mt-4">{{ index + 1 }} - {{ item }}</h2>
+                        <h3 class="mt-8" v-if="this.dados.capitulos.length < 1">Adicione um novo capitulo ao seu
+                            trabalho...</h3>
+                        <div v-for="item, index in this.dados.capitulos" :key="index" class="cursor-pointer mt-4">
+                            <div style="display: flex; justify-content: space-between;">
+                                <h2 @click="editChapter(item['id'])" class="cursor-pointer mt-4">{{ index + 1 }} - {{
+                                        item['name']
+                                }}</h2>
+                                <button
+                                    style="border-radius: 5px; width: 100px; height: 40px; color: white; font-weight: bolder; background-color: red;"
+                                    @click="showModal(index, item['id'], item['name'])">
+                                    Deletar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <Modal v-show="isModalVisible" @close="closeModal">
+            <template class="modal-body" v-slot:body>
+                <div>
+                    <div>
+                        <p>Deseja Realmente Apagar o Capitulo {{this.chapter_data.nome}}?</p>
+                    </div>
+                    <div id="modal-buttons">
+                        <button @click="closeModal()" style="background-color: green">
+                            Cancelar
+                        </button>
+                        <button @click="closeModal(), delete_chapter()" style="background-color: red">
+                            Sim
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </Modal>
+
         <SideModal v-show="isOpened" @close="closeSideModal">
             <template v-slot:body>
-                <div style="height: 100%; background-color: white; width: 75%">
+                <div style="height: 100%; background-color: white; width: 90%">
                     <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
                     <div>
                         <div class="autores">
@@ -202,8 +297,8 @@ export default {
                                 <label for="nome">Adicionar examinador da Banca(se houver): </label>
                                 <div style="display: flex;">
                                     <input v-model="this.nome_banca" v-on:keyup="keypressed" />
-                                <button @click="adicionar_novo"
-                                    style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Adicionar</button>
+                                    <button @click="adicionar_novo"
+                                        style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Adicionar</button>
                                 </div>
                             </div>
                             <div v-for="nome, index  in this.dados.banca" :key="index">
@@ -215,7 +310,7 @@ export default {
                                                 Editar
                                             </button>
                                             <br>
-                                            <button style="background-color: red;"  @click="deletarBanca(index)">
+                                            <button style="background-color: red;" @click="deletarBanca(index)">
                                                 Deletar
                                             </button>
                                         </div>
