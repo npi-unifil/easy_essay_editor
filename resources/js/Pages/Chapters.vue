@@ -104,6 +104,7 @@ export default {
         },
 
         saveDocument() {
+            this.closeSideModal();
             Inertia.post('/documents', this.dados);
         }
     },
@@ -269,8 +270,10 @@ export default {
 
         <SideModal v-show="isOpened" @close="closeSideModal">
             <template v-slot:body>
-                <div style="height: 100%; background-color: white; width: 90%">
-                    <h1 style="text-align: center; margin-top: 23px;">Adicionar Informações: </h1>
+                <div style="height: 100%; background-color: white; width: 70%">
+                    <div style="text-align: center; margin-top: 23px; width: 140%">
+                        <h1>Adicionar Informações: </h1>
+                    </div>
                     <div>
                         <div class="autores">
                             <div class="add-autor">

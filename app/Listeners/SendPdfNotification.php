@@ -42,24 +42,43 @@ class SendPdfNotification
         return $result;
     }
 
-    public function sortEditorContent($conteudo){
-        $editors = [];
-        foreach($conteudo as $key){
-            $editors[$key->object_id] = [
-                'content' => [
-                    'name' => $key->name,
-                    'component_order' => $key->component_order,
-                    'value' => $key->conteudo
-                    ]
-                ];
+    public function sliceChapters($chapters){
+        $result = [];
+        $index = 0;
+        foreach($chapters as $chapter){
+            foreach($chapter->componentes as $componente){
+                $result[$chapter->name][$index] = [];
+                array_push($result[$chapter->name][$index], [
+                        'name' => $componente->name,
+                        'component_order' => $componente->component_order,
+                        'value' => $componente->conteudo
+                        ]
+                    );
+                uasort($result[$chapter->name], function($obj1, $obj2){
+                    $order1 = 0;
+                    $order2 = 0;
+                    foreach($obj1 as $ob1){
+                        $order1 = $ob1['component_order'];
+                    }
+                    foreach($obj2 as $ob2){
+                        $order2 = $ob2['component_order'];
+                    }
+                    return $order1 > $order2;
+                });
+                $index++;
             }
-            uasort($editors, function($obj1, $obj2){
-                $order1 = $obj1['content'];
-                $order2 = $obj2['content'];
-                return $order1['component_order'] > $order2['component_order'];
-            });
+            $index = 0;
+        }
+        return $result;
+    }
 
-            return $editors;
+    public function setContent($conteudo){
+        foreach($conteudo as $capitulo => $value){
+            dd($capitulo, $value);
+        }
+        if(strcasecmp('', '')){
+
+        }
     }
 
     public function getContent($editor){
@@ -193,9 +212,9 @@ class SendPdfNotification
 
     public function handle(PdfGenerated $event)
     {
-        $sortedContent = SendPdfNotification::sortEditorContent($event->document->componentes);
+        $capitulosSeparados = SendPdfNotification::sliceChapters($event->document->capitulos);
+        $sortedContent = SendPdfNotification::setContent($capitulosSeparados);
         $sortedContent = SendPdfNotification::formatContent($sortedContent);
-        $sortedContent = SendPdfNotification::getContent($sortedContent);
         $references = SendPdfNotification::formatReferences($event->document->referencias);
         $uid = $event->document->users_id;
         $user = User::findOrFail($uid);
@@ -214,8 +233,8 @@ class SendPdfNotification
             'ano' => $event->document->ano,
             'examinador1' => $banca[0],
             'examinador2' => $banca[1],
-            'listaAbreviaturas' => $sortedContent[0],
-            'introducao' => $sortedContent[1],
+            'listaAbreviaturas' => '',
+            'introducao' => '',
             // 'conteudo' => $sortedContent,
             'referencias' => $references
         ])->render();
