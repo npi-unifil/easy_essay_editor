@@ -8,13 +8,15 @@ use Illuminate\Queue\InteractsWithQueue;
 use Spatie\Browsershot\Browsershot;
 use App\Models\Documento;
 use App\Models\User;
+use App\Mail\pdfCreatedMail;
 use DateTime;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SendPdfNotification
-// implements ShouldQueue
+implements ShouldQueue
 {
     /**
      * Create the event listener.
@@ -32,16 +34,6 @@ class SendPdfNotification
      * @param  \App\Events\PdfGenerated  $event
      * @return void
      */
-    public function formatContent($conteudo){
-        $result = [];
-        foreach($conteudo as $item){
-            $value = str_replace(['class="ql-align-center"', 'class="ql-size-huge"'], ['style="text-align:center; font-size: h1"', ''], $item['content']['value']);
-            array_push($result, $value);
-        }
-        dd($result);
-        return $result;
-    }
-
     public function sliceChapters($chapters){
         $result = [];
         $index = 0;
@@ -73,34 +65,12 @@ class SendPdfNotification
     }
 
     public function setContent($conteudo){
-        foreach($conteudo as $capitulo => $value){
-            dd($capitulo, $value);
-        }
-        if(strcasecmp('', '')){
-
-        }
-    }
-
-    public function getContent($editor){
         $result = [];
-        $indexAbreviaturas = 0;
-        $indexIntroducao = 0;
-        $listaSiglas = [];
-        $introducao = [];
-
-        foreach($editor as $i => $key){
-            if(Str::contains($key, 'Introdução')){
-                $indexIntroducao = $i;
-            }
-            if(Str::contains($key, 'Lista de Abreviaturas')){
-                $indexAbreviaturas = $i;
+        foreach($conteudo as $item){
+            foreach($item as $html){
+                array_push($result, $html['value']);
             }
         }
-        $listaSiglas = array_slice($editor, $indexAbreviaturas, $indexIntroducao);
-        $introducao = array_slice($editor, $indexIntroducao);
-        array_push($result, $listaSiglas);
-        array_push($result, $introducao);
-        //dd($listaSiglas, $introducao, $content);
         return $result;
     }
 
@@ -110,7 +80,6 @@ class SendPdfNotification
         foreach($references as $reference){
             if($reference->nome_autor != null){
                 $autor = explode(" ", $reference->nome_autor[0]['nome']);
-
             }
             if($reference->site != null){
                 $acessado = explode("-", $reference->acessado);
@@ -159,48 +128,156 @@ class SendPdfNotification
                     }
                 }
             }else if($reference->site == null){
+                if(sizeof($reference->nome_autor) == 1){
+                    $autor1 = explode(" ", $reference->nome_autor[0]['nome']);
+                    if($reference->subtitulo == null){
+                        if($reference->edicao == null){
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                    {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                    {$reference->titulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }
+                        }
+                    }
+                    if($reference->subtitulo != null){
+                        if($reference->edicao == null){
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                    {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                    {$reference->titulo}: {$reference->subtitulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }
+                        }
+                    }
+
+                }
                 if(sizeof($reference->nome_autor) >= 3){
                     $autor1 = explode(" ", $reference->nome_autor[0]['nome']);
                     $autor2 = explode(" ", $reference->nome_autor[1]['nome']);
                     $autor3 = explode(" ", $reference->nome_autor[2]['nome']);
                 }
-                if(sizeof($reference->nome_autor) < 4){
+                if(sizeof($reference->nome_autor) == 3){
                     if($reference->subtitulo == null){
-                        array_push($result, <<<END
-                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
-                                            <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
-                                            <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
-                                            {$reference->titulo}.
-                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
-                                            END
-                        );
+                        if($reference->edicao == null){
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                {$reference->titulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                END
+                                );
+                            }
+                        }else{
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                                    <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                                    <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                                    {$reference->titulo}.
+                                                    {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }
+                        }
                     }
                     if($reference->subtitulo != null){
-                        array_push($result, <<<END
-                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
-                                            <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
-                                            <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
-                                            {$reference->titulo}: {$reference->subtitulo}.
-                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
-                                            END
-                        );
+                        if($reference->edicao == null){
+                            array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                {$reference->titulo}: {$reference->subtitulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                            );
+                        }else{
+                            array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]};
+                                                <span style="text-transform: uppercase;">{$autor2[count($autor)-1]}</span>, {$autor2[0]};
+                                                <span style="text-transform: uppercase;">{$autor3[count($autor)-1]}</span>, {$autor3[0]}.
+                                                {$reference->titulo}: {$reference->subtitulo}.
+                                                {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                            );
+                        }
                     }
                 }else if(sizeof($reference->nome_autor) > 3){
                     if($reference->subtitulo == null){
-                        array_push($result, <<<END
-                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
-                                            {$reference->titulo}.
-                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
-                                            END
-                        );
+                        if($reference->edicao == null){
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                                {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                                    {$reference->titulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }
+                        }else{
+                            if($reference->local == null){
+                                array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                                {$reference->titulo}.{$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                                );
+                            }else{
+                                array_push($result, <<<END
+                                                    <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                                    {$reference->titulo}.
+                                                    {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                    END
+                                );
+                            }
+                        }
                     }
                     if($reference->subtitulo != null){
-                        array_push($result, <<<END
-                                            <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
-                                            {$reference->titulo}: {$reference->subtitulo}.
-                                            {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
-                                            END
-                        );
+                        if($reference->edicao == null){
+                            array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]}.
+                                                {$reference->titulo}: {$reference->subtitulo}.{$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                            );
+                        }else{
+                            array_push($result, <<<END
+                                                <div><p><span style="text-transform: uppercase;">{$autor1[count($autor)-1]}</span>, {$autor1[0]} et al.
+                                                {$reference->titulo}: {$reference->subtitulo}.
+                                                {$reference->edicao}. {$reference->local}: {$reference->editora}, {$reference->ano}.</p></div>
+                                                END
+                            );
+                        }
                     }
                 }
 
@@ -212,9 +289,33 @@ class SendPdfNotification
 
     public function handle(PdfGenerated $event)
     {
+
         $capitulosSeparados = SendPdfNotification::sliceChapters($event->document->capitulos);
-        $sortedContent = SendPdfNotification::setContent($capitulosSeparados);
-        $sortedContent = SendPdfNotification::formatContent($sortedContent);
+        $introducao = [];
+        $resumo = [];
+        $listaAbreviatura = [];
+        $desenvolvimento = [];
+        foreach($capitulosSeparados as $capitulo => $value){
+            foreach($value as $lista){
+                foreach($lista as $html){
+                    if($html['name'] === 'listaAbreviatura'){
+                        array_push($listaAbreviatura, $html['value']);
+                    }
+                }
+            }
+            if(strcasecmp($capitulo, 'introdução') == 0){
+                $introducao = SendPdfNotification::setContent($value);
+            }
+            if(strcasecmp($capitulo, 'resumo') == 0){
+                $resumo = SendPdfNotification::setContent($value);
+            }if(strcasecmp($capitulo, 'resumo') != 0){
+                if(strcasecmp($capitulo, 'introdução') != 0){
+                    $desenvolvimento[$capitulo] = SendPdfNotification::setContent($value);
+                }
+            }
+        };
+        array_splice($desenvolvimento, 0, 1);
+
         $references = SendPdfNotification::formatReferences($event->document->referencias);
         $uid = $event->document->users_id;
         $user = User::findOrFail($uid);
@@ -233,22 +334,24 @@ class SendPdfNotification
             'ano' => $event->document->ano,
             'examinador1' => $banca[0],
             'examinador2' => $banca[1],
-            'listaAbreviaturas' => '',
-            'introducao' => '',
-            // 'conteudo' => $sortedContent,
+            'resumo' => $resumo,
+            'introducao' => $introducao,
+            'listaAbreviaturas' => $listaAbreviatura,
+            'desenvolvimento' => $desenvolvimento,
             'referencias' => $references
         ])->render();
-        //$pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
-        Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        //Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
         ->margins(20, 20, 20, 20)
         ->footerHtml('<span class="pageNumber"></span>')
         ->initialPageNumber(9)
-        ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
-        //->base64pdf();
-        //$nomeDoArquivo = Str::slug($event->document->nome, '-');
-        //Storage::disk('s3')->put($nomeDoArquivo.'.pdf', base64_decode($pdf_created));
-
+        //->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
+        ->base64pdf();
+        $nomeDoArquivo = Str::slug($event->document->nome, '-');
+        Storage::disk('s3')->put($nomeDoArquivo.'.pdf', base64_decode($pdf_created));
+        $path = Storage::disk('s3')->url($nomeDoArquivo);
+        Mail::send(new pdfCreatedMail($user, $path));
 
     }
 }

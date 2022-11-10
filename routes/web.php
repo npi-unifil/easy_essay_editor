@@ -3,10 +3,11 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Inertia\Inertia;
 use App\Http\Controllers\DocumentoController;
-use App\Http\Controllers\ComponenteController;
-
+use App\Mail\pdfCreatedMail;
+use Illuminate\Support\Facades\Mail;
 /*
 |--------------------------------------------------------------------------
 | Web Routes

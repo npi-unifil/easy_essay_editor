@@ -217,7 +217,7 @@ export default {
                         </div>
                         <div class="form-container">
                             <div>
-                                <p>Editora:</p>
+                                <p>Editora ou Artigo:</p>
                                 <input v-model=referencia.editora />
                             </div>
                             <div>

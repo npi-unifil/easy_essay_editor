@@ -282,6 +282,7 @@ class DocumentoController extends Controller
     public function exportPdf(Request $request, Documento $document){
         PdfGenerated::dispatch($document);
 
+        // return redirect()->route('emailSend');
         return redirect()->back();
     }
 
