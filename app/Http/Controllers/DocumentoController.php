@@ -36,6 +36,7 @@ class DocumentoController extends Controller
     }
 
     public function show(Documento $document){
+        //dd($document->anexo);
         $document_name = $document->nome;
         $capitulos = [];
         foreach($document->capitulos as $capitulo){
@@ -55,7 +56,12 @@ class DocumentoController extends Controller
             'cidade' => $document->cidade,
             'ano' => $document->ano,
             'curso' => $document->curso,
-            'banca' => $document->banca
+            'banca' => $document->banca,
+            'dedicatoria' => $document->dedicatoria,
+            'agradecimentos' => $document->agradecimentos,
+            'epigrafe' => $document->epigrafe,
+            'apendice' => $document->apendice,
+            'anexo' => $document->anexo,
         ]);
     }
 
@@ -69,7 +75,12 @@ class DocumentoController extends Controller
             'curso' => $request -> curso,
             'banca' => $request -> banca,
             'users_id'=> $request->user()->id,
-            'templates_id' => $request -> template
+            'templates_id' => $request -> template,
+            'dedicatoria' => $request->dedicatoria,
+            'agradecimentos' => $request->agradecimentos,
+            'epigrafe' => $request->epigrafe,
+            'apendice' => $request->apendice,
+            'anexo' => $request->anexo
         ]);
 
         return redirect()->route('documents.show', $document);
@@ -282,7 +293,6 @@ class DocumentoController extends Controller
     public function exportPdf(Request $request, Documento $document){
         PdfGenerated::dispatch($document);
 
-        // return redirect()->route('emailSend');
         return redirect()->back();
     }
 

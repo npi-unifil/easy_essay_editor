@@ -12,35 +12,20 @@ import Modal from '@/Components/EditorComponents/Modal.vue';
 
 <script>
 export default {
-    props: ['id', 'edit', 'orientador', 'cidade', 'ano', 'curso', 'banca', 'template', 'document_name', 'capitulos'],
+    props: ['id', 'edit',
+        'orientador', 'cidade',
+        'ano', 'curso', 'banca',
+        'dedicatoria', 'agradecimentos',
+        'epigrafe', 'apendice',
+        'anexo', 'template',
+        'document_name', 'capitulos'],
 
     components: {
         SideModal,
         Modal
     },
 
-    mounted() {
-        this.checkBanca();
-        this.checkCapitulos();
-    },
-
     methods: {
-
-        checkBanca() {
-            if (this.banca == undefined | this.banca == null) {
-                this.dados.banca = [];
-            } else {
-                this.dados.banca = this.banca;
-            }
-        },
-
-        checkCapitulos() {
-            if (this.capitulos == undefined | this.capitulos == null) {
-                this.dados.capitulos = [];
-            } else {
-                this.dados.capitulos = this.capitulos;
-            }
-        },
 
         showModal(index, id, nome) {
             this.isModalVisible = true;
@@ -98,7 +83,7 @@ export default {
             Inertia.get('/editChapter/' + id);
         },
 
-        delete_chapter(){
+        delete_chapter() {
             this.dados.capitulos.splice(this.chapter_data.index, 1);
             Inertia.delete('/chapter/' + this.chapter_data.id);
         },
@@ -109,6 +94,30 @@ export default {
         }
     },
 
+    mounted() {
+        if(this.banca != undefined | this.banca != null){
+            this.dados.banca = this.banca ;
+        }
+        if(this.dedicatoria != undefined | this.dedicatoria != null){
+            this.dados.dedicatoria = this.dedicatoria
+        }
+        if(this.agradecimentos != undefined | this.agradecimentos != null){
+            this.dados.agradecimentos = this.agradecimentos
+        }
+        if(this.epigrafe != undefined | this.epigrafe != null){
+            this.dados.epigrafe = this.epigrafe
+        }
+        if(this.apendice != undefined | this.apendice != null){
+            this.dados.apendice = this.apendice
+        }
+        if(this.anexo != undefined | this.anexo != null){
+            this.dados.anexo = this.anexo
+        }
+        if(this.capitulos != undefined | this.capitulos != null){
+            this.dados.capitulos = this.capitulos
+        }
+    },
+
     data() {
         const editorStore = useEditorStore();
         const chapter_data = {
@@ -116,6 +125,7 @@ export default {
             id: 0,
             nome: '',
         }
+
         const dados = {
             id: this.id,
             nome: this.document_name,
@@ -125,6 +135,11 @@ export default {
             ano: this.ano,
             curso: this.curso,
             banca: [],
+            dedicatoria: 'false',
+            agradecimentos: 'false',
+            epigrafe: 'false',
+            apendice: 'false',
+            anexo: 'false',
             capitulos: []
         }
         return { editorStore, chapter_data, dados, nome_banca: '', editedTitle: null, isOpened: false, isModalVisible: false };
@@ -254,7 +269,7 @@ export default {
             <template class="modal-body" v-slot:body>
                 <div>
                     <div>
-                        <p>Deseja Realmente Apagar o Capitulo {{this.chapter_data.nome}}?</p>
+                        <p>Deseja Realmente Apagar o Capitulo {{ this.chapter_data.nome }}?</p>
                     </div>
                     <div id="modal-buttons">
                         <button @click="closeModal()" style="background-color: green">
@@ -296,6 +311,29 @@ export default {
                                 <div style="margin-bottom: 10px;">
                                     <label for="curso">Curso: </label>
                                     <input v-model="this.dados.curso" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <p>Elementos opcionais:</p>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="dedicatoria">Dedicatoria</label>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.dedicatoria" true-value="true" false-value="false" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="agradecimentos">Agradecimentos</label>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.agradecimentos" true-value="true" false-value="false"/>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="apendice">Apendice</label>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.apendice" true-value="true" false-value="false"/>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="epigrafe">Epigrafe</label>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.epigrafe" true-value="true" false-value="false"/>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label for="anexo">Anexo</label>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.anexo" true-value="true" false-value="false"/>
                                 </div>
                                 <label for="nome">Adicionar examinador da Banca(se houver): </label>
                                 <div style="display: flex;">

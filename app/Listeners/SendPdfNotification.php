@@ -83,6 +83,7 @@ implements ShouldQueue
             }
             if($reference->site != null){
                 $acessado = explode("-", $reference->acessado);
+                $acessado[1] = str_replace('0', '', $acessado[1]);
                 if(sizeof($reference->nome_autor) > 1){
                     if($reference->subtitulo == null){
                         array_push($result, <<<END
@@ -289,8 +290,10 @@ implements ShouldQueue
 
     public function handle(PdfGenerated $event)
     {
-
         $capitulosSeparados = SendPdfNotification::sliceChapters($event->document->capitulos);
+        $dedicatoria = [];
+        $agradecimentos = [];
+        $epigrafe = [];
         $introducao = [];
         $resumo = [];
         $listaAbreviatura = [];
@@ -303,18 +306,37 @@ implements ShouldQueue
                     }
                 }
             }
+            if(strcasecmp($capitulo, 'dedicatória') == 0 | strcasecmp($capitulo, 'dedicatoria') == 0){
+                $dedicatoria = SendPdfNotification::setContent($value);
+            }
+            if(strcasecmp($capitulo, 'agradecimentos') == 0){
+                $agradecimentos = SendPdfNotification::setContent($value);
+            }
+            if(strcasecmp($capitulo, 'epigrafe') == 0 | strcasecmp($capitulo, 'epígrafe') == 0){
+                $epigrafe = SendPdfNotification::setContent($value);
+            }
             if(strcasecmp($capitulo, 'introdução') == 0){
                 $introducao = SendPdfNotification::setContent($value);
             }
             if(strcasecmp($capitulo, 'resumo') == 0){
                 $resumo = SendPdfNotification::setContent($value);
-            }if(strcasecmp($capitulo, 'resumo') != 0){
-                if(strcasecmp($capitulo, 'introdução') != 0){
-                    $desenvolvimento[$capitulo] = SendPdfNotification::setContent($value);
-                }
+            }if(strcasecmp($capitulo, 'resumo') != 0 && strcasecmp($capitulo, 'introdução') != 0
+                && strcasecmp($capitulo, 'dedicatória') != 0 && strcasecmp($capitulo, 'agradecimentos') != 0
+                && strcasecmp($capitulo, 'epigrafe') != 0){
+                $desenvolvimento[$capitulo] = SendPdfNotification::setContent($value);
             }
         };
         array_splice($desenvolvimento, 0, 1);
+
+        if($event->document->dedicatoria == 'false'){
+            $dedicatoria = [];
+        }
+        if($event->document->agradecimentos == 'false'){
+            $agradecimentos = [];
+        }
+        if($event->document->epigrafe == 'false'){
+            $epigrafe = [];
+        }
 
         $references = SendPdfNotification::formatReferences($event->document->referencias);
         $uid = $event->document->users_id;
@@ -335,23 +357,27 @@ implements ShouldQueue
             'examinador1' => $banca[0],
             'examinador2' => $banca[1],
             'resumo' => $resumo,
+            'dedicatoria' => $dedicatoria,
+            'agradecimentos' => $agradecimentos,
+            'epigrafe' => $epigrafe,
             'introducao' => $introducao,
             'listaAbreviaturas' => $listaAbreviatura,
             'desenvolvimento' => $desenvolvimento,
             'referencias' => $references
         ])->render();
-        $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
-        //Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        // $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
         ->margins(20, 20, 20, 20)
-        ->footerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(9)
-        //->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
-        ->base64pdf();
-        $nomeDoArquivo = Str::slug($event->document->nome, '-');
-        Storage::disk('s3')->put($nomeDoArquivo.'.pdf', base64_decode($pdf_created));
-        $path = Storage::disk('s3')->url($nomeDoArquivo);
-        Mail::send(new pdfCreatedMail($user, $path));
+        ->showBrowserHeaderAndFooter()
+        ->headerHtml('<span class="pageNumber"></span>')
+        ->initialPageNumber(8)
+        ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
+        // ->base64pdf();
+        // $nomeDoArquivo = Str::slug($event->document->nome, '-').'.pdf';
+        // Storage::disk('s3')->put($nomeDoArquivo, base64_decode($pdf_created));
+        // $path = Storage::disk('s3')->url($nomeDoArquivo);
+        // Mail::send(new pdfCreatedMail($user, $path));
 
     }
 }

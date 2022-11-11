@@ -20,6 +20,11 @@ class Documento extends Model
         'ano',
         'curso',
         'banca',
+        'dedicatoria',
+        'agradecimentos',
+        'epigrafe',
+        'apendice',
+        'anexo',
         'users_id',
         'templates_id'
     ];

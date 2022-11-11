@@ -163,6 +163,40 @@
         </div>
     </div>
 
+    {{-- Dedicatória --}}
+    @if (sizeof($dedicatoria) > 0)
+        <div style="break-after: page">
+            <div style="margin: 120% 0 0 70%;">
+                @foreach ($dedicatoria as $dedico)
+                    {{$dedico}}
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Agradecimentos --}}
+    @if (sizeof($agradecimentos) > 0)
+        <div style="break-after: page">
+            <div style="text-align:center; margin-bottom: 60px;">
+                <span>AGRADECIMENTOS</span>
+            </div>
+            @foreach ($agradecimentos as $agradecer)
+                {{$agradecer}}
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Epígrafe --}}
+    @if (sizeof($epigrafe) > 0)
+        <div style="break-after: page">
+            <div style="margin: 120% 0 0 70%;">
+                @foreach ($epigrafe as $epi)
+                    {{$epi}}
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- RESUMO --}}
 
     <div style="break-after:page">

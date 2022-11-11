@@ -21,6 +21,11 @@ return new class extends Migration
             $table->integer('ano');
             $table->string('curso');
             $table->text('banca')->nullable();
+            $table->string('dedicatoria')->nullable();
+            $table->string('agradecimentos')->nullable();
+            $table->string('epigrafe')->nullable();
+            $table->string('apendice')->nullable();
+            $table->string('anexo')->nullable();
             $table->unsignedBigInteger('users_id');
             $table->foreign('users_id')->references('id')->on('users');
             $table->timestamps();
