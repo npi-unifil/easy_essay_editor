@@ -322,11 +322,10 @@ implements ShouldQueue
                 $resumo = SendPdfNotification::setContent($value);
             }if(strcasecmp($capitulo, 'resumo') != 0 && strcasecmp($capitulo, 'introdução') != 0
                 && strcasecmp($capitulo, 'dedicatória') != 0 && strcasecmp($capitulo, 'agradecimentos') != 0
-                && strcasecmp($capitulo, 'epigrafe') != 0){
+                && strcasecmp($capitulo, 'epígrafe') != 0 && strcasecmp($capitulo, 'lista de abreviaturas e siglas') != 0){
                 $desenvolvimento[$capitulo] = SendPdfNotification::setContent($value);
             }
         };
-        array_splice($desenvolvimento, 0, 1);
 
         if($event->document->dedicatoria == 'false'){
             $dedicatoria = [];

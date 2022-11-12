@@ -21,7 +21,8 @@ class DocumentoController extends Controller
 // Gerenciar Trabalho Acadêmico -------------------------------------------------------
     public function novo_doc(Template $template){
         return Inertia::render('Chapters', [
-            'template' => $template->id
+            'template' => $template->id,
+            'isNewDoc' => 'true'
         ]);
     }
 
@@ -36,7 +37,7 @@ class DocumentoController extends Controller
     }
 
     public function show(Documento $document){
-        //dd($document->anexo);
+
         $document_name = $document->nome;
         $capitulos = [];
         foreach($document->capitulos as $capitulo){
@@ -66,6 +67,7 @@ class DocumentoController extends Controller
     }
 
     public function store(Request $request){
+
         $document = Documento::updateOrCreate(
             ['id' => $request->id],
             ['nome'=> $request->nome,
@@ -82,6 +84,23 @@ class DocumentoController extends Controller
             'apendice' => $request->apendice,
             'anexo' => $request->anexo
         ]);
+
+        if($request->isNewDoc == 'true'){
+            foreach($request->capitulos as $capitulo){
+                $capituloCriado = Capitulo::create([
+                    'name' => $capitulo['nome'],
+                    'document_id' => $document->id,
+                ]);
+
+                $capituloCriado->componentes()->create([
+                    'name' => 'paragrafo',
+                    'conteudo' => '<p></p>',
+                    'component_order' => 0,
+                    'object_id' => $capitulo['component_id'],
+                    'capitulos_id' => $capituloCriado->id,
+                ]);
+            }
+        }
 
         return redirect()->route('documents.show', $document);
     }

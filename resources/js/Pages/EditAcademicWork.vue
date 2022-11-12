@@ -34,7 +34,7 @@ export default {
             name: 'blotFormatter',
             module: BlotFormatter
         }
-        return { isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore, modules }
+        return {disabled: 0, isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore, modules }
     },
 
     components: {
@@ -44,6 +44,16 @@ export default {
     },
 
     mounted() {
+        if(
+            this.chapter_name == 'Dedicatória' |
+            this.chapter_name == 'Agradecimentos' |
+            this.chapter_name == 'Epígrafe' |
+            this.chapter_name == 'Resumo' |
+            this.chapter_name == 'Lista de Abreviaturas e Siglas' |
+            this.chapter_name == 'Introdução'
+        ){
+            this.disabled = 1;
+        }
         this.editorStore.setEditor(this.edit);
         this.editorStore.setExistingContent();
         this.editorStore.setComponentOrder();
@@ -180,9 +190,6 @@ export default {
             <h2 class="font-semibold text-xl text-gray-50 mt-2.5 leading-tight">
                 {{ this.edit.nome }}
             </h2>
-            <div>
-                <button id="button" @click="teste" class="bg-orange-400">Salvar</button>
-            </div>
         </div>
 
         <div class="py-12" style="text-align:center">
@@ -193,6 +200,7 @@ export default {
                         <div>
                             <div>
                                 <textarea
+                                    :disabled="disabled == 1"
                                     style="text-align: center; border: none; margin-bottom: 10px; font-weight: bolder;"
                                     name="title" cols="30" rows="2" v-model="this.dados.nome"
                                     placeholder="Dê um título ao seu capitulo..."></textarea>

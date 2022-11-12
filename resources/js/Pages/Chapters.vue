@@ -8,6 +8,7 @@ import { Link } from '@inertiajs/inertia-vue3';
 import { useEditorStore } from '@/utils/EditorStore';
 import SideModal from '../Components/EditorComponents/SideModal.vue';
 import Modal from '@/Components/EditorComponents/Modal.vue';
+import rnd from '../utils/generator.js';
 </script>
 
 <script>
@@ -16,9 +17,8 @@ export default {
         'orientador', 'cidade',
         'ano', 'curso', 'banca',
         'dedicatoria', 'agradecimentos',
-        'epigrafe', 'apendice',
-        'anexo', 'template',
-        'document_name', 'capitulos'],
+        'epigrafe', 'template',
+        'document_name', 'capitulos', 'isNewDoc'],
 
     components: {
         SideModal,
@@ -26,6 +26,9 @@ export default {
     },
 
     methods: {
+        getComponentId(){
+            return rnd(20, rnd.alphaLower);
+        },
 
         showModal(index, id, nome) {
             this.isModalVisible = true;
@@ -39,7 +42,6 @@ export default {
 
         openSideModal() {
             this.isOpened = true;
-            console.log(this.id);
         },
 
         closeSideModal() {
@@ -89,32 +91,77 @@ export default {
         },
 
         saveDocument() {
+            if (this.isNewDoc == 'true') {
+                let dados = {
+                    id: this.dados.id,
+                    nome: this.dados.nome,
+                    template: this.dados.template,
+                    orientador: this.dados.orientador,
+                    cidade: this.dados.cidade,
+                    ano: this.dados.ano,
+                    curso: this.dados.curso,
+                    banca: this.dados.banca,
+                    dedicatoria: this.dados.dedicatoria,
+                    agradecimentos: this.dados.agradecimentos,
+                    epigrafe: this.dados.epigrafe,
+                    capitulos: [],
+                    isNewDoc: this.dados.isNewDoc
+                }
+                if (dados.dedicatoria == 'true') {
+                    dados.capitulos.push({
+                        nome: 'Dedicatória',
+                        component_id: this.getComponentId()
+                    })
+                }
+                if (dados.agradecimentos == 'true') {
+                    dados.capitulos.push({
+                        nome: 'Agradecimentos',
+                        component_id: this.getComponentId()
+                    })
+                }
+                if (dados.epigrafe == 'true') {
+                    dados.capitulos.push({
+                        nome: 'Epígrafe',
+                        component_id: this.getComponentId()
+                    })
+                }
+                dados.capitulos.push({
+                    nome: 'Resumo',
+                    component_id: this.getComponentId()
+                })
+                if (dados.template == 1) {
+                    dados.capitulos.push({
+                        nome: 'Lista de Abreviaturas e Siglas',
+                        component_id: this.getComponentId()
+                    })
+                }
+                dados.capitulos.push({
+                    nome: 'Introdução',
+                    component_id: this.getComponentId()
+                })
+                Inertia.post('/documents', dados);
+            } else {
+                Inertia.post('/documents', this.dados);
+            }
             this.closeSideModal();
-            Inertia.post('/documents', this.dados);
         }
     },
 
     mounted() {
-        if(this.banca != undefined | this.banca != null){
-            this.dados.banca = this.banca ;
+        if (this.capitulos != undefined | this.capitulos != null) {
+            this.dados.capitulos = this.capitulos;
         }
-        if(this.dedicatoria != undefined | this.dedicatoria != null){
+        if (this.banca != undefined | this.banca != null) {
+            this.dados.banca = this.banca;
+        }
+        if (this.dedicatoria != undefined | this.dedicatoria != null) {
             this.dados.dedicatoria = this.dedicatoria
         }
-        if(this.agradecimentos != undefined | this.agradecimentos != null){
+        if (this.agradecimentos != undefined | this.agradecimentos != null) {
             this.dados.agradecimentos = this.agradecimentos
         }
-        if(this.epigrafe != undefined | this.epigrafe != null){
+        if (this.epigrafe != undefined | this.epigrafe != null) {
             this.dados.epigrafe = this.epigrafe
-        }
-        if(this.apendice != undefined | this.apendice != null){
-            this.dados.apendice = this.apendice
-        }
-        if(this.anexo != undefined | this.anexo != null){
-            this.dados.anexo = this.anexo
-        }
-        if(this.capitulos != undefined | this.capitulos != null){
-            this.dados.capitulos = this.capitulos
         }
     },
 
@@ -138,9 +185,8 @@ export default {
             dedicatoria: 'false',
             agradecimentos: 'false',
             epigrafe: 'false',
-            apendice: 'false',
-            anexo: 'false',
-            capitulos: []
+            capitulos: [],
+            isNewDoc: this.isNewDoc
         }
         return { editorStore, chapter_data, dados, nome_banca: '', editedTitle: null, isOpened: false, isModalVisible: false };
     }
@@ -246,10 +292,10 @@ export default {
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
                         </div>
-                        <h3 class="mt-8" v-if="this.dados.capitulos.length < 1">Adicione um novo capitulo ao seu
+                        <h3 class="mt-8" v-if="this.dados.capitulos.length == 0">Adicione um novo capitulo ao seu
                             trabalho...</h3>
-                        <div v-for="item, index in this.dados.capitulos" :key="index" class="cursor-pointer mt-4">
-                            <div style="display: flex; justify-content: space-between;">
+                        <div v-for="item, index in this.capitulos" :key="index" class="cursor-pointer mt-4">
+                            <div v-if="this.isNewDoc != 'true'" style="display: flex; justify-content: space-between;">
                                 <h2 @click="editChapter(item['id'])" class="cursor-pointer mt-4">{{ index + 1 }} - {{
                                         item['name']
                                 }}</h2>
@@ -317,23 +363,18 @@ export default {
                                 </div>
                                 <div style="margin-bottom: 10px;">
                                     <label for="dedicatoria">Dedicatoria</label>
-                                    <input style="width: 30px" type="checkbox" v-model="this.dados.dedicatoria" true-value="true" false-value="false" />
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.dedicatoria"
+                                        true-value="true" false-value="false" />
                                 </div>
                                 <div style="margin-bottom: 10px;">
                                     <label for="agradecimentos">Agradecimentos</label>
-                                    <input style="width: 30px" type="checkbox" v-model="this.dados.agradecimentos" true-value="true" false-value="false"/>
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="apendice">Apendice</label>
-                                    <input style="width: 30px" type="checkbox" v-model="this.dados.apendice" true-value="true" false-value="false"/>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.agradecimentos"
+                                        true-value="true" false-value="false" />
                                 </div>
                                 <div style="margin-bottom: 10px;">
                                     <label for="epigrafe">Epigrafe</label>
-                                    <input style="width: 30px" type="checkbox" v-model="this.dados.epigrafe" true-value="true" false-value="false"/>
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <label for="anexo">Anexo</label>
-                                    <input style="width: 30px" type="checkbox" v-model="this.dados.anexo" true-value="true" false-value="false"/>
+                                    <input style="width: 30px" type="checkbox" v-model="this.dados.epigrafe"
+                                        true-value="true" false-value="false" />
                                 </div>
                                 <label for="nome">Adicionar examinador da Banca(se houver): </label>
                                 <div style="display: flex;">
