@@ -13,7 +13,7 @@ import rnd from '../utils/generator.js';
 
 <script>
 export default {
-    props: ['id', 'edit',
+    props: ['id', 'nomeAutor', 'edit',
         'orientador', 'cidade',
         'ano', 'curso', 'banca',
         'dedicatoria', 'agradecimentos',
@@ -26,6 +26,10 @@ export default {
     },
 
     methods: {
+        retornarGerencia(){
+          Inertia.get('/gerenciar/' + this.id);
+        },
+
         getComponentId(){
             return rnd(20, rnd.alphaLower);
         },
@@ -94,6 +98,7 @@ export default {
             if (this.isNewDoc == 'true') {
                 let dados = {
                     id: this.dados.id,
+                    nomeAutor: this.dados.nomeAutor,
                     nome: this.dados.nome,
                     template: this.dados.template,
                     orientador: this.dados.orientador,
@@ -175,6 +180,7 @@ export default {
 
         const dados = {
             id: this.id,
+            nomeAutor: this.nomeAutor,
             nome: this.document_name,
             template: this.template,
             orientador: this.orientador,
@@ -212,7 +218,7 @@ export default {
 
 .add-autor input {
     border-bottom: 1px solid black;
-    width: 40%;
+    width: 60%;
 }
 
 .nome-autor {
@@ -274,7 +280,6 @@ export default {
                 <a href="/documents" class="no-underline font-bold text-slate-100 hover:text-slate-800">Documentos</a>
             </div>
         </template>
-
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -288,6 +293,7 @@ export default {
                             </h1>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
+                            <button @click="retornarGerencia()" class="chapter-button">Retornar</button>
                             <h1>Capitulos: </h1>
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
@@ -339,6 +345,10 @@ export default {
                         <div class="autores">
                             <div class="add-autor">
                                 <div style="margin-bottom: 10px;">
+                                    <label for="nomeAutor">Nome: </label>
+                                    <input v-model="this.dados.nomeAutor" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
                                     <label for="titulo">Titulo: </label>
                                     <input v-model="this.dados.nome" />
                                 </div>
@@ -358,40 +368,39 @@ export default {
                                     <label for="curso">Curso: </label>
                                     <input v-model="this.dados.curso" />
                                 </div>
-                                <div style="margin-bottom: 10px;">
+                                <div style="margin-bottom: 10px;" v-if="this.template == 1">
                                     <p>Elementos opcionais:</p>
                                 </div>
-                                <div style="margin-bottom: 10px;">
+                                <div style="margin-bottom: 10px;" v-if="this.template == 1">
                                     <label for="dedicatoria">Dedicatoria</label>
                                     <input style="width: 30px" type="checkbox" v-model="this.dados.dedicatoria"
                                         true-value="true" false-value="false" />
                                 </div>
-                                <div style="margin-bottom: 10px;">
+                                <div style="margin-bottom: 10px;" v-if="this.template == 1">
                                     <label for="agradecimentos">Agradecimentos</label>
                                     <input style="width: 30px" type="checkbox" v-model="this.dados.agradecimentos"
                                         true-value="true" false-value="false" />
                                 </div>
-                                <div style="margin-bottom: 10px;">
+                                <div style="margin-bottom: 10px;" v-if="this.template == 1">
                                     <label for="epigrafe">Epigrafe</label>
                                     <input style="width: 30px" type="checkbox" v-model="this.dados.epigrafe"
                                         true-value="true" false-value="false" />
                                 </div>
-                                <label for="nome">Adicionar examinador da Banca(se houver): </label>
-                                <div style="display: flex;">
+                                <label v-if="this.template == 1" for="nome">Adicionar examinador da Banca(se houver): </label>
+                                <div style="display: flex;" v-if="this.template == 1">
                                     <input v-model="this.nome_banca" v-on:keyup="keypressed" />
                                     <button @click="adicionar_novo"
                                         style="background-color: orange; width: 80px; height: 30px; border-radius: 5px; margin-left: 10px;">Adicionar</button>
                                 </div>
                             </div>
-                            <div v-for="nome, index  in this.dados.banca" :key="index">
+                            <div v-if="this.template == 1" v-for="nome, index  in this.dados.banca" :key="index">
                                 <div class="nome-autor">
-                                    <div style="display:flex; width: 80%; justify-content: space-between;">
+                                    <div style="display:flex; width: 100%; justify-content: space-between;">
                                         <p>{{ nome.nome }}</p>
-                                        <div style="display:flex; width: 45%; justify-content: space-between;">
+                                        <div style="display:flex; width: 50%; justify-content: space-between;">
                                             <button @click="editar_nome(index)" style="background-color: orange;">
                                                 Editar
                                             </button>
-                                            <br>
                                             <button style="background-color: red;" @click="deletarBanca(index)">
                                                 Deletar
                                             </button>

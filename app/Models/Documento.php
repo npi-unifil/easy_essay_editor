@@ -14,6 +14,7 @@ class Documento extends Model
     protected $table = 'documents';
 
     protected $fillable = [
+        'nomeAutor',
         'nome',
         'orientador',
         'cidade',

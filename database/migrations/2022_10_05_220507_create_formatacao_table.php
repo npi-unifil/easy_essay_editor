@@ -15,21 +15,21 @@ return new class extends Migration
     {
         Schema::create('formatacao', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->integer('margemSuperior')->nullable();
+            $table->integer('margemInferior')->nullable();
+            $table->integer('margemDireita')->nullable();
+            $table->integer('margemEsquerda')->nullable();
+            $table->integer('tamanhoFonte')->nullable();
+            $table->integer('tamanhoFonteTitulo')->nullable();
+            $table->string('alinhamentoTexto')->nullable();
+            $table->string('alinhamentoTitulo')->nullable();
+            $table->double('espacamentoTexto')->nullable();
+            $table->string('formatoTitulo')->nullable();
+            $table->string('formatoTexto')->nullable();
+            $table->string('pesoTitulo')->nullable();
             $table->unsignedBigInteger('templates_id');
             $table->foreign('templates_id')->references('id')->on('templates');
-            $table->string('name');
-            $table->integer('margem-superior')->nullable();
-            $table->integer('margem-inferior')->nullable();
-            $table->integer('margem-direita')->nullable();
-            $table->integer('margem-esquerda')->nullable();
-            $table->integer('tamanho-fonte')->nullable();
-            $table->integer('tamanho-fonte-titulo')->nullable();
-            $table->string('alinhamento-texto')->nullable();
-            $table->string('alinhamento-titulo')->nullable();
-            $table->double('espacamento-texto')->nullable();
-            $table->string('formato-titulo')->nullable();
-            $table->string('formato-texto')->nullable();
-            $table->string('peso-titulo')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

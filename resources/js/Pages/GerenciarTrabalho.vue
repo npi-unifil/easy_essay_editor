@@ -126,7 +126,7 @@ export default {
 .templates{
         display: flex;
         justify-content: space-between;
-        width: 500px;
+        width: 100%;
         margin-top: 10px;
         border-bottom: 1px solid black;
 }
@@ -214,10 +214,10 @@ export default {
 
                         <SideModal v-show="isOpened" @close="closeSideModal">
                             <template v-slot:body>
-                                <div style="height: 100%; background-color: white; width: 600px">
+                                <div style="height: 100%; background-color: white; width: 100%">
                                     <h1 style="text-align: center; margin-top: 23px;">Templates</h1>
 
-                                    <div style="display: flex; justify-content: center;">
+                                    <div style="display: block; justify-content: center;">
                                         <div class="templates" v-for="template in this.templates" :key="template.id">
                                             <p>{{template.nome}}</p>
                                             <div id="botao-selecionar">

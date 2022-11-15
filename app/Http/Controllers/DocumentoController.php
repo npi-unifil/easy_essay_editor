@@ -50,6 +50,7 @@ class DocumentoController extends Controller
 
         return Inertia::render('Chapters', [
             'id' => $document->id,
+            'nomeAutor' => $document->nomeAutor,
             'template' => $document->templates_id,
             'document_name' => $document_name,
             'capitulos' => $capitulos,
@@ -70,7 +71,8 @@ class DocumentoController extends Controller
 
         $document = Documento::updateOrCreate(
             ['id' => $request->id],
-            ['nome'=> $request->nome,
+            ['nomeAutor' => $request->nomeAutor,
+            'nome'=> $request->nome,
             'orientador' => $request -> orientador,
             'cidade' => $request -> cidade,
             'ano' => $request -> ano,

@@ -3,7 +3,8 @@
         <div style="display:flex; justify-content:flex-end;">
             <button type="button" class="btn-close-editor" @click="removeContent()">x</button>
         </div>
-        <QuillEditor @editorChange="saveContent()" @textChange="saveContent()" :options="editorOption" v-model:content='content' contentType="html" theme="snow"></QuillEditor>
+        <QuillEditor @editorChange="saveContent()" @textChange="saveContent()" :options="editorOption"
+            v-model:content='content' contentType="html" theme="snow"></QuillEditor>
     </div>
 </template>
 
@@ -17,7 +18,7 @@ import BlotFormatter, { AlignAction, ResizeAction, DeleteAction, ImageSpec } fro
 Quill.register('modules/blotFormatter', BlotFormatter);
 
 class CustomImageSpec extends ImageSpec {
-    getActions(){
+    getActions() {
         return [AlignAction, ResizeAction, DeleteAction];
     }
 }
@@ -38,10 +39,10 @@ export default {
         QuillEditor
     },
 
-    data(){
-        return{
+    data() {
+        return {
             editorOption: {
-                modules:{
+                modules: {
                     blotFormatter: {
                         specs: [
                             CustomImageSpec,
@@ -52,8 +53,12 @@ export default {
                             }
                         }
                     },
-                    toolbar:[
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['link'],
                         ['image', 'video'],
+                        [{ 'align': [] }],
+                        [{ 'color': [] }],
                     ],
                 }
             }
@@ -61,10 +66,10 @@ export default {
     },
 
     methods: {
-        saveContent(){
-           this.editorStore.saveContent(this.id, this.content);
+        saveContent() {
+            this.editorStore.saveContent(this.id, this.content);
         },
-        removeContent(){
+        removeContent() {
             this.editorStore.removeContent(this.id);
         }
     },
@@ -72,7 +77,7 @@ export default {
     setup: () => {
         const editorStore = useEditorStore();
 
-        return{editorStore}
+        return { editorStore }
     }
 
 }

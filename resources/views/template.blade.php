@@ -35,32 +35,32 @@
 
         <div style="border-bottom: 1px solid black; margin-bottom: 60px;"></div>
 
-        <div style="text-align: center; justify-content:center; margin-bottom: 120px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 120px; text-transform: uppercase;">
             <span>{{$curso}}</span>
         </div>
 
-        <div style="text-align: center; justify-content:center; margin-bottom: 160px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 160px; text-transform: uppercase;">
             <span >
                 {{$user}}
             </span>
         </div>
 
-        <div style="text-align: center; justify-content:center;">
+        <div style="text-align: center; justify-content:center; text-transform: uppercase; font-weight: bold;">
             <span >
                 {{$title}}
             </span>
         </div>
-        <div style="text-align: center; justify-content:center; margin-bottom: 445px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 400px; text-transform: uppercase;">
             <span>{{$subtitulo}}</span>
         </div>
 
         <div style="border-bottom: 1px solid black; margin-bottom: 10px;"></div>
-        <div style="text-align: center; justify-content:center; margin-bottom: 5px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 5px; font-weight: bold;">
             <span >
                 {{$cidade}}
             </span>
         </div>
-        <div style="text-align: center; justify-content:center; margin-bottom: 40px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 40px; font-weight: bold;">
             <span >
                 {{$ano}}
             </span>
@@ -69,22 +69,22 @@
     {{-- Contra capa --}}
     <div style="break-after:page">
 
-        <div style="text-align: center; justify-content:center; margin-bottom: 160px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 160px; text-transform: uppercase; font-weight: bold;">
             <span >
                 {{$user}}
             </span>
         </div>
 
-        <div style="text-align: center; justify-content:center;">
+        <div style="text-align: center; justify-content:center; text-transform: uppercase; font-weight: bold;">
             <span >
                 {{$title}}
             </span>
         </div>
-        <div style="text-align: center; justify-content:center;">
+        <div style="text-align: center; justify-content:center; text-transform: uppercase;">
             <span>{{$subtitulo}}</span>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-bottom: 500px; margin-top: 80px;">
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 480px; margin-top: 80px;">
             <div style=" width: 285px; text-align: justify;">
                 <span>Trabalho de conclusão de curso apresentado ao Centro Universitário
                     Filadélfia como parte dos requisitos para obtenção de graduação
@@ -92,12 +92,12 @@
             </div>
         </div>
 
-        <div style="text-align: center; justify-content:center; margin-bottom: 5px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 5px; font-weight: bold;">
             <span >
                 {{$cidade}}
             </span>
         </div>
-        <div style="text-align: center; justify-content:center; margin-bottom: 80px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 80px; font-weight: bold;">
             <span >
                 {{$ano}}
             </span>
@@ -106,18 +106,18 @@
     {{-- Folha de Aprovação --}}
     <div style="break-after:page">
 
-        <div style="text-align: center; justify-content:center; margin-bottom: 160px;">
+        <div style="text-align: center; justify-content:center; margin-bottom: 160px; text-transform: uppercase; font-weight: bold;">
             <span >
                 {{$user}}
             </span>
         </div>
 
-        <div style="text-align: center; justify-content:center;">
+        <div style="text-align: center; justify-content:center; text-transform: uppercase; font-weight: bold;">
             <span >
                 {{$title}}
             </span>
         </div>
-        <div style="text-align: center; justify-content:center;">
+        <div style="text-align: center; justify-content:center; text-transform: uppercase;">
             <span>{{$subtitulo}}</span>
         </div>
 
@@ -128,9 +128,9 @@
                     cumprimento a requisito parcial para obtenção do título de Bacharel em {{$curso}}.
             </span>
         </div>
-        <div style="margin-top: 80px; margin-bottom: 250px; justify-content:center; text-align: center;">
+        <div style="margin-top: 80px; margin-bottom: 210px; justify-content:center; text-align: center;">
             <div style="display: block;">
-                <span>APROVADO PELA COMISSÃO EXAMINADORA</span><br>
+                <span>APROVADO PELA <strong>COMISSÃO EXAMINADORA</strong></span><br>
                 <span style="text-transform: uppercase;"> EM {{$cidade}}, {{$ano}}.</span>
             </div>
         </div>
@@ -177,8 +177,8 @@
     {{-- Agradecimentos --}}
     @if (sizeof($agradecimentos) > 0)
         <div style="break-after: page">
-            <div style="text-align:center; margin-bottom: 60px;">
-                <span>AGRADECIMENTOS</span>
+            <div style="text-align:{{$alinhamentoTitle}}; margin-bottom: 60px; font-size:{{$fontSizeTitle}}; font-weight:{{$pesoTitle}}; text-transform:{{$formatoTitle}}">
+                <p>Agradecimentos</p>
             </div>
             @foreach ($agradecimentos as $agradecer)
                 {{$agradecer}}
@@ -201,11 +201,11 @@
 
     <div style="break-after:page">
 
-        <div style="text-align:center; margin-bottom: 20px;">
-            <span>RESUMO</span>
+        <div style="margin-bottom: 20px; text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}};">
+            <p>Resumo</p>
         </div>
 
-        <div style="text-align:justify; justify-content: center; margin-bottom: 5px;">
+        <div style="text-align:{{$alinhamentoText}}; justify-content: center; margin-bottom: 5px; font-size: {{$fontSizeText}}; line-height:{{$espacamentoTexto}};">
             @foreach ($resumo as $value)
                 {{ $value }}
             @endforeach
@@ -216,8 +216,8 @@
 
     <div style="break-after:page">
 
-        <div style="text-align: center; margin-bottom: 50px;">
-            <h1>LISTA DE ILUSTRAÇÕES</h1>
+        <div style="margin-bottom: 50px; text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}};">
+            <p>Lista de Ilustrações</p>
         </div>
 
     </div>
@@ -225,10 +225,12 @@
     {{-- Lista de Abreviaturas e siglas --}}
 
     <div style="break-after:page">
-        <h1 style="text-align: center">Lista de Abreviaturas e siglas</h1>
-        @foreach ($listaAbreviaturas as $lista)
-            {{$lista}}
-        @endforeach
+        <p style="text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}}; margin-bottom: 50px;">Lista de Abreviaturas e siglas</p>
+        <div style="font-size: {{$fontSizeText}};">
+            @foreach ($listaAbreviaturas as $lista)
+                {{$lista}}
+            @endforeach
+        </div>
 
     </div>
 
@@ -236,8 +238,8 @@
 
     <div style="break-after:page">
 
-        <div style="text-align: center; margin-bottom: 50px;">
-            <h1>SUMÁRIO</h1>
+        <div style="text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}}; margin-bottom: 50px;">
+            <p>Sumário</p>
         </div>
 
     </div>
@@ -245,10 +247,12 @@
     {{-- INTRODUÇÃO --}}
 
     <div style="break-after:page">
-        <h1 style="text-align: center">Introdução</h1>
-        @foreach ($introducao as $intro)
-            {{$intro}}
-        @endforeach
+        <p style="text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}};">Introdução</p>
+        <div style="font-size:{{$fontSizeText}}; text-align:{{$alinhamentoText}}; line-height:{{$espacamentoTexto}};">
+            @foreach ($introducao as $intro)
+                {{$intro}}
+            @endforeach
+        </div>
 
     </div>
 
@@ -256,23 +260,27 @@
     <div>
         @foreach ($desenvolvimento as $index => $content)
             <div style="break-after:page">
-                <div style="text-align: center; margin-bottom: 50px;">
-                    <h1>{{ $index }}</h1>
+                <div style="text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}}; margin-bottom: 50px;">
+                    <p>{{ $index }}</p>
                 </div>
-                @foreach ($content as  $value)
-                    {{$value}}
-                @endforeach
+                <div style="text-align:{{$alinhamentoText}}; line-height:{{$espacamentoTexto}}; font-size:{{$fontSizeText}};">
+                    @foreach ($content as  $value)
+                        {{$value}}
+                    @endforeach
+                </div>
             </div>
         @endforeach
     </div>
 
     {{-- REFERENCIAS --}}
     <div>
-        <div style="text-align: center; margin-bottom: 50px;">
-            <h1>REFERÊNCIAS</h1>
+        <div style="text-align: {{$alinhamentoTitle}}; font-size: {{$fontSizeTitle}}; font-weight: {{$pesoTitle}}; text-transform:{{$formatoTitle}}; margin-bottom: 50px;">
+            <p>REFERÊNCIAS</p>
         </div>
-        @foreach ($referencias as $autor)
-            {{$autor}}
-        @endforeach
+        <div style="text-align:{{$alinhamentoText}}; line-height:{{$espacamentoTexto}}; font-size:{{$fontSizeText}};">
+            @foreach ($referencias as $autor)
+                {{$autor}}
+            @endforeach
+        </div>
     </div>
 </div>

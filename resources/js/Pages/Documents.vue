@@ -78,7 +78,7 @@ export default {
 .templates{
         display: flex;
         justify-content: space-between;
-        width: 500px;
+        width: 100%;
         margin-top: 10px;
         border-bottom: 1px solid black;
 }
@@ -138,14 +138,14 @@ export default {
                 <div style="text-align: center; height: 100%; background-color: white; width: 100%">
                     <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>
 
-                    <div style="display: flex; justify-content: center;">
+                    <div style="display: block; justify-content: center;">
                         <div class="templates" v-for="template in this.templates" :key="template.id">
-                            <p>{{template.nome}}</p>
-                            <div id="botao-selecionar">
-                                <button style="background-color: green;" @click="newDoc(template.id)">
-                                    Selecionar
-                                </button>
-                            </div>
+                                <p>{{template.nome}}</p>
+                                <div id="botao-selecionar">
+                                    <button style="background-color: green;" @click="newDoc(template.id)">
+                                        Selecionar
+                                    </button>
+                                </div>
                         </div>
                     </div>
                 </div>

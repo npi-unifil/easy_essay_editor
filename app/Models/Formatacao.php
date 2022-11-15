@@ -10,26 +10,26 @@ class Formatacao extends Model
 {
     use HasFactory;
 
-    protected $table = 'templates';
+    protected $table = 'formatacao';
 
     protected $primaryKey = 'id';
 
     protected $fillable = [
         'nome',
-        'margem-superior',
-        'margem-inferior',
-        'margem-direita',
-        'margem-esquerda',
-        'tamanho-fonte',
-        'tamanho-fonte-titulo',
-        'alinhamento-texto',
-        'alinhamento-titulo',
-        'espacamento-texto',
-        'formato-titulo',
-        'formato-texto',
-        'peso-texto',
-        'peso-titulo',
-        'template_id'
+        'margemSuperior',
+        'margemInferior',
+        'margemDireita',
+        'margemEsquerda',
+        'tamanhoFonte',
+        'tamanhoFonteTitulo',
+        'alinhamentoTexto',
+        'alinhamentoTitulo',
+        'espacamentoTexto',
+        'formatoTitulo',
+        'formatoTexto',
+        'pesoTexto',
+        'pesoTitulo',
+        'templates_id'
     ];
 
     public function template() : BelongsTo

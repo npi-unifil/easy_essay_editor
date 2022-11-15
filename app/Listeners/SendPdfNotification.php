@@ -6,11 +6,9 @@ use App\Events\PdfGenerated;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Spatie\Browsershot\Browsershot;
-use App\Models\Documento;
-use App\Models\User;
 use App\Mail\pdfCreatedMail;
-use DateTime;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Formatacao;
+use App\Models\Template;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -288,8 +286,23 @@ implements ShouldQueue
         return $result;
     }
 
+    public function formatContent($content){
+        $result = $content;
+        $formated = '';
+        foreach($content as $indexOut => $values){
+            foreach($values as $indexInside => $text){
+                if(str_contains($text, 'class="ql-align-center"')){
+                    $formated = str_replace('class="ql-align-center"', 'style="text-align:center"', $text);
+                    $result[$indexOut][$indexInside] = $formated;
+                }
+            }
+        }
+        return $result;
+    }
+
     public function handle(PdfGenerated $event)
     {
+        $templateFormatacao = Formatacao::where('templates_id', $event->document->templates_id)->first();
         $capitulosSeparados = SendPdfNotification::sliceChapters($event->document->capitulos);
         $dedicatoria = [];
         $agradecimentos = [];
@@ -299,12 +312,8 @@ implements ShouldQueue
         $listaAbreviatura = [];
         $desenvolvimento = [];
         foreach($capitulosSeparados as $capitulo => $value){
-            foreach($value as $lista){
-                foreach($lista as $html){
-                    if($html['name'] === 'listaAbreviatura'){
-                        array_push($listaAbreviatura, $html['value']);
-                    }
-                }
+            if(strcasecmp($capitulo, 'Lista de Abreviaturas e Siglas') == 0 ){
+                $listaAbreviatura = SendPdfNotification::setContent($value);
             }
             if(strcasecmp($capitulo, 'dedicatória') == 0 | strcasecmp($capitulo, 'dedicatoria') == 0){
                 $dedicatoria = SendPdfNotification::setContent($value);
@@ -327,6 +336,8 @@ implements ShouldQueue
             }
         };
 
+        $desenvolvimento = SendPdfNotification::formatContent($desenvolvimento);
+
         if($event->document->dedicatoria == 'false'){
             $dedicatoria = [];
         }
@@ -338,8 +349,6 @@ implements ShouldQueue
         }
 
         $references = SendPdfNotification::formatReferences($event->document->referencias);
-        $uid = $event->document->users_id;
-        $user = User::findOrFail($uid);
         $banca = [];
         foreach($event->document->banca as $item){
             array_push($banca, $item['nome']);
@@ -347,7 +356,7 @@ implements ShouldQueue
         $template = view('template',  [
             'template' => $this,
             'curso' => $event->document->curso,
-            'user' => $user->name,
+            'user' => $event->document->nomeAutor,
             'orientador' => $event->document->orientador,
             'title' => $event->document->nome,
             'subtitulo' => '',
@@ -362,13 +371,22 @@ implements ShouldQueue
             'introducao' => $introducao,
             'listaAbreviaturas' => $listaAbreviatura,
             'desenvolvimento' => $desenvolvimento,
-            'referencias' => $references
+            'referencias' => $references,
+            'fontSizeTitle' => $templateFormatacao->tamanhoFonteTitulo,
+            'fontSizeText' => $templateFormatacao->tamanhoFonte,
+            'formatoTitle' => $templateFormatacao->formatoTitulo,
+            'pesoTitle' => $templateFormatacao->pesoTitulo,
+            'alinhamentoText' => $templateFormatacao->alinhamentoTexto,
+            'alinhamentoTitle' => $templateFormatacao->alinhamentoTitulo,
+            'espacamentoTexto' => $templateFormatacao->espacamentoTexto
+
         ])->render();
         // $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
-        ->margins(20, 20, 20, 20)
+        ->margins(30, 20, 20, 30)
         ->showBrowserHeaderAndFooter()
+        ->hideFooter()
         ->headerHtml('<span class="pageNumber"></span>')
         ->initialPageNumber(8)
         ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');

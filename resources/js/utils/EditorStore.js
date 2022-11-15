@@ -4,7 +4,6 @@ import { Object } from "core-js";
 import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
 import Imagem from '../Components/EditorComponents/Imagem.vue';
-import ListaAbreviaturas from '../Components/EditorComponents/ListaAbreviaturas.vue';
 import { toRaw } from "vue";
 
 export const useEditorStore = defineStore("EditorStore", {
@@ -88,9 +87,6 @@ export const useEditorStore = defineStore("EditorStore", {
                         }
                         if(key == 'name' && value == 'imagem'){
                             editorClone[editorId].editor.component = <Imagem id={editorId} content={editorContent}/>;
-                        }
-                        if(key == 'name' && value == 'listaAbreviatura'){
-                            editorClone[editorId].editor.component = <ListaAbreviaturas id={editorId} content={editorContent}/>;
                         }
                     })
                 })

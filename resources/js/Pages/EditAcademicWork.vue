@@ -6,13 +6,11 @@ import { QuillEditor, Quill } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { Inertia } from '@inertiajs/inertia';
 import { reactive } from 'vue';
-import BlotFormatter from 'quill-blot-formatter';
 import { useEditorStore } from '@/utils/EditorStore';
 import Modal from '../Components/EditorComponents/Modal.vue';
 import Titulo from '../Components/EditorComponents/Titulo.vue';
 import Paragrafo from '../Components/EditorComponents/Paragrafo.vue';
 import Imagem from '../Components/EditorComponents/Imagem.vue';
-import ListaAbreviaturas from '../Components/EditorComponents/ListaAbreviaturas.vue';
 import rnd from '../utils/generator.js';
 import SideModal from '../Components/EditorComponents/SideModal.vue';
 </script>
@@ -30,11 +28,7 @@ export default {
             nome: this.chapter_name,
             value: this.edit.conteudo,
         }
-        const modules = {
-            name: 'blotFormatter',
-            module: BlotFormatter
-        }
-        return {disabled: 0, isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore, modules }
+        return {disabled: 0, isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore}
     },
 
     components: {
@@ -135,20 +129,6 @@ export default {
                 }
                 this.editorStore.fill(id, titulo)
             }
-            if (editor === "listaAbreviatura") {
-                const titulo = {
-                    editor: {
-                        name: 'listaAbreviatura',
-                        component: <ListaAbreviaturas id={id} />,
-                        component_order: this.editorStore.getOrder()
-                    },
-                    content: {
-                        value: ''
-                    }
-
-                }
-                this.editorStore.fill(id, titulo)
-            }
             if (editor === "imagem") {
                 const imagem = {
                     editor: {
@@ -234,7 +214,6 @@ export default {
                                                 <option value="titulo">Titulo</option>
                                                 <option value="paragrafo">Paragrafo</option>
                                                 <option value="imagem">Imagem</option>
-                                                <option value="listaAbreviatura">Lista Abreviaturas e Siglas</option>
                                             </select>
                                         </div>
                                         <div class="modal-buttons">

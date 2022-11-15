@@ -32,7 +32,6 @@
                             <option value="titulo">Titulo</option>
                             <option value="paragrafo">Paragrafo</option>
                             <option value="imagem">Imagem</option>
-                            <option value="listaAbreviatura">Lista Abreviaturas e Siglas</option>
                         </select>
                     </div>
                     <div class="modal-buttons">
@@ -65,7 +64,6 @@ import { reactive } from 'vue';
 import rnd from '../../utils/generator.js';
 import { useEditorStore } from '@/utils/EditorStore';
 import SideModal from '../EditorComponents/SideModal.vue';
-import ListaAbreviaturas from './ListaAbreviaturas.vue';
 
 export default {
 
@@ -139,20 +137,6 @@ export default {
                     editor: {
                         name: 'titulo',
                         component: <Titulo id={id} />,
-                        component_order: this.editorStore.getOrder()
-                    },
-                    content: {
-                        value: ''
-                    }
-
-                }
-                this.editorStore.fill(id, titulo)
-            }
-            if (editor === "listaAbreviatura") {
-                const titulo = {
-                    editor: {
-                        name: 'listaAbreviatura',
-                        component: <ListaAbreviaturas id={id} />,
                         component_order: this.editorStore.getOrder()
                     },
                     content: {

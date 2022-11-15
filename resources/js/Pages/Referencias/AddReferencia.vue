@@ -57,6 +57,10 @@ export default {
 
 
     methods: {
+        retornarReferencias() {
+            Inertia.get('/referencias/' + this.doc_id);
+        },
+
         keypressed: function (event) {
             if (this.nome.length === 0) return;
             if (event.key == "Enter") {
@@ -160,6 +164,16 @@ export default {
     height: 30px;
 }
 
+#back-button{
+    color: white;
+    background-color: orange;
+    font-size: large;
+    font-weight: bolder;
+    width: 100px;
+    height: 30px;
+    border-radius: 5px;
+}
+
 #save-button {
     display: block;
     justify-content: center;
@@ -167,9 +181,11 @@ export default {
 
 #save-button button {
     background-color: orange;
-    width: 100px;
-    height: 50px;
+    width: 80px;
+    height: 40px;
     border-radius: 5px;
+    color: white;
+    font-weight: bold;
 }
 </style>
 
@@ -189,8 +205,11 @@ export default {
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-
-                        <h1>{{this.titulo_da_pagina}}</h1>
+                        <div style="display: flex; justify-content: space-between;">
+                            <button id="back-button" @click="retornarReferencias()">Retornar</button>
+                            <h1>{{this.titulo_da_pagina}}</h1>
+                            <br>
+                        </div>
                         <div class="form-container">
                             <div>
                                 <p>Nome do(s) Autor(es):</p>
@@ -245,8 +264,10 @@ export default {
                                     type="date" v-model=referencia.acessado />
                             </div>
                         </div>
-                        <div id="save-button">
+                        <div id="save-button" style="display:flex; justify-content: space-between;">
+                            <br>
                             <button @click="salvar_referencia">Salvar</button>
+                            <br>
                         </div>
                     </div>
                 </div>
