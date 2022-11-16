@@ -248,6 +248,13 @@ class DocumentoController extends Controller
         ]);
     }
 
+    public function changeTemplate(Request $request, Documento $document, Template $template){
+        $document->update([
+            'templates_id' => $template->id
+        ]);
+        return redirect()->route('gerenciar_trabalho', $document);
+    }
+
 // Gerenciar Referencia -------------------------------------------------------
     public function add_referencia(Documento $id){
         return Inertia::render('Referencias/AddReferencia', [
@@ -313,20 +320,14 @@ class DocumentoController extends Controller
 // Formatar Trabalho Acadêmico -------------------------------------------------------
     public function exportPdf(Request $request, Documento $document){
         PdfGenerated::dispatch($document);
+        $templates = Template::all();
 
-        return redirect()->back();
-    }
-
-    public function exportOnUpdate(Request $request){
-
-        Browsershot::html('<div>'.html_entity_decode($request->conteudo).'</div>')
-        ->format('A4')
-        ->margins(20, 20, 20, 20)
-        ->footerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(9)
-        ->save(\storage_path().'/'.$request->nome.'.pdf');
-
-        return redirect()->route('documents');
+        return Inertia::render('GerenciarTrabalho', [
+            'id' => $document->id,
+            'nome' => $document->nome,
+            'templates' => $templates,
+            'pdfFormatado' => 1
+        ]);
     }
 
 }

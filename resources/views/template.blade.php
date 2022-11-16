@@ -166,7 +166,7 @@
     {{-- Dedicatória --}}
     @if (sizeof($dedicatoria) > 0)
         <div style="break-after: page">
-            <div style="margin: 120% 0 0 70%;">
+            <div style="margin: 120% 0 0 70%; text-align:{{$alinhamentoText}}; font-size: {{$fontSizeText}}; line-height:{{$espacamentoTexto}};">
                 @foreach ($dedicatoria as $dedico)
                     {{$dedico}}
                 @endforeach
@@ -180,16 +180,18 @@
             <div style="text-align:{{$alinhamentoTitle}}; margin-bottom: 60px; font-size:{{$fontSizeTitle}}; font-weight:{{$pesoTitle}}; text-transform:{{$formatoTitle}}">
                 <p>Agradecimentos</p>
             </div>
-            @foreach ($agradecimentos as $agradecer)
-                {{$agradecer}}
-            @endforeach
+            <div style="text-align:{{$alinhamentoText}}; font-size: {{$fontSizeText}}; line-height:{{$espacamentoTexto}};">
+                @foreach ($agradecimentos as $agradecer)
+                    {{$agradecer}}
+                @endforeach
+            </div>
         </div>
     @endif
 
     {{-- Epígrafe --}}
     @if (sizeof($epigrafe) > 0)
         <div style="break-after: page">
-            <div style="margin: 120% 0 0 70%;">
+            <div style="margin: 120% 0 0 70%; text-align:{{$alinhamentoText}}; font-size: {{$fontSizeText}}; line-height:{{$espacamentoTexto}};">
                 @foreach ($epigrafe as $epi)
                     {{$epi}}
                 @endforeach

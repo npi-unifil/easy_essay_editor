@@ -70,15 +70,18 @@ export default {
     props: ['document'],
 
     mounted() {
+        let aux = {};
+        this.editorStore.setEditor(aux);
+        this.editorStore.setComponentOrder();
         const id = 'abcdefg';
         const initialEditor = {
             editor: {
-                name: 'titulo',
-                component: <Titulo id={id} />,
+                name: 'paragrafo',
+                component: <Paragrafo id={id} />,
                 component_order: 0
             },
             content: {
-                value: '<p>Escreva seu titulo<p>'
+                value: ''
             }
 
         }

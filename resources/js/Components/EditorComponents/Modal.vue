@@ -75,7 +75,7 @@
 
   .modal-header {
     position: relative;
-    border-bottom: 1px solid #eeeeee;
+    border-bottom: none;
     color: #4AAE9B;
     justify-content: space-between;
   }

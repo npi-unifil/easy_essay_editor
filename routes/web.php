@@ -57,6 +57,8 @@ Route::delete('/chapter/{id}', [DocumentoController::class, 'removeChapter'])->m
 // Gerenciar Documento ------------------------------------------------------------------------------------
 Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'])->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
 
+Route::put('/mudarTemplate/{document}/{template}', [DocumentoController::class, 'changeTemplate'])->middleware(['auth', 'verified']);
+
 // Referências ------------------------------------------------------------------------------------
 Route::get('/referencias/{id}', [DocumentoController::class, 'buscar_referencias'])->middleware(['auth', 'verified'])->name('gerenciar_referencias');
 

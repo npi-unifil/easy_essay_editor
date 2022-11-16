@@ -8,7 +8,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Spatie\Browsershot\Browsershot;
 use App\Mail\pdfCreatedMail;
 use App\Models\Formatacao;
-use App\Models\Template;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -302,6 +302,7 @@ implements ShouldQueue
 
     public function handle(PdfGenerated $event)
     {
+        $user = User::where('id', $event->document->users_id)->first();
         $templateFormatacao = Formatacao::where('templates_id', $event->document->templates_id)->first();
         $capitulosSeparados = SendPdfNotification::sliceChapters($event->document->capitulos);
         $dedicatoria = [];
@@ -349,52 +350,79 @@ implements ShouldQueue
         }
 
         $references = SendPdfNotification::formatReferences($event->document->referencias);
-        $banca = [];
-        foreach($event->document->banca as $item){
-            array_push($banca, $item['nome']);
-        };
-        $template = view('template',  [
-            'template' => $this,
-            'curso' => $event->document->curso,
-            'user' => $event->document->nomeAutor,
-            'orientador' => $event->document->orientador,
-            'title' => $event->document->nome,
-            'subtitulo' => '',
-            'cidade' => $event->document->cidade,
-            'ano' => $event->document->ano,
-            'examinador1' => $banca[0],
-            'examinador2' => $banca[1],
-            'resumo' => $resumo,
-            'dedicatoria' => $dedicatoria,
-            'agradecimentos' => $agradecimentos,
-            'epigrafe' => $epigrafe,
-            'introducao' => $introducao,
-            'listaAbreviaturas' => $listaAbreviatura,
-            'desenvolvimento' => $desenvolvimento,
-            'referencias' => $references,
-            'fontSizeTitle' => $templateFormatacao->tamanhoFonteTitulo,
-            'fontSizeText' => $templateFormatacao->tamanhoFonte,
-            'formatoTitle' => $templateFormatacao->formatoTitulo,
-            'pesoTitle' => $templateFormatacao->pesoTitulo,
-            'alinhamentoText' => $templateFormatacao->alinhamentoTexto,
-            'alinhamentoTitle' => $templateFormatacao->alinhamentoTitulo,
-            'espacamentoTexto' => $templateFormatacao->espacamentoTexto
+        $template = '';
+        if($event->document->templates_id == 1){
+            $banca = [];
+            foreach($event->document->banca as $item){
+                array_push($banca, $item['nome']);
+            };
+            $template = view('template',  [
+                'template' => $this,
+                'curso' => $event->document->curso,
+                'user' => $event->document->nomeAutor,
+                'orientador' => $event->document->orientador,
+                'title' => $event->document->nome,
+                'subtitulo' => '',
+                'cidade' => $event->document->cidade,
+                'ano' => $event->document->ano,
+                'examinador1' => $banca[0],
+                'examinador2' => $banca[1],
+                'resumo' => $resumo,
+                'dedicatoria' => $dedicatoria,
+                'agradecimentos' => $agradecimentos,
+                'epigrafe' => $epigrafe,
+                'introducao' => $introducao,
+                'listaAbreviaturas' => $listaAbreviatura,
+                'desenvolvimento' => $desenvolvimento,
+                'referencias' => $references,
+                'fontSizeTitle' => $templateFormatacao->tamanhoFonteTitulo,
+                'fontSizeText' => $templateFormatacao->tamanhoFonte,
+                'formatoTitle' => $templateFormatacao->formatoTitulo,
+                'pesoTitle' => $templateFormatacao->pesoTitulo,
+                'alinhamentoText' => $templateFormatacao->alinhamentoTexto,
+                'alinhamentoTitle' => $templateFormatacao->alinhamentoTitulo,
+                'espacamentoTexto' => $templateFormatacao->espacamentoTexto
 
-        ])->render();
-        // $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
-        Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+            ])->render();
+        }
+        if($event->document->templates_id == 2){
+            $template = view('templateArtigo',  [
+                'template' => $this,
+                'curso' => $event->document->curso,
+                'user' => $event->document->nomeAutor,
+                'orientador' => $event->document->orientador,
+                'title' => $event->document->nome,
+                'subtitulo' => '',
+                'cidade' => $event->document->cidade,
+                'ano' => $event->document->ano,
+                'resumo' => $resumo,
+                'introducao' => $introducao,
+                'desenvolvimento' => $desenvolvimento,
+                'referencias' => $references,
+                'fontSizeTitle' => $templateFormatacao->tamanhoFonteTitulo,
+                'fontSizeText' => $templateFormatacao->tamanhoFonte,
+                'formatoTitle' => $templateFormatacao->formatoTitulo,
+                'pesoTitle' => $templateFormatacao->pesoTitulo,
+                'alinhamentoText' => $templateFormatacao->alinhamentoTexto,
+                'alinhamentoTitle' => $templateFormatacao->alinhamentoTitulo,
+                'espacamentoTexto' => $templateFormatacao->espacamentoTexto
+
+            ])->render();
+        }
+        $footer = view('footer', ['template' => $event->document->templates_id])->render();
+        $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        //Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
-        ->margins(30, 20, 20, 30)
         ->showBrowserHeaderAndFooter()
-        ->hideFooter()
-        ->headerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(8)
-        ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
-        // ->base64pdf();
-        // $nomeDoArquivo = Str::slug($event->document->nome, '-').'.pdf';
-        // Storage::disk('s3')->put($nomeDoArquivo, base64_decode($pdf_created));
-        // $path = Storage::disk('s3')->url($nomeDoArquivo);
-        // Mail::send(new pdfCreatedMail($user, $path));
+        ->hideHeader()
+        ->footerHtml($footer)
+        ->margins(30, 20, 20, 30)
+        //->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
+        ->base64pdf();
+        $nomeDoArquivo = Str::slug($event->document->nome, '-').'.pdf';
+        Storage::disk('s3')->put($nomeDoArquivo, base64_decode($pdf_created));
+        $path = Storage::disk('s3')->url($nomeDoArquivo);
+        Mail::send(new pdfCreatedMail($user, $path));
 
     }
 }

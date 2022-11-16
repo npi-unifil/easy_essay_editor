@@ -14,17 +14,23 @@ import 'vue3-side-panel/dist/vue3-side-panel.css';
 <script>
 export default {
 
-    props: ['id', 'nome', 'templates'],
+    props: ['id', 'nome', 'templates', 'pdfFormatado'],
 
     components: {
         SideModal,
         Modal
     },
 
+    mounted() {
+        if(this.pdfFormatado == 1){
+            this.openPdfModal();
+        }
+    },
+
     data() {
         const editorStore = useEditorStore();
 
-        return { isModalVisible: false, isOpened: false, editorStore };
+        return { isModalVisible: false,  pdfGerado: false,successModal: false, templateName: '', isOpened: false, editorStore };
     },
 
     methods: {
@@ -34,6 +40,30 @@ export default {
 
         gerenciar_referencias() {
             Inertia.get('/referencias/' + this.id);
+        },
+
+        mudarTemplate(template, name){
+            this.templateName = name;
+            Inertia.put('/mudarTemplate/' + this.id + '/' + template);
+            this.closeSideModal();
+            this.openSuccessModal();
+        },
+
+        openPdfModal() {
+            this.pdfGerado = true;
+        },
+
+        closePdfModal(){
+            this.pdfGerado = false;
+            Inertia.get('/gerenciar/' + this.id);
+        },
+
+        openSuccessModal() {
+            this.successModal = true;
+        },
+
+        closeSuccessModal(){
+            this.successModal = false;
         },
 
         openSideModal() {
@@ -212,6 +242,43 @@ export default {
                             </template>
                         </Modal>
 
+                        <Modal v-show="successModal" @close="closeSuccessModal">
+                            <template class="modal-body" v-slot:body>
+                                <div>
+                                    <div>
+                                        <p>Template alterado para {{this.templateName}} com sucesso!</p>
+                                    </div>
+                                    <div id="modal-buttons">
+                                        <button @click="closeSuccessModal()"
+                                            style="background-color: orange">
+                                            Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </Modal>
+
+                        <Modal v-show="pdfGerado" @close="closePdfModal">
+                            <template class="modal-body" v-slot:body>
+                                <div>
+                                    <div style="margin-bottom: -45px;">
+                                        <p style="font-size: 18px; margin-bottom: 40px; color: orangered">ESTAMOS FORMATANDO O SEU <br/>DOCUMENTO</p>
+                                        <p style="font-size: 15px; text-align: center;">Nosso sistema está formatando seu
+                                            documento e gerando um arquivo PDF. Assim
+                                            que a formatação estiver pronta,
+                                            será enviado no seu e-mail cadastrado.
+                                        </p>
+                                    </div>
+                                    <div id="modal-buttons">
+                                        <button @click="closePdfModal()"
+                                            style="border: 1px solid orangered; color: orangered; width: 300px;">
+                                            Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </Modal>
+
                         <SideModal v-show="isOpened" @close="closeSideModal">
                             <template v-slot:body>
                                 <div style="height: 100%; background-color: white; width: 100%">
@@ -221,7 +288,7 @@ export default {
                                         <div class="templates" v-for="template in this.templates" :key="template.id">
                                             <p>{{template.nome}}</p>
                                             <div id="botao-selecionar">
-                                                <button style="background-color: green;">
+                                                <button style="background-color: green;" @click="mudarTemplate(template.id, template.nome)">
                                                     Selecionar
                                                 </button>
                                             </div>
