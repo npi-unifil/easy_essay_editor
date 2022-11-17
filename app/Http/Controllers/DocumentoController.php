@@ -213,6 +213,7 @@ class DocumentoController extends Controller
         });
 
         return Inertia::render('EditAcademicWork', [
+            'document' =>$capitulo->document_id,
             'chapter_id' => $capitulo->id,
             'chapter_name' => $capitulo->name,
             'edit' => $editors,

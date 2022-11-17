@@ -110,7 +110,9 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="card-group">
                             <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
-
+                                <div v-if="documents == null | documents == undefined">
+                                    <h2>Você não possui documentos, <br> selecione novo documento acima e crie um novo...</h2>
+                                </div>
                                 <div class="col-sm-6">
                                     <div class="card" style="width: 13rem;" @click="gerenciar(doc.id)">
                                         <form @submit.prevent="submit">

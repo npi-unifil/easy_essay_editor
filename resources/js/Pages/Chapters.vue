@@ -26,11 +26,11 @@ export default {
     },
 
     methods: {
-        retornarGerencia(){
-          Inertia.get('/gerenciar/' + this.id);
+        retornarGerencia() {
+            Inertia.get('/gerenciar/' + this.id);
         },
 
-        getComponentId(){
+        getComponentId() {
             return rnd(20, rnd.alphaLower);
         },
 
@@ -234,11 +234,41 @@ export default {
     height: 30px;
 }
 
+.nome-autor button:hover {
+    width: 90px;
+    height: 40px;
+    margin: 5px;
+}
+
+.chapter-name:hover{
+    font-size: 30px;
+}
+
 .chapter-button {
     border-radius: 5px;
     background-color: orange;
     color: white;
     width: 200px;
+    height: 50px;
+}
+
+.chapter-button:hover {
+    width: 210px;
+    height: 60px;
+    font-weight: bold;
+}
+
+#delete-button {
+    border-radius: 5px;
+    width: 100px;
+    height: 40px;
+    color: white;
+    font-weight: bolder;
+    background-color: red;
+}
+
+#delete-button:hover {
+    width: 110px;
     height: 50px;
 }
 
@@ -268,6 +298,36 @@ export default {
     width: 100px;
     height: 50px;
 }
+
+#add-title-svg{
+    margin-left: 30px;
+    text-align: center;
+    justify-content: center;
+    width: 20px;
+    transform: scaleX(-1);
+}
+.open-side-modal:hover svg{
+    height: 44px;
+    width: 44px;
+}
+
+@media only screen and (max-width: 1320px) {
+    .sideModal {
+        width: auto;
+    }
+}
+
+@media only screen and (max-width: 1094px) {
+    .sideModal {
+        width: auto;
+    }
+}
+
+@media only screen and (max-width: 827px) {
+    .sideModal {
+        width: auto;
+    }
+}
 </style>
 
 <template>
@@ -284,17 +344,32 @@ export default {
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <div @click="openSideModal()" class="cursor-pointer text-center">
+                        <div @click="openSideModal()" class="open-side-modal cursor-pointer text-center mb-12" style="display:flex; justify-content: space-between;">
+                            <div id="add-title-svg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-click"
+                                    width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                    <line x1="3" y1="12" x2="6" y2="12"></line>
+                                    <line x1="12" y1="3" x2="12" y2="6"></line>
+                                    <line x1="7.8" y1="7.8" x2="5.6" y2="5.6"></line>
+                                    <line x1="16.2" y1="7.8" x2="18.4" y2="5.6"></line>
+                                    <line x1="7.8" y1="16.2" x2="5.6" y2="18.4"></line>
+                                    <path d="M12 12l9 3l-4 2l-2 4l-3 -9"></path>
+                                </svg>
+                            </div>
                             <h1 v-if="this.dados.nome == '' | this.dados.nome == null">
                                 <p>Adicione um titulo...</p>
                             </h1>
-                            <h1 v-if="this.dados.nome != ''">
+                            <h2 v-if="this.dados.nome != ''">
                                 <p>{{ this.dados.nome }}</p>
-                            </h1>
+                            </h2>
+                            <br>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <button v-if="this.id != undefined | this.id != null" @click="retornarGerencia()" class="chapter-button">Retornar</button>
-                            <h1>Capitulos: </h1>
+                            <button v-if="this.id != undefined | this.id != null" @click="retornarGerencia()"
+                                class="chapter-button">Retornar</button>
+                            <h2>Capitulos: </h2>
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
                         </div>
@@ -302,12 +377,10 @@ export default {
                             trabalho...</h3>
                         <div v-for="item, index in this.capitulos" :key="index" class="cursor-pointer mt-4">
                             <div v-if="this.isNewDoc != 'true'" style="display: flex; justify-content: space-between;">
-                                <h2 @click="editChapter(item['id'])" class="cursor-pointer mt-4">{{ index + 1 }} - {{
+                                <h2 @click="editChapter(item['id'])" class="chapter-name cursor-pointer mt-4">{{ index + 1 }} - {{
                                         item['name']
                                 }}</h2>
-                                <button
-                                    style="border-radius: 5px; width: 100px; height: 40px; color: white; font-weight: bolder; background-color: red;"
-                                    @click="showModal(index, item['id'], item['name'])">
+                                <button id="delete-button" @click="showModal(index, item['id'], item['name'])">
                                     Deletar
                                 </button>
                             </div>
@@ -335,7 +408,7 @@ export default {
             </template>
         </Modal>
 
-        <SideModal v-show="isOpened" @close="closeSideModal">
+        <SideModal class="sideModal" v-show="isOpened" @close="closeSideModal">
             <template v-slot:body>
                 <div style="height: 100%; background-color: white; width: 70%">
                     <div style="text-align: center; margin-top: 23px; width: 140%">
@@ -372,7 +445,7 @@ export default {
                                     <p>Elementos opcionais:</p>
                                 </div>
                                 <div style="margin-bottom: 10px;" v-if="this.template == 1">
-                                    <label for="dedicatoria">Dedicatoria</label>
+                                    <label for="dedicatoria">Dedicatória</label>
                                     <input style="width: 30px" type="checkbox" v-model="this.dados.dedicatoria"
                                         true-value="true" false-value="false" />
                                 </div>
@@ -382,11 +455,12 @@ export default {
                                         true-value="true" false-value="false" />
                                 </div>
                                 <div style="margin-bottom: 10px;" v-if="this.template == 1">
-                                    <label for="epigrafe">Epigrafe</label>
+                                    <label for="epigrafe">Epígrafe</label>
                                     <input style="width: 30px" type="checkbox" v-model="this.dados.epigrafe"
                                         true-value="true" false-value="false" />
                                 </div>
-                                <label v-if="this.template == 1" for="nome">Adicionar examinador da Banca(se houver): </label>
+                                <label v-if="this.template == 1" for="nome">Adicionar examinador da Banca(se houver):
+                                </label>
                                 <div style="display: flex;" v-if="this.template == 1">
                                     <input v-model="this.nome_banca" v-on:keyup="keypressed" />
                                     <button @click="adicionar_novo"
@@ -396,8 +470,10 @@ export default {
                             <div v-if="this.template == 1" v-for="nome, index  in this.dados.banca" :key="index">
                                 <div class="nome-autor">
                                     <div style="display:flex; width: 100%; justify-content: space-between;">
-                                        <p>{{ nome.nome }}</p>
-                                        <div style="display:flex; width: 50%; justify-content: space-between;">
+                                        <div style="width: 200px">
+                                            <p>{{ nome.nome }}</p>
+                                        </div>
+                                        <div style="display:flex; width: 170px; justify-content: space-between;">
                                             <button @click="editar_nome(index)" style="background-color: orange;">
                                                 Editar
                                             </button>
@@ -408,7 +484,9 @@ export default {
                                     </div>
                                 </div>
                             </div>
-                            <button class="chapter-button" @click="saveDocument">Salvar</button>
+                            <div style="text-align:center;">
+                                <button class="chapter-button" @click="saveDocument">Salvar</button>
+                            </div>
                         </div>
                     </div>
                 </div>

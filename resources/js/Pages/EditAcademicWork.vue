@@ -19,7 +19,7 @@ import SideModal from '../Components/EditorComponents/SideModal.vue';
 
 export default {
 
-    props: ['chapter_id', 'edit', 'chapter_name'],
+    props: ['document', 'chapter_id', 'edit', 'chapter_name'],
 
     data() {
         const editorStore = useEditorStore();
@@ -28,7 +28,7 @@ export default {
             nome: this.chapter_name,
             value: this.edit.conteudo,
         }
-        return {disabled: 0, isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore}
+        return { disabled: 0, isModalVisible: false, nome_banca: '', editedTitle: null, dados, editorStore }
     },
 
     components: {
@@ -38,14 +38,14 @@ export default {
     },
 
     mounted() {
-        if(
+        if (
             this.chapter_name == 'Dedicatória' |
             this.chapter_name == 'Agradecimentos' |
             this.chapter_name == 'Epígrafe' |
             this.chapter_name == 'Resumo' |
             this.chapter_name == 'Lista de Abreviaturas e Siglas' |
             this.chapter_name == 'Introdução'
-        ){
+        ) {
             this.disabled = 1;
         }
         this.editorStore.setEditor(this.edit);
@@ -54,6 +54,10 @@ export default {
     },
 
     methods: {
+
+        retornarChapters(){
+            Inertia.get('/documents/' + this.document);
+        },
 
         showModal() {
             this.isModalVisible = true;
@@ -178,12 +182,13 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
 
                         <div>
-                            <div>
-                                <textarea
-                                    :disabled="disabled == 1"
+                            <div style="display: flex; justify-content: space-between;">
+                                <button id="back-button" @click="retornarChapters()">Retornar</button>
+                                <textarea :disabled="disabled == 1"
                                     style="text-align: center; border: none; margin-bottom: 10px; font-weight: bolder;"
                                     name="title" cols="30" rows="2" v-model="this.dados.nome"
                                     placeholder="Dê um título ao seu capitulo..."></textarea>
+                                <br>
                             </div>
 
                             <table class="table table-bordered">
@@ -252,6 +257,21 @@ export default {
     margin-top: 20px;
 }
 
+#back-button {
+    color: white;
+    background-color: orange;
+    font-size: large;
+    font-weight: bolder;
+    width: 100px;
+    height: 30px;
+    border-radius: 10px;
+}
+
+#back-button:hover{
+    width: 110px;
+    height: 40px;
+}
+
 #delete-button {
     width: 100px;
     height: 32px;
@@ -273,6 +293,10 @@ export default {
     margin: 5px;
 }
 
+.btn-add:hover{
+    background: #337a6d;
+}
+
 .btn-save {
     color: white;
     width: 150px;
@@ -280,6 +304,10 @@ export default {
     border: 1px solid #514aae;
     border-radius: 20px;
     margin: 5px;
+}
+
+.btn-save:hover{
+    background: #433e8b;
 }
 
 #title {

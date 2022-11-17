@@ -126,6 +126,12 @@ export default {
     background-color: blue;
 }
 
+.gerenciar-botoes button:hover{
+    width: 250px;
+    height: 70px;
+    font-size: larger;
+}
+
 .modal-body {
     justify-content: center;
     align-items: center;
@@ -169,6 +175,35 @@ export default {
         height: 30px;
         border-radius: 5px;
 }
+
+@media only screen and (max-width: 878px) {
+  .documento {
+    width: 500px;
+    height: 500px;
+  }
+  .documento p{
+    font-size: small;
+  }
+}
+
+@media only screen and (max-width: 762px) {
+  .documento {
+    width: 400px;
+    height: 500px;
+  }
+  .documento p{
+    font-size:x-small;
+  }
+}
+
+@media only screen and (max-width: 719px) {
+  .documento {
+    display: none;
+  }
+  .gerenciar-botoes {
+    margin: 0 30% 0 30%;
+  }
+}
 </style>
 
 <template>
@@ -189,14 +224,14 @@ export default {
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="conteudo-corpo">
                             <div class="gerenciar-botoes">
-                                <button style="background-color: pink;" @click="openSideModal">
+                                <button style="background-color: purple;" @click="openSideModal">
                                     Mudar Template
                                 </button>
                                 <button style="background-color: green;" @click="gerenciar_doc">
                                     Editar Documento
                                 </button>
                                 <button style="background-color: blue;" @click="gerenciar_referencias">
-                                    Gerenciar Referencias
+                                    Gerenciar Referências
                                 </button>
                                 <button style="background-color: orange;" @click="exportPdf">
                                     Gerar Trabalho Formatado
@@ -204,7 +239,7 @@ export default {
                                 <button style="background-color: red;" @click="showModal">
                                     Deletar Documento
                                 </button>
-                                <button style="background-color: yellow;" @click="retornar">
+                                <button style="color: orangered; border: 1px solid orangered; background-color: white;" @click="retornar">
                                     Retornar
                                 </button>
                             </div>
