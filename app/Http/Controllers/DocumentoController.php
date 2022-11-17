@@ -82,9 +82,7 @@ class DocumentoController extends Controller
             'templates_id' => $request -> template,
             'dedicatoria' => $request->dedicatoria,
             'agradecimentos' => $request->agradecimentos,
-            'epigrafe' => $request->epigrafe,
-            'apendice' => $request->apendice,
-            'anexo' => $request->anexo
+            'epigrafe' => $request->epigrafe
         ]);
 
         if($request->isNewDoc == 'true'){
@@ -273,7 +271,6 @@ class DocumentoController extends Controller
     }
 
     public function salvar_referencia(Request $referencia){
-        //dd($referencia, $referencia->nome_autor);
         $document = Referencia::updateOrCreate(
             ['id' => $referencia->id],
             ['nome_autor' => $referencia->nome_autor,

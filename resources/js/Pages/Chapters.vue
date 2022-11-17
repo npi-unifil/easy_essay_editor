@@ -293,7 +293,7 @@ export default {
                             </h1>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
-                            <button @click="retornarGerencia()" class="chapter-button">Retornar</button>
+                            <button v-if="this.id != undefined | this.id != null" @click="retornarGerencia()" class="chapter-button">Retornar</button>
                             <h1>Capitulos: </h1>
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
