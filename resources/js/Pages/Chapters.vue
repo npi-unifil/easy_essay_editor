@@ -90,6 +90,15 @@ export default {
         },
 
         delete_chapter() {
+            if(this.chapter_data.nome === 'Dedicatória'){
+                this.dados.dedicatoria = 'false';
+            }
+            if(this.chapter_data.nome === 'Agradecimentos'){
+                this.dados.agradecimentos = 'false';
+            }
+            if(this.chapter_data.nome === 'Epígrafe'){
+                this.dados.epigrafe = 'false';
+            }
             this.dados.capitulos.splice(this.chapter_data.index, 1);
             Inertia.delete('/chapter/' + this.chapter_data.id);
         },
@@ -146,6 +155,28 @@ export default {
                 })
                 Inertia.post('/documents', dados);
             } else {
+                this.dados.isNewDoc = false;
+                let optional = [];
+                if (this.dados.dedicatoria == 'true') {
+                    optional.push({
+                        nome: 'Dedicatória',
+                        component_id: this.getComponentId()
+                    })
+                }
+                if (this.dados.agradecimentos == 'true') {
+                    optional.push({
+                        nome: 'Agradecimentos',
+                        component_id: this.getComponentId()
+                    })
+                }
+                if (this.dados.epigrafe == 'true') {
+                    optional.push({
+                        nome: 'Epígrafe',
+                        component_id: this.getComponentId()
+                    })
+                }
+                this.dados.capitulos = optional;
+                console.log(this.dados.capitulos);
                 Inertia.post('/documents', this.dados);
             }
             this.closeSideModal();
@@ -373,7 +404,7 @@ export default {
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
                         </div>
-                        <h3 class="mt-8" v-if="this.dados.capitulos.length == 0">Adicione um novo capitulo ao seu
+                        <h3 class="mt-8" v-if="this.capitulos.length == 0">Adicione um novo capitulo ao seu
                             trabalho...</h3>
                         <div v-for="item, index in this.capitulos" :key="index" class="cursor-pointer mt-4">
                             <div v-if="this.isNewDoc != 'true'" style="display: flex; justify-content: space-between;">

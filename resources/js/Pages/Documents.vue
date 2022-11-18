@@ -25,12 +25,12 @@ export default {
             this.isOpened = true;
         },
 
-        closeSideModal(){
+        closeSideModal() {
             this.isOpened = false;
         },
 
         newDoc(template) {
-            Inertia.get('/novo_documento/'+ template);
+            Inertia.get('/novo_documento/' + template);
         }
 
     },
@@ -75,21 +75,21 @@ export default {
     cursor: pointer;
 }
 
-.templates{
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        margin-top: 10px;
-        border-bottom: 1px solid black;
+.templates {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 10px;
+    border-bottom: 1px solid black;
 }
 
-#botao-selecionar button{
-        color: white;
-        font-size: large;
-        font-weight: bolder;
-        width: 100px;
-        height: 30px;
-        border-radius: 5px;
+#botao-selecionar button {
+    color: white;
+    font-size: large;
+    font-weight: bolder;
+    width: 100px;
+    height: 30px;
+    border-radius: 5px;
 }
 </style>
 
@@ -109,22 +109,21 @@ export default {
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="card-group">
-                            <div class="row" style="padding: 5px" v-for="doc of documents" :key="doc.nome">
+                            <div class="grid grid-cols-4 gap-4">
                                 <div v-if="documents == null | documents == undefined">
-                                    <h2>Você não possui documentos, <br> selecione novo documento acima e crie um novo...</h2>
+                                    <h2>Você não possui documentos, <br> selecione novo documento acima e crie um
+                                        novo...</h2>
                                 </div>
-                                <div class="col-sm-6">
-                                    <div class="card" style="width: 13rem;" @click="gerenciar(doc.id)">
-                                        <form @submit.prevent="submit">
-                                            <img class="card-img-top"
-                                                src="https://img.freepik.com/free-photo/digital-cyberspace-with-particles-digital-data-network-connections_24070-1303.jpg?w=2000"
-                                                alt="Card image cap">
-                                            <div class="card-body">
-                                                <h5 class="card-title">{{ doc.nome }}</h5>
-                                            </div>
-                                        </form>
-                                    </div>
 
+                                <div class="card" @click="gerenciar(doc.id)"
+                                    v-for="doc of documents" :key="doc.nome">
+                                    <span
+                                        class="ml-2 mt-2 font-medium text-xs leading-5 rounded-full text-sky-600 bg-sky-400/10 px-2 py-0.5 dark:text-sky-400 z-20 absolute">{{doc.template.nome}}</span>
+                                    <form @submit.prevent="submit">
+                                        <div class="card-body mt-6">
+                                            <h5 class="card-title">{{ doc.nome }}</h5>
+                                        </div>
+                                    </form>
                                 </div>
 
                             </div>
@@ -142,12 +141,12 @@ export default {
 
                     <div style="display: block; justify-content: center;">
                         <div class="templates" v-for="template in this.templates" :key="template.id">
-                                <p>{{template.nome}}</p>
-                                <div id="botao-selecionar">
-                                    <button style="background-color: green;" @click="newDoc(template.id)">
-                                        Selecionar
-                                    </button>
-                                </div>
+                            <p>{{ template.nome }}</p>
+                            <div id="botao-selecionar">
+                                <button style="background-color: green;" @click="newDoc(template.id)">
+                                    Selecionar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

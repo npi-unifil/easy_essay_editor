@@ -41,7 +41,7 @@ class Documento extends Model
 
     public function template(): BelongsTo
     {
-        return $this->belongsTo(Template::class);
+        return $this->belongsTo(Template::class, 'templates_id', 'id');
     }
 
 

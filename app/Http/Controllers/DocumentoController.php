@@ -13,6 +13,7 @@ use App\Models\Template;
 use Illuminate\Support\Facades\Auth;
 use App\Events\PdfGenerated;
 use App\Models\Capitulo;
+use phpDocumentor\Reflection\Types\Boolean;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentoController extends Controller
@@ -28,7 +29,7 @@ class DocumentoController extends Controller
 
     public function index(){
         $user = Auth::user();
-        $documents = Documento::where('users_id', '=', $user->id)->get();
+        $documents = Documento::with('template')->where('users_id', '=', $user->id)->get();
         $templates = Template::all();
         return Inertia::render('Documents',[
             'documents' => $documents,
@@ -64,28 +65,27 @@ class DocumentoController extends Controller
             'epigrafe' => $document->epigrafe,
             'apendice' => $document->apendice,
             'anexo' => $document->anexo,
+            'isNewDoc' => 'false'
         ]);
     }
 
     public function store(Request $request){
-
-        $document = Documento::updateOrCreate(
-            ['id' => $request->id],
-            ['nomeAutor' => $request->nomeAutor,
-            'nome'=> $request->nome,
-            'orientador' => $request -> orientador,
-            'cidade' => $request -> cidade,
-            'ano' => $request -> ano,
-            'curso' => $request -> curso,
-            'banca' => $request -> banca,
-            'users_id'=> $request->user()->id,
-            'templates_id' => $request -> template,
-            'dedicatoria' => $request->dedicatoria,
-            'agradecimentos' => $request->agradecimentos,
-            'epigrafe' => $request->epigrafe
-        ]);
-
+        $document = new Documento;
         if($request->isNewDoc == 'true'){
+            $document = Documento::create(
+                ['nomeAutor' => $request->nomeAutor,
+                'nome'=> $request->nome,
+                'orientador' => $request -> orientador,
+                'cidade' => $request -> cidade,
+                'ano' => $request -> ano,
+                'curso' => $request -> curso,
+                'banca' => $request -> banca,
+                'users_id'=> $request->user()->id,
+                'templates_id' => $request -> template,
+                'dedicatoria' => $request->dedicatoria,
+                'agradecimentos' => $request->agradecimentos,
+                'epigrafe' => $request->epigrafe
+            ]);
             foreach($request->capitulos as $capitulo){
                 $capituloCriado = Capitulo::create([
                     'name' => $capitulo['nome'],
@@ -99,6 +99,38 @@ class DocumentoController extends Controller
                     'object_id' => $capitulo['component_id'],
                     'capitulos_id' => $capituloCriado->id,
                 ]);
+            }
+        }else{
+            $document = Documento::where('id', $request->id)->first();
+            $document->update(
+                ['nomeAutor' => $request->nomeAutor,
+                'nome'=> $request->nome,
+                'orientador' => $request -> orientador,
+                'cidade' => $request -> cidade,
+                'ano' => $request -> ano,
+                'curso' => $request -> curso,
+                'banca' => $request -> banca,
+                'users_id'=> $request->user()->id,
+                'templates_id' => $request -> template,
+                'dedicatoria' => $request->dedicatoria,
+                'agradecimentos' => $request->agradecimentos,
+                'epigrafe' => $request->epigrafe
+            ]);
+            foreach($request->capitulos as $capitulo){
+                if($document->capitulos->where('name', $capitulo['nome'])->count() === 0){
+                    $capituloCriado = Capitulo::create(
+                        ['name' => $capitulo['nome'],
+                        'document_id' => $document->id,
+                    ]);
+
+                    $capituloCriado->componentes()->create([
+                        'name' => 'paragrafo',
+                        'conteudo' => '<p></p>',
+                        'component_order' => 0,
+                        'object_id' => $capitulo['component_id'],
+                        'capitulos_id' => $capituloCriado->id,
+                    ]);
+                }
             }
         }
 
