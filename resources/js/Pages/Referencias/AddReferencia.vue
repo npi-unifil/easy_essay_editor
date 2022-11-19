@@ -52,7 +52,7 @@ export default {
             nomeDoSite: this.nomeDoSite,
             acessado: this.acessado,
         }
-        return { isOpened: false, referencia, nome, editedNome };
+        return { isOpened: false, required:true, referencia, nome, editedNome };
     },
 
 
@@ -99,7 +99,14 @@ export default {
         },
 
         salvar_referencia() {
-            Inertia.post('/salvar_referencia', this.referencia);
+            if(this.referencia.titulo == null || this.referencia.titulo.trim() == ''){
+                this.required = false;
+            }else{
+                this.required = true;
+            }
+            if(this.required){
+                Inertia.post('/salvar_referencia', this.referencia);
+            }
         },
     },
 
@@ -215,9 +222,14 @@ export default {
                                 <p>Nome do(s) Autor(es):</p>
                                 <input type="button" @click="add_autor">
                             </div>
-                            <div>
-                                <p>Titulo da referência:</p>
-                                <input v-model=referencia.titulo />
+                            <div style="display:block;">
+                                <div>
+                                    <p>Titulo da referência:</p>
+                                    <input v-model=referencia.titulo />
+                                </div>
+                                <div>
+                                    <label v-if="this.required == false" style="color: red;">Titulo é obrigatório!</label>
+                                </div>
                             </div>
                         </div>
                         <div class="form-container">
@@ -241,7 +253,7 @@ export default {
                             </div>
                             <div>
                                 <p>Ano da publicação:</p>
-                                <input v-model=referencia.ano />
+                                <input type="number" v-model=referencia.ano />
                             </div>
                             <div>
                                 <p>Página da publicação:</p>

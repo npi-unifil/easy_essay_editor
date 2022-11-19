@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('componentes', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->longText('conteudo');
+            $table->longText('conteudo')->nullable();
             $table->integer('component_order');
             $table->string('object_id');
             $table->timestamps();

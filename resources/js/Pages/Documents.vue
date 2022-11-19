@@ -134,7 +134,7 @@ export default {
         </div>
 
 
-        <SideModal v-show="isOpened" @close="closeSideModal">
+        <SideModal class="absolute" v-show="isOpened" @close="closeSideModal">
             <template v-slot:body>
                 <div style="text-align: center; height: 100%; background-color: white; width: 100%">
                     <h1 style="text-align: center; margin-top: 23px;">Selecione um Templates</h1>

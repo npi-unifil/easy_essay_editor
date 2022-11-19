@@ -3,6 +3,7 @@
         <div>
             <textarea style="text-align: center; border: none; margin-bottom: 10px; font-weight: bolder;" name="title" cols="30" rows="2" v-model="this.title" placeholder="Dê um título ao seu capitulo..."></textarea>
         </div>
+        <label v-if="required == false" style="color:red;">O titulo é obrigatório!</label>
 
         <table class="table table-bordered">
             <tbody>
@@ -90,6 +91,7 @@ export default {
 
     data() {
         return {
+            required: true,
             isModalVisible: false,
             title: '',
             editorOption: '',
@@ -166,10 +168,17 @@ export default {
         },
 
         saveChapter() {
-            this.editorStore.saveChapter(
-                this.title,
-                this.document
-            );
+            if(this.title === null | this.title.trim() === ''){
+                this.required = false
+            }else{
+                this.required = true;
+            }
+            if(this.required){
+                this.editorStore.saveChapter(
+                    this.title,
+                    this.document
+                );
+            }
         }
     }
 

@@ -38,7 +38,7 @@ class DocumentoController extends Controller
     }
 
     public function show(Documento $document){
-
+        $documentId = $document->id;
         $document_name = $document->nome;
         $capitulos = [];
         foreach($document->capitulos as $capitulo){
@@ -50,7 +50,7 @@ class DocumentoController extends Controller
         });
 
         return Inertia::render('Chapters', [
-            'id' => $document->id,
+            'id' => $documentId,
             'nomeAutor' => $document->nomeAutor,
             'template' => $document->templates_id,
             'document_name' => $document_name,
@@ -264,7 +264,6 @@ class DocumentoController extends Controller
     public function removeComponent(Request $id){
         $componentes = new Componente();
         $componente = $componentes->where("object_id", "=", $id['id'])->first();
-        //return $componente->delete();
     }
 
 // Gerenciar Trabalho -------------------------------------------------------

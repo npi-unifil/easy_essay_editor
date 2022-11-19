@@ -532,18 +532,16 @@ implements ShouldQueue
             ])->render();
         }
         $footer = view('footer', ['template' => $event->document->templates_id])->render();
-        //$pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
-        Browsershot::html('<div>'.html_entity_decode($template).'</div>')
+        $pdf_created = Browsershot::html('<div>'.html_entity_decode($template).'</div>')
         ->format('A4')
         ->showBrowserHeaderAndFooter()
         ->hideHeader()
         ->footerHtml($footer)
         ->margins(30, 20, 20, 30)
-        ->savePdf('/home/lucas/Documentos/'.$event->document->nome.'.pdf');
-        // ->base64pdf();
-        // $nomeDoArquivo = Str::slug($event->document->nome, '-').'.pdf';
-        // Storage::disk('s3')->put($nomeDoArquivo, base64_decode($pdf_created));
-        // $path = Storage::disk('s3')->url($nomeDoArquivo);
-        // Mail::send(new pdfCreatedMail($user, $path));
+        ->base64pdf();
+        $nomeDoArquivo = Str::slug($event->document->nome, '-').'.pdf';
+        Storage::disk('s3')->put($nomeDoArquivo, base64_decode($pdf_created));
+        $path = Storage::disk('s3')->url($nomeDoArquivo);
+        Mail::send(new pdfCreatedMail($user, $path));
     }
 }

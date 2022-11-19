@@ -90,96 +90,130 @@ export default {
         },
 
         delete_chapter() {
-            if(this.chapter_data.nome === 'Dedicatória'){
+            if (this.chapter_data.nome === 'Dedicatória') {
                 this.dados.dedicatoria = 'false';
             }
-            if(this.chapter_data.nome === 'Agradecimentos'){
+            if (this.chapter_data.nome === 'Agradecimentos') {
                 this.dados.agradecimentos = 'false';
             }
-            if(this.chapter_data.nome === 'Epígrafe'){
+            if (this.chapter_data.nome === 'Epígrafe') {
                 this.dados.epigrafe = 'false';
             }
             this.dados.capitulos.splice(this.chapter_data.index, 1);
             Inertia.delete('/chapter/' + this.chapter_data.id);
         },
 
-        saveDocument() {
-            if (this.isNewDoc == 'true') {
-                let dados = {
-                    id: this.dados.id,
-                    nomeAutor: this.dados.nomeAutor,
-                    nome: this.dados.nome,
-                    template: this.dados.template,
-                    orientador: this.dados.orientador,
-                    cidade: this.dados.cidade,
-                    ano: this.dados.ano,
-                    curso: this.dados.curso,
-                    banca: this.dados.banca,
-                    dedicatoria: this.dados.dedicatoria,
-                    agradecimentos: this.dados.agradecimentos,
-                    epigrafe: this.dados.epigrafe,
-                    capitulos: [],
-                    isNewDoc: this.dados.isNewDoc
-                }
-                if (dados.dedicatoria == 'true') {
-                    dados.capitulos.push({
-                        nome: 'Dedicatória',
-                        component_id: this.getComponentId()
-                    })
-                }
-                if (dados.agradecimentos == 'true') {
-                    dados.capitulos.push({
-                        nome: 'Agradecimentos',
-                        component_id: this.getComponentId()
-                    })
-                }
-                if (dados.epigrafe == 'true') {
-                    dados.capitulos.push({
-                        nome: 'Epígrafe',
-                        component_id: this.getComponentId()
-                    })
-                }
-                dados.capitulos.push({
-                    nome: 'Resumo',
-                    component_id: this.getComponentId()
-                })
-                if (dados.template == 1) {
-                    dados.capitulos.push({
-                        nome: 'Lista de Abreviaturas e Siglas',
-                        component_id: this.getComponentId()
-                    })
-                }
-                dados.capitulos.push({
-                    nome: 'Introdução',
-                    component_id: this.getComponentId()
-                })
-                Inertia.post('/documents', dados);
-            } else {
-                this.dados.isNewDoc = false;
-                let optional = [];
-                if (this.dados.dedicatoria == 'true') {
-                    optional.push({
-                        nome: 'Dedicatória',
-                        component_id: this.getComponentId()
-                    })
-                }
-                if (this.dados.agradecimentos == 'true') {
-                    optional.push({
-                        nome: 'Agradecimentos',
-                        component_id: this.getComponentId()
-                    })
-                }
-                if (this.dados.epigrafe == 'true') {
-                    optional.push({
-                        nome: 'Epígrafe',
-                        component_id: this.getComponentId()
-                    })
-                }
-                this.dados.capitulos = optional;
-                console.log(this.dados.capitulos);
-                Inertia.post('/documents', this.dados);
+        checkRequired() {
+            if (this.dados.nomeAutor == null || this.dados.nomeAutor.trim() == '') {
+                this.required = false;
+                return false;
             }
-            this.closeSideModal();
+            if (this.dados.nome == null || this.dados.nome.trim() == '') {
+                this.required = false;
+                return false;
+            }
+            if (this.dados.orientador == null || this.dados.orientador.trim() == '') {
+                this.required = false;
+                return false;
+            }
+            if (this.dados.cidade == null || this.dados.cidade.trim() == '') {
+                this.required = false;
+                return false;
+            }
+            if (this.dados.ano == null || this.dados.ano == 0) {
+                this.required = false;
+                return false;
+            }
+            if (this.dados.curso == null || this.dados.curso.trim() == '') {
+                this.required = false;
+                return false;
+            }
+
+            this.required = true;
+            return true;
+
+        },
+
+        saveDocument() {
+            if (this.checkRequired() == true) {
+                if (this.isNewDoc == 'true') {
+                    let dados = {
+                        id: this.dados.id,
+                        nomeAutor: this.dados.nomeAutor,
+                        nome: this.dados.nome,
+                        template: this.dados.template,
+                        orientador: this.dados.orientador,
+                        cidade: this.dados.cidade,
+                        ano: this.dados.ano,
+                        curso: this.dados.curso,
+                        banca: this.dados.banca,
+                        dedicatoria: this.dados.dedicatoria,
+                        agradecimentos: this.dados.agradecimentos,
+                        epigrafe: this.dados.epigrafe,
+                        capitulos: [],
+                        isNewDoc: this.dados.isNewDoc
+                    }
+                    if (dados.dedicatoria == 'true') {
+                        dados.capitulos.push({
+                            nome: 'Dedicatória',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    if (dados.agradecimentos == 'true') {
+                        dados.capitulos.push({
+                            nome: 'Agradecimentos',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    if (dados.epigrafe == 'true') {
+                        dados.capitulos.push({
+                            nome: 'Epígrafe',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    dados.capitulos.push({
+                        nome: 'Resumo',
+                        component_id: this.getComponentId()
+                    })
+                    if (dados.template == 1) {
+                        dados.capitulos.push({
+                            nome: 'Lista de Abreviaturas e Siglas',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    dados.capitulos.push({
+                        nome: 'Introdução',
+                        component_id: this.getComponentId()
+                    })
+                    Inertia.post('/documents', dados);
+                } else {
+                    this.dados.isNewDoc = false;
+                    let optional = [];
+                    if (this.dados.dedicatoria == 'true') {
+                        optional.push({
+                            nome: 'Dedicatória',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    if (this.dados.agradecimentos == 'true') {
+                        optional.push({
+                            nome: 'Agradecimentos',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    if (this.dados.epigrafe == 'true') {
+                        optional.push({
+                            nome: 'Epígrafe',
+                            component_id: this.getComponentId()
+                        })
+                    }
+                    this.dados.capitulos = optional;
+                    this.dados.id = this.id;
+                    console.log(this.dados);
+                    Inertia.post('/documents', this.dados);
+                }
+                this.closeSideModal();
+            }
         }
     },
 
@@ -225,7 +259,7 @@ export default {
             capitulos: [],
             isNewDoc: this.isNewDoc
         }
-        return { editorStore, chapter_data, dados, nome_banca: '', editedTitle: null, isOpened: false, isModalVisible: false };
+        return { editorStore,typeAno:true, required: true, chapter_data, dados, nome_banca: '', editedTitle: null, isOpened: false, isModalVisible: false };
     }
 
 }
@@ -271,7 +305,7 @@ export default {
     margin: 5px;
 }
 
-.chapter-name:hover{
+.chapter-name:hover {
     font-size: 30px;
 }
 
@@ -330,14 +364,15 @@ export default {
     height: 50px;
 }
 
-#add-title-svg{
+#add-title-svg {
     margin-left: 30px;
     text-align: center;
     justify-content: center;
     width: 20px;
     transform: scaleX(-1);
 }
-.open-side-modal:hover svg{
+
+.open-side-modal:hover svg {
     height: 44px;
     width: 44px;
 }
@@ -375,18 +410,17 @@ export default {
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
-                        <div @click="openSideModal()" class="open-side-modal cursor-pointer text-center mb-12" style="display:flex; justify-content: space-between;">
+                        <div @click="openSideModal()" class="open-side-modal cursor-pointer text-center mb-12"
+                            style="display:flex; justify-content: space-between;">
                             <div id="add-title-svg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-click"
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit"
                                     width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
                                     fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                                    <line x1="3" y1="12" x2="6" y2="12"></line>
-                                    <line x1="12" y1="3" x2="12" y2="6"></line>
-                                    <line x1="7.8" y1="7.8" x2="5.6" y2="5.6"></line>
-                                    <line x1="16.2" y1="7.8" x2="18.4" y2="5.6"></line>
-                                    <line x1="7.8" y1="16.2" x2="5.6" y2="18.4"></line>
-                                    <path d="M12 12l9 3l-4 2l-2 4l-3 -9"></path>
+                                    <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"></path>
+                                    <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z">
+                                    </path>
+                                    <path d="M16 5l3 3"></path>
                                 </svg>
                             </div>
                             <h1 v-if="this.dados.nome == '' | this.dados.nome == null">
@@ -404,13 +438,11 @@ export default {
                             <button v-if="this.id != undefined | this.id != null" class="chapter-button"
                                 @click="newChapter">Adicionar Capitulo</button>
                         </div>
-                        <h3 class="mt-8" v-if="this.capitulos.length == 0">Adicione um novo capitulo ao seu
+                        <h3 class="mt-8" v-if="this.capitulos == undefined">Adicione um novo capitulo ao seu
                             trabalho...</h3>
                         <div v-for="item, index in this.capitulos" :key="index" class="cursor-pointer mt-4">
                             <div v-if="this.isNewDoc != 'true'" style="display: flex; justify-content: space-between;">
-                                <h2 @click="editChapter(item['id'])" class="chapter-name cursor-pointer mt-4">{{ index + 1 }} - {{
-                                        item['name']
-                                }}</h2>
+                                <h2 @click="editChapter(item['id'])" class="chapter-name cursor-pointer mt-4">{{ index + 1 }} - {{item['name']}}</h2>
                                 <button id="delete-button" @click="showModal(index, item['id'], item['name'])">
                                     Deletar
                                 </button>
@@ -466,7 +498,7 @@ export default {
                                 </div>
                                 <div style="margin-bottom: 10px;">
                                     <label for="ano">Ano: </label>
-                                    <input v-model="this.dados.ano" />
+                                    <input type="number" v-model="this.dados.ano" />
                                 </div>
                                 <div style="margin-bottom: 10px;">
                                     <label for="curso">Curso: </label>
@@ -516,6 +548,8 @@ export default {
                                 </div>
                             </div>
                             <div style="text-align:center;">
+                                <label v-if="this.required == false" style="color: red;">O campo "Ano" só aceita números!</label>
+                                <label v-if="this.required == false" style="color: red;">Os campos "Nome", "Titulo", "Orientador", "Cidade", "Ano" e "Curso" são obrigatórios!</label>
                                 <button class="chapter-button" @click="saveDocument">Salvar</button>
                             </div>
                         </div>
