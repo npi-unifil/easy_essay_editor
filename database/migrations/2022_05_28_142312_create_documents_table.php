@@ -14,11 +14,23 @@ return new class extends Migration
     public function up()
     {
         Schema::create('documents', function (Blueprint $table) {
-            $table->id('document_id');
-            $table->timestamps();
+            $table->id();
+            $table->string('nomeAutor');
             $table->string('nome');
+            $table->string('orientador');
+            $table->string('cidade');
+            $table->integer('ano');
+            $table->string('curso');
+            $table->text('banca')->nullable();
+            $table->string('dedicatoria')->nullable();
+            $table->string('agradecimentos')->nullable();
+            $table->string('epigrafe')->nullable();
+            $table->string('apendice')->nullable();
+            $table->string('anexo')->nullable();
             $table->unsignedBigInteger('users_id');
             $table->foreign('users_id')->references('id')->on('users');
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 

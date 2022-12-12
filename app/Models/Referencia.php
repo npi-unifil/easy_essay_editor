@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Referencia extends Model
 {
@@ -14,9 +15,26 @@ class Referencia extends Model
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'nome',
-        'authorName',
-        'title',
-        'source'
+        'nome_autor',
+        'titulo',
+        'subtitulo',
+        'edicao',
+        'local',
+        'editora',
+        'ano',
+        'pagina',
+        'nomeDoSite',
+        'site',
+        'acessado',
+        'document_id'
     ];
+
+    protected $casts = [
+        'nome_autor' => 'array'
+    ];
+
+    public function documento() : BelongsTo
+    {
+        return $this->belongsTo(Documento::class);
+    }
 }

@@ -15,9 +15,9 @@ return new class extends Migration
     {
         Schema::create('templates', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
             $table->string('nome');
-            $table->longText('regras');
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 

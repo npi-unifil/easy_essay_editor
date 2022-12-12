@@ -14,7 +14,7 @@ class LoginController{
     public function handleProviderCallback()
     {
         try {
-            $user = Socialite::driver('google')->stateless()->user();
+            $user = Socialite::driver('google')->user();
         } catch (\Exception $e) {
             return redirect('/');
         }

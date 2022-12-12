@@ -15,16 +15,16 @@ class ComponenteController extends Controller
      * @param  \App\Http\Requests\StoreComponenteRequest  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request, $data)
+    public function store($componentName, $component_order, $object_id, $contents, $data)
     {
-        //dd($request, $data);
-        $value = explode(">", $request->value)[0];
-        $nome = $value.">";
-        $conteudo = $request->value;
-        $document_id = $data->document_id;
+        //dd($componentName, $component_order, $object_id, $contents, $data);
+
+        $document_id = $data->id;
         Componente::create([
-            'name'=>$nome,
-            'conteudo'=>$conteudo,
+            'name'=>$componentName,
+            'conteudo'=>$contents,
+            'component_order'=>$component_order,
+            'object_id'=>$object_id,
             'document_id'=>$document_id
         ]);
     }

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Documento extends Model
 {
@@ -11,23 +13,46 @@ class Documento extends Model
 
     protected $table = 'documents';
 
-    protected $primaryKey = 'document_id';
-
     protected $fillable = [
+        'nomeAutor',
         'nome',
-        'users_id'
+        'orientador',
+        'cidade',
+        'ano',
+        'curso',
+        'banca',
+        'dedicatoria',
+        'agradecimentos',
+        'epigrafe',
+        'apendice',
+        'anexo',
+        'users_id',
+        'templates_id'
     ];
 
+    protected $casts = [
+        'banca' => 'array'
+    ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-
-    public function componentes()
+    public function template(): BelongsTo
     {
-        return $this->hasMany(Componente::class, 'component_id', 'id');
+        return $this->belongsTo(Template::class, 'templates_id', 'id');
+    }
+
+
+    public function capitulos(): HasMany
+    {
+        return $this->hasMany(Capitulo::class, 'document_id', 'id');
+    }
+
+    public function referencias(): HasMany
+    {
+        return $this->hasMany(Referencia::class, 'document_id', 'id');
     }
 
 }

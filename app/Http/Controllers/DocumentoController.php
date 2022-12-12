@@ -6,94 +6,357 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use App\Models\Documento;
+use App\Models\User;
+use App\Models\Componente;
+use App\Models\Referencia;
+use App\Models\Template;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\ComponenteController;
+use App\Events\PdfGenerated;
+use App\Models\Capitulo;
+use phpDocumentor\Reflection\Types\Boolean;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentoController extends Controller
 {
 
-    public function index(){
-        $user = Auth::user()->id;
-        $documents = Documento::where('users_id', '=', $user)->get();
-        return Inertia::render('Documents',[
-            'documents' => $documents
+// Gerenciar Trabalho Acadêmico -------------------------------------------------------
+    public function novo_doc(Template $template){
+        return Inertia::render('Chapters', [
+            'template' => $template->id,
+            'isNewDoc' => 'true'
         ]);
     }
 
-    public function getById($id){
-        $user = Auth::user()->id;
+    public function index(){
+        $user = Auth::user();
+        $documents = Documento::with('template')->where('users_id', '=', $user->id)->get();
+        $templates = Template::all();
+        return Inertia::render('Documents',[
+            'documents' => $documents,
+            'templates' => $templates
+        ]);
+    }
 
-        $documents = Documento::findOrFail($id)->join('componentes', 'componentes.document_id', '=', 'documents.document_id')->findOrFail($id);
-
-        if($user == $documents->users_id){
-            return Inertia::render('EditAcademicWork', [
-                'edit' => $documents
-            ]);
+    public function show(Documento $document){
+        $documentId = $document->id;
+        $document_name = $document->nome;
+        $capitulos = [];
+        foreach($document->capitulos as $capitulo){
+            array_push($capitulos, ['id' => $capitulo->id, 'name' => $capitulo->name]);
         }
-        return Inertia::render('NotFound');
+
+        usort($capitulos, function($obj1, $obj2){
+            return $obj1['id'] > $obj2['id'];
+        });
+
+        return Inertia::render('Chapters', [
+            'id' => $documentId,
+            'nomeAutor' => $document->nomeAutor,
+            'template' => $document->templates_id,
+            'document_name' => $document_name,
+            'capitulos' => $capitulos,
+            'orientador' => $document->orientador,
+            'cidade' => $document->cidade,
+            'ano' => $document->ano,
+            'curso' => $document->curso,
+            'banca' => $document->banca,
+            'dedicatoria' => $document->dedicatoria,
+            'agradecimentos' => $document->agradecimentos,
+            'epigrafe' => $document->epigrafe,
+            'apendice' => $document->apendice,
+            'anexo' => $document->anexo,
+            'isNewDoc' => 'false'
+        ]);
     }
 
     public function store(Request $request){
-        dd($request);
-        $nome = $request->nome;
-        $users_id = $request->user()->id;
-        $data = Documento::create([
-            'nome'=>$nome,
-            'users_id'=>$users_id
-        ]);
+        $document = new Documento;
+        if($request->isNewDoc == 'true'){
+            $document = Documento::create(
+                ['nomeAutor' => $request->nomeAutor,
+                'nome'=> $request->nome,
+                'orientador' => $request -> orientador,
+                'cidade' => $request -> cidade,
+                'ano' => $request -> ano,
+                'curso' => $request -> curso,
+                'banca' => $request -> banca,
+                'users_id'=> $request->user()->id,
+                'templates_id' => $request -> template,
+                'dedicatoria' => $request->dedicatoria,
+                'agradecimentos' => $request->agradecimentos,
+                'epigrafe' => $request->epigrafe
+            ]);
+            foreach($request->capitulos as $capitulo){
+                $capituloCriado = Capitulo::create([
+                    'name' => $capitulo['nome'],
+                    'document_id' => $document->id,
+                ]);
 
-        $componente = new ComponenteController();
-        $componente->store($request, $data);
+                $capituloCriado->componentes()->create([
+                    'name' => 'paragrafo',
+                    'conteudo' => '<p></p>',
+                    'component_order' => 0,
+                    'object_id' => $capitulo['component_id'],
+                    'capitulos_id' => $capituloCriado->id,
+                ]);
+            }
+        }else{
+            $document = Documento::where('id', $request->id)->first();
+            $document->update(
+                ['nomeAutor' => $request->nomeAutor,
+                'nome'=> $request->nome,
+                'orientador' => $request -> orientador,
+                'cidade' => $request -> cidade,
+                'ano' => $request -> ano,
+                'curso' => $request -> curso,
+                'banca' => $request -> banca,
+                'users_id'=> $request->user()->id,
+                'templates_id' => $request -> template,
+                'dedicatoria' => $request->dedicatoria,
+                'agradecimentos' => $request->agradecimentos,
+                'epigrafe' => $request->epigrafe
+            ]);
+            foreach($request->capitulos as $capitulo){
+                if($document->capitulos->where('name', $capitulo['nome'])->count() === 0){
+                    $capituloCriado = Capitulo::create(
+                        ['name' => $capitulo['nome'],
+                        'document_id' => $document->id,
+                    ]);
 
-        return redirect()->route('documents');
+                    $capituloCriado->componentes()->create([
+                        'name' => 'paragrafo',
+                        'conteudo' => '<p></p>',
+                        'component_order' => 0,
+                        'object_id' => $capitulo['component_id'],
+                        'capitulos_id' => $capituloCriado->id,
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->route('documents.show', $document);
     }
 
     public function update(Request $request){
-        //dd($request);
-        $document_id = $request->id;
-        $documents = Documento::where('document_id', '=', $document_id)->first();
-        $documents->update($request->all('nome'));
+        $conteudo = $request->content;
 
-        $componente = new ComponenteController();
-        $componente->update($request);
+        foreach ($request->removed as $id => $content){
+            $componente = Componente::where('object_id', '=', $id);
+            $componente->delete();
+        }
 
-        return redirect()->route('documents');
+        $capitulo = Capitulo::where('id', $request->id)->first();
+        $document = Documento::where('id', '=', $capitulo->document_id)->first();
+
+        if($capitulo != null){
+            $capitulo->update([
+                'name'=>$request->name,
+                'document_id' => $capitulo->document_id
+            ]);
+        }
+
+        foreach ($conteudo as $id => $item) {
+            $editor = $item['editor'];
+            $conteudo = $item['content'];
+            $component = Componente::where('object_id', $id)->first();
+            if($component != null){
+                $component->update([
+                    'name' => $editor['name'],
+                    'conteudo' => $conteudo['value'],
+                    'component_order' => $editor['component_order'],
+                    'object_id' => $id,
+                    'capitulos_id' => $request->id,
+                ]);
+            }else{
+                $component = Componente::create([
+                    'name' => $editor['name'],
+                    'conteudo' => $conteudo['value'],
+                    'component_order' => $editor['component_order'],
+                    'object_id' => $id,
+                    'capitulos_id' => $request->id,
+                ]);
+            }
+        }
+        return redirect()->route('documents.show', $document);
     }
 
-    public function destroy(Request $request, $id){
-        $componente = new ComponenteController();
-        $componente->destroy($id);
-
-        $documents = Documento::where('document_id', '=', $id)->first();
-        $documents->delete('DELETE FROM documents WHERE id = ?', [$id]);
-
-        return redirect()->route('documents');
+    public function destroy(Documento $document){
+        foreach($document->capitulos as $capitulo){
+            $capitulo->componentes()->delete();
+        }
+        $document->capitulos()->delete();
+        $document->referencias()->delete();
+        $document->delete();
+        return redirect()->route('documents.index');
     }
 
-    public function exportPdf(Request $request){
-        //dd($request);
-        //dd(html_entity_decode($request->value));
-        Browsershot::html('<div>'.html_entity_decode($request->value).'</div>')
-        ->format('A4')
-        ->margins(20, 20, 20, 20)
-        ->footerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(9)
-        ->save(\storage_path().'/'.$request->nome.'.pdf');
+// Capitulos
 
-        return redirect()->route('documents');
+    public function newChapter(Request $id){
+        return Inertia::render('Dashboard', [
+            'document_id' => $id->id
+        ]);
     }
 
-    public function exportOnUpdate(Request $request){
+    public function saveChapter(Request $request){
+        $capitulo = Capitulo::create([
+            'name' => $request->name,
+            'document_id' => $request->document_id,
+        ]);
+        foreach ($request->content as $id => $item) {
+            $editor = $item['editor'];
+            $conteudo = $item['content'];
+            $capitulo->componentes()->create([
+                'name' => $editor['name'],
+                'conteudo' => $conteudo['value'],
+                'component_order' => $editor['component_order'],
+                'object_id' => $id,
+                'capitulos_id' => $capitulo->id
+            ]);
+        }
 
-        Browsershot::html('<div>'.html_entity_decode($request->conteudo).'</div>')
-        ->format('A4')
-        ->margins(20, 20, 20, 20)
-        ->footerHtml('<span class="pageNumber"></span>')
-        ->initialPageNumber(9)
-        ->save(\storage_path().'/'.$request->nome.'.pdf');
+        $document = Documento::where('id', $request->document_id)->first();
 
-        return redirect()->route('documents');
+        return redirect()->route('documents.show', $document);
+    }
+
+    public function chapterComponent(Request $request){
+        $capitulo = Capitulo::where('id', $request->id)->first();
+        $editors = [];
+        $components = $capitulo->componentes;
+
+        foreach($components as $key){
+            $editors[$key->object_id] = [
+                'editor' => [
+                    'name' => $key->name,
+                    'component' => '',
+                    'component_order' => $key->component_order
+                ],
+                'content' => [
+                    'value' => $key->conteudo
+                ]
+            ];
+        }
+
+        uasort($editors, function($obj1, $obj2){
+            $order1 = $obj1['editor'];
+            $order2 = $obj2['editor'];
+            return $order1['component_order'] > $order2['component_order'];
+        });
+
+        return Inertia::render('EditAcademicWork', [
+            'document' =>$capitulo->document_id,
+            'chapter_id' => $capitulo->id,
+            'chapter_name' => $capitulo->name,
+            'edit' => $editors,
+        ]);
+    }
+
+    public function removeChapter(Request $id){
+        $capitulo = Capitulo::where('id', $id->id)->first();
+        $document = Documento::where('id', $capitulo->document_id)->first();
+        $capitulo->componentes()->delete();
+        $capitulo->delete();
+
+        return redirect()->route('documents.show', $document);
+    }
+
+    public function removeComponent(Request $id){
+        $componentes = new Componente();
+        $componente = $componentes->where("object_id", "=", $id['id'])->first();
+    }
+
+// Gerenciar Trabalho -------------------------------------------------------
+    public function gerenciar_trabalho(Documento $id){
+        $document_id = $id->id;
+        $document_name = $id->nome;
+        $templates = Template::all();
+        return Inertia::render('GerenciarTrabalho', [
+            'id' => $document_id,
+            'nome' => $document_name,
+            'templates' => $templates
+        ]);
+    }
+
+    public function changeTemplate(Request $request, Documento $document, Template $template){
+        $document->update([
+            'templates_id' => $template->id
+        ]);
+        return redirect()->route('gerenciar_trabalho', $document);
+    }
+
+// Gerenciar Referencia -------------------------------------------------------
+    public function add_referencia(Documento $id){
+        return Inertia::render('Referencias/AddReferencia', [
+            'titulo_da_pagina' => 'Adicionar Referência',
+            'doc_id' => $id->id
+        ]);
+    }
+
+
+    public function buscar_referencias(Documento $id){
+        $referencias = Referencia::where('document_id', '=', $id->id)->get();
+        return Inertia::render('Referencias/GerenciarReferencias', [
+            'doc_id' => $id->id,
+            'referencia' => $referencias
+        ]);
+    }
+
+    public function salvar_referencia(Request $referencia){
+        $document = Referencia::updateOrCreate(
+            ['id' => $referencia->id],
+            ['nome_autor' => $referencia->nome_autor,
+             'titulo' => $referencia->titulo,
+             'subtitulo' => $referencia->subtitulo,
+             'edicao' => $referencia->edicao,
+             'local' => $referencia->local,
+             'editora' => $referencia->editora,
+             'ano' => $referencia->ano,
+             'pagina' => $referencia->pagina,
+             'site' => $referencia->site,
+             'nomeDoSite' => $referencia->nomeDoSite,
+             'acessado' => $referencia->acessado,
+             'document_id' => $referencia->documento]
+        );
+        return redirect()->route('gerenciar_referencias', $referencia->documento);
+    }
+
+    public function editar_referencia(Referencia $id){
+        return Inertia::render('Referencias/AddReferencia', [
+            'titulo_da_pagina' => 'Editar Referência',
+            'doc_id' => $id->document_id,
+            'id' => $id->id,
+            'nome_autor' => $id->nome_autor,
+            'titulo' => $id->titulo,
+            'subtitulo' => $id->subtitulo,
+            'edicao' => $id->edicao,
+            'local' => $id->local,
+            'editora' => $id->editora,
+            'ano' => $id->ano,
+            'pagina' => $id->pagina,
+            'site' => $id->site,
+            'nomeDoSite' => $id->nomeDoSite,
+            'acessado' => $id->acessado,
+        ]);
+    }
+
+    public function deletar_referencia(Referencia $id){
+        $id->delete();
+        return redirect()->route('gerenciar_referencias', $id->document_id);
+    }
+
+
+// Formatar Trabalho Acadêmico -------------------------------------------------------
+    public function exportPdf(Request $request, Documento $document){
+        PdfGenerated::dispatch($document);
+        $templates = Template::all();
+
+        return Inertia::render('GerenciarTrabalho', [
+            'id' => $document->id,
+            'nome' => $document->nome,
+            'templates' => $templates,
+            'pdfFormatado' => 1
+        ]);
     }
 
 }

@@ -3,11 +3,11 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Inertia\Inertia;
 use App\Http\Controllers\DocumentoController;
-use App\Http\Controllers\ComponenteController;
-use App\Models\Documento;
-
+use App\Mail\pdfCreatedMail;
+use Illuminate\Support\Facades\Mail;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -21,6 +21,7 @@ use App\Models\Documento;
 
 use Laravel\Socialite\Facades\Socialite;
 
+// Login ------------------------------------------------------------------------------------
 Route::get('/redirect', 'App\Http\Controllers\Auth\LoginController@redirectToProvider');
 Route::get('/callback', 'App\Http\Controllers\Auth\LoginController@handleProviderCallback');
 
@@ -31,31 +32,49 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('login-google');
+
+// Documento ------------------------------------------------------------------------------------
+Route::get('/novo_documento/{template}', [DocumentoController::class, 'novo_doc'])->middleware(['auth', 'verified']);
 
 Route::get('/newdoc', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/documents', [DocumentoController::class, 'index'],  function () {
-    return Inertia::render('Documents');
-})->middleware(['auth', 'verified'])->name('documents');
+Route::resource('documents', DocumentoController::class)->middleware(['auth', 'verified']);
 
-Route::get('/documents/{id}', [DocumentoController::class, 'getById'],  function ($id) {
-    return Inertia::render('EditAcademicWork');
-})->middleware(['auth', 'verified'])->name('editDocument');
+Route::delete('/deleteComponent/{id}', [DocumentoController::class, 'removeComponent'])->middleware(['auth', 'verified']);
 
-Route::post('/documento', [DocumentoController::class, 'store']);
+// Capitulos
+Route::post('/newChapter', [DocumentoController::class, 'saveChapter'])->middleware(['auth', 'verified']);
+
+Route::get('/newchapter/{id}', [DocumentoController::class, 'newChapter'])->middleware(['auth', 'verified']);
+
+Route::get('/editChapter/{id}', [DocumentoController::class, 'chapterComponent'])->middleware(['auth', 'verified']);
+
+Route::delete('/chapter/{id}', [DocumentoController::class, 'removeChapter'])->middleware(['auth', 'verified']);
+
+// Gerenciar Documento ------------------------------------------------------------------------------------
+Route::get('/gerenciar/{id}', [DocumentoController::class, 'gerenciar_trabalho'])->middleware(['auth', 'verified'])->name('gerenciar_trabalho');
+
+Route::put('/mudarTemplate/{document}/{template}', [DocumentoController::class, 'changeTemplate'])->middleware(['auth', 'verified']);
+
+// Referências ------------------------------------------------------------------------------------
+Route::get('/referencias/{id}', [DocumentoController::class, 'buscar_referencias'])->middleware(['auth', 'verified'])->name('gerenciar_referencias');
+
+Route::get('/add_referencia/{id}', [DocumentoController::class, 'add_referencia'])->middleware(['auth', 'verified'])->name('adicionar_referencia');
+
+Route::get('/editar_referencia/{id}', [DocumentoController::class, 'editar_referencia'])->middleware(['auth', 'verified'])->name('editar_referencia');
+
+Route::delete('deletar_referencia/{id}', [DocumentoController::class, 'deletar_referencia'])->middleware(['auth', 'verified'])->name('deletar_referencia');
+
+Route::post('/salvar_referencia', [DocumentoController::class, 'salvar_referencia'])->middleware(['auth', 'verified']);
+
 require __DIR__.'/auth.php';
 
-Route::post('/doc/{id}', [DocumentoController::class, 'update']);
+Route::get('/export/{document}', [DocumentoController::class, 'exportPdf'])->middleware(['auth', 'verified']);
 require __DIR__.'/auth.php';
 
-Route::post('/export/', [DocumentoController::class, 'exportPdf']);
-require __DIR__.'/auth.php';
+// Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
+// require __DIR__.'/auth.php';
 
-Route::post('/export/{id}', [DocumentoController::class, 'exportOnUpdate']);
-require __DIR__.'/auth.php';
-
-Route::delete('/documento/{id}', [DocumentoController::class, 'destroy']);
-require __DIR__.'/auth.php';

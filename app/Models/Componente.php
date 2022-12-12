@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Componente extends Model
 {
@@ -11,17 +12,17 @@ class Componente extends Model
 
     protected $table = 'componentes';
 
-    protected $primaryKey = 'component_id';
-
     protected $fillable = [
         'name',
         'conteudo',
-        'document_id'
+        'component_order',
+        'object_id',
+        'capitulos_id'
     ];
 
-    public function documento():BelongsTo
+    public function capitulos() : BelongsTo
     {
-        return $this->belongsTo(Documento::class);
+        return $this->belongsTo(Capitulo::class);
     }
 
 
